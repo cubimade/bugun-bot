@@ -1,5 +1,5 @@
 // ============================================================
-//  BUGUN-BOT — Instagram AI chat-bot (v2 - yaxshilangan)
+//  BUGUN-BOT — Instagram AI chat-bot (v3 - privacy policy bilan)
 //  Elbek Eshmurodov uchun | Claude API bilan ishlaydi
 // ============================================================
 
@@ -57,25 +57,17 @@ APP.get("/webhook", (req, res) => {
 APP.post("/webhook", async (req, res) => {
   res.status(200).send("EVENT_RECEIVED");
 
-  // MUHIM: kelgan HAMMA narsani to'liq logga yozamiz (debug uchun)
   console.log("📬 XABAR KELDI! To'liq mazmun:");
   console.log(JSON.stringify(req.body, null, 2));
 
   try {
     const body = req.body;
 
-    // Instagram tekshiruvi (yumshoqroq — object bo'lmasa ham davom etamiz)
     if (body.object && body.object !== "instagram") {
       console.log(`ℹ️ Object turi: ${body.object} (instagram emas, lekin davom etamiz)`);
     }
 
-    // Har bir entry'ni ko'rib chiqamiz
     for (const entry of body.entry || []) {
-      // Instagram xabarlari IKKI xil joyda bo'lishi mumkin:
-      // 1) entry.messaging (Messenger uslubi)
-      // 2) entry.changes (Instagram uslubi)
-
-      // --- 1-usul: messaging ---
       const messagingEvents = entry.messaging || [];
       for (const event of messagingEvents) {
         if (event.message?.is_echo) {
@@ -103,7 +95,6 @@ APP.post("/webhook", async (req, res) => {
         await sendInstagramMessage(senderId, reply);
       }
 
-      // --- 2-usul: changes (agar messaging bo'sh bo'lsa) ---
       const changes = entry.changes || [];
       for (const change of changes) {
         console.log(`🔄 Change hodisasi: ${change.field}`);
@@ -166,12 +157,65 @@ async function sendInstagramMessage(recipientId, text) {
 }
 
 // ============================================================
+//  QISM 5: PRIVACY POLICY (Meta publish uchun talab qiladi)
+// ============================================================
+APP.get("/privacy", (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maxfiylik siyosati — Bugun Bot</title>
+  <style>
+    body { font-family: -apple-system, Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.7; color: #222; }
+    h1 { color: #1a1a2e; } h2 { color: #16213e; margin-top: 28px; }
+    .date { color: #888; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Maxfiylik siyosati</h1>
+  <p class="date">Oxirgi yangilanish: 2026-yil 20-iyul</p>
+  <p>Ushbu maxfiylik siyosati "Bugun Bot" (Elbek Eshmurodovning Instagram avtomatik javob berish xizmati) qanday ma'lumotlarni qayta ishlashini tushuntiradi.</p>
+  <h2>1. Qanday ma'lumot yig'amiz</h2>
+  <p>Bot faqat siz Instagram orqali yuborgan xabarlarni qabul qiladi va ularga javob berish uchun ishlatadi. Biz sizning ismingiz (Instagram foydalanuvchi identifikatori) va yuborgan xabaringiz matnini vaqtincha qayta ishlaymiz.</p>
+  <h2>2. Ma'lumotdan qanday foydalanamiz</h2>
+  <p>Sizning xabaringiz avtomatik javob tayyorlash uchun sun'iy intellekt xizmatiga yuboriladi. Javob tayyorlangach, Instagram orqali sizga qaytariladi. Biz ma'lumotlaringizni uchinchi shaxslarga sotmaymiz.</p>
+  <h2>3. Ma'lumotni saqlash</h2>
+  <p>Bot xabarlaringizni doimiy saqlamaydi. Xabar faqat javob tayyorlash paytida vaqtincha qayta ishlanadi.</p>
+  <h2>4. Ma'lumotni o'chirish</h2>
+  <p>Ma'lumotlaringizni o'chirishni so'rash uchun quyidagi manzilga murojaat qiling: elbeshmurodov@gmail.com</p>
+  <h2>5. Aloqa</h2>
+  <p>Savollaringiz bo'lsa, biz bilan bog'laning: elbeshmurodov@gmail.com</p>
+</body>
+</html>
+  `);
+});
+
+APP.get("/data-deletion", (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="uz">
+<head><meta charset="UTF-8"><title>Ma'lumotni o'chirish — Bugun Bot</title>
+<style>body { font-family: Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.7; }</style>
+</head>
+<body>
+  <h1>Ma'lumotni o'chirish</h1>
+  <p>Bugun Bot xabarlaringizni doimiy saqlamaydi. Agar ma'lumotlaringizni o'chirishni istasangiz, quyidagi manzilga murojaat qiling:</p>
+  <p><strong>elbeshmurodov@gmail.com</strong></p>
+  <p>So'rovingiz 48 soat ichida ko'rib chiqiladi.</p>
+</body>
+</html>
+  `);
+});
+
+// ============================================================
 //  SERVERNI ISHGA TUSHIRISH
 // ============================================================
 APP.get("/", (req, res) => {
-  res.send("🤖 Bugun-bot ishlayapti! (v2)");
+  res.send("🤖 Bugun-bot ishlayapti! (v3)");
 });
 
 APP.listen(PORT, () => {
-  console.log(`🚀 Bugun-bot ${PORT}-portda ishga tushdi! (v2 - debug rejimi)`);
+  console.log(`🚀 Bugun-bot ${PORT}-portda ishga tushdi! (v3 - privacy policy bilan)`);
 });

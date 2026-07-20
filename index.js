@@ -5,6 +5,14 @@
 
 import express from "express";
 import Anthropic from "@anthropic-ai/sdk";
+import {
+  initDb,
+  getOrCreateProject,
+  getOrCreateContact,
+  saveMessage,
+  getConversationHistory,
+  getStats,
+} from "./db.js";
 
 const APP = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +24,27 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const claude = new Anthropic({ apiKey: ANTHROPIC_KEY });
 
 APP.use(express.json());
+
+// ============================================================
+//  DATABASE holati
+//  DB_READY — jadvallar tayyor bo'lsa true.
+//  DEFAULT_PROJECT_ID — barcha mijozlar biriktiriladigan asosiy akkaunt.
+// ============================================================
+let DB_READY = false;
+let DEFAULT_PROJECT_ID = null;
+
+async function setupDatabase() {
+  try {
+    DB_READY = await initDb();
+    if (DB_READY) {
+      DEFAULT_PROJECT_ID = await getOrCreateProject("Elbek Eshmurodov Instagram");
+      console.log(`✅ Asosiy loyiha tayyor (id: ${DEFAULT_PROJECT_ID}).`);
+    }
+  } catch (err) {
+    console.error("⚠️ Database sozlashda xatolik:", err.message);
+    DB_READY = false;
+  }
+}
 
 // ============================================================
 //  BOTNING "AQLI"
@@ -89,8 +118,35 @@ APP.post("/webhook", async (req, res) => {
 
         console.log(`📩 Yangi xabar (${senderId}): ${userText}`);
 
-        const reply = await getClaudeReply(userText);
+        // --- Doimiy xotira: mijoz + suhbat tarixi ---
+        let contactId = null;
+        let history = [];
+        if (DB_READY && DEFAULT_PROJECT_ID) {
+          try {
+            contactId = await getOrCreateContact(DEFAULT_PROJECT_ID, senderId);
+            await saveMessage(contactId, "user", userText);
+            history = await getConversationHistory(contactId, 20);
+          } catch (dbErr) {
+            console.error("⚠️ Xabarni saqlashda xatolik:", dbErr.message);
+          }
+        }
+
+        // Agar tarix bo'lmasa (DB o'chiq), joriy xabarning o'zini beramiz
+        if (history.length === 0) {
+          history = [{ role: "user", content: userText }];
+        }
+
+        const reply = await getClaudeReply(history);
         console.log(`🤖 Claude javobi: ${reply}`);
+
+        // Botning javobini ham xotiraga yozamiz
+        if (contactId) {
+          try {
+            await saveMessage(contactId, "assistant", reply);
+          } catch (dbErr) {
+            console.error("⚠️ Javobni saqlashda xatolik:", dbErr.message);
+          }
+        }
 
         await sendInstagramMessage(senderId, reply);
       }
@@ -110,13 +166,13 @@ APP.post("/webhook", async (req, res) => {
 // ============================================================
 //  QISM 3: CLAUDE'DAN JAVOB OLISH
 // ============================================================
-async function getClaudeReply(userText) {
+async function getClaudeReply(messages) {
   try {
     const response = await claude.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 500,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userText }],
+      messages, // to'liq suhbat tarixi — [{ role, content }, ...]
     });
     return response.content[0].text;
   } catch (err) {
@@ -210,12 +266,121 @@ APP.get("/data-deletion", (req, res) => {
 });
 
 // ============================================================
+//  QISM 6: STATISTIKA SAHIFASI (/stats)
+// ============================================================
+APP.get("/stats", async (req, res) => {
+  if (!DB_READY) {
+    res
+      .status(503)
+      .send("<h1>📊 Statistika mavjud emas</h1><p>Database ulanmagan (DATABASE_URL topilmadi).</p>");
+    return;
+  }
+
+  try {
+    const stats = await getStats();
+
+    const esc = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+    const fmt = (d) => (d ? new Date(d).toLocaleString("uz-UZ") : "—");
+
+    const topRows = stats.topContacts
+      .map(
+        (c) => `
+        <tr>
+          <td>${esc(c.name || c.ig_user_id)}</td>
+          <td style="text-align:center">${c.msg_count}</td>
+          <td>${fmt(c.last_msg)}</td>
+        </tr>`
+      )
+      .join("");
+
+    const recentRows = stats.recent
+      .map(
+        (m) => `
+        <tr>
+          <td>${fmt(m.created_at)}</td>
+          <td><span class="badge ${m.role}">${m.role === "user" ? "Mijoz" : "Bot"}</span></td>
+          <td>${esc(m.name || m.ig_user_id)}</td>
+          <td>${esc(m.text)}</td>
+        </tr>`
+      )
+      .join("");
+
+    res.send(`
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Statistika — Bugun Bot</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0f0f1e; color: #e8e8f0; margin: 0; padding: 24px; }
+    h1 { color: #fff; margin: 0 0 4px; }
+    .sub { color: #888; font-size: 14px; margin-bottom: 24px; }
+    .cards { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
+    .card { background: linear-gradient(135deg, #1a1a2e, #23234a); border: 1px solid #2d2d55; border-radius: 14px; padding: 20px 28px; min-width: 160px; }
+    .card .num { font-size: 40px; font-weight: 700; color: #7c8cff; }
+    .card .label { color: #aaa; font-size: 14px; margin-top: 4px; }
+    h2 { color: #fff; font-size: 18px; margin: 28px 0 12px; }
+    table { width: 100%; border-collapse: collapse; background: #16162a; border-radius: 12px; overflow: hidden; }
+    th, td { padding: 10px 14px; text-align: left; font-size: 14px; border-bottom: 1px solid #26264a; }
+    th { background: #1e1e3a; color: #bbb; font-weight: 600; }
+    td { color: #ddd; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .badge { padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge.user { background: #2a4d69; color: #9cd; }
+    .badge.assistant { background: #3d2a5a; color: #c9a; }
+    .wrap { overflow-x: auto; }
+    .empty { color: #777; padding: 16px; }
+  </style>
+</head>
+<body>
+  <h1>📊 Bugun Bot — Statistika</h1>
+  <div class="sub">Yangilangan: ${fmt(new Date())}</div>
+
+  <div class="cards">
+    <div class="card"><div class="num">${stats.projects}</div><div class="label">Akkauntlar</div></div>
+    <div class="card"><div class="num">${stats.contacts}</div><div class="label">Mijozlar</div></div>
+    <div class="card"><div class="num">${stats.messages}</div><div class="label">Jami xabarlar</div></div>
+  </div>
+
+  <h2>🏆 Eng faol mijozlar</h2>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Mijoz</th><th style="text-align:center">Xabarlar</th><th>Oxirgi faollik</th></tr></thead>
+      <tbody>${topRows || `<tr><td colspan="3" class="empty">Hali mijozlar yo'q</td></tr>`}</tbody>
+    </table>
+  </div>
+
+  <h2>💬 Oxirgi suhbatlar</h2>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Vaqt</th><th>Kim</th><th>Mijoz</th><th>Xabar</th></tr></thead>
+      <tbody>${recentRows || `<tr><td colspan="4" class="empty">Hali xabarlar yo'q</td></tr>`}</tbody>
+    </table>
+  </div>
+</body>
+</html>
+    `);
+  } catch (err) {
+    console.error("⚠️ /stats xatoligi:", err.message);
+    res.status(500).send("<h1>Xatolik</h1><p>Statistikani olishda muammo yuz berdi.</p>");
+  }
+});
+
+// ============================================================
 //  SERVERNI ISHGA TUSHIRISH
 // ============================================================
 APP.get("/", (req, res) => {
-  res.send("🤖 Bugun-bot ishlayapti! (v3)");
+  res.send("🤖 Bugun-bot ishlayapti! (v4 - database bilan) — /stats ni oching");
 });
 
-APP.listen(PORT, () => {
-  console.log(`🚀 Bugun-bot ${PORT}-portda ishga tushdi! (v3 - privacy policy bilan)`);
+APP.listen(PORT, async () => {
+  console.log(`🚀 Bugun-bot ${PORT}-portda ishga tushdi! (v4 - database bilan)`);
+  await setupDatabase();
 });

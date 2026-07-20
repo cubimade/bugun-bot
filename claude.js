@@ -12,17 +12,36 @@ import {
 
 const claude = new Anthropic({ apiKey: ANTHROPIC_KEY });
 
+// Javobdan matnni ishonchli ajratib olish.
+// content[0] har doim ham matn bloki bo'lavermaydi (modelga qarab boshqa
+// blok turi kelishi mumkin) — shuning uchun birinchi "text" blokini topamiz.
+function extractText(response) {
+  const blocks = response?.content || [];
+  const textBlock = blocks.find((b) => b.type === "text" && typeof b.text === "string");
+  return textBlock ? textBlock.text.trim() : "";
+}
+
 // DM suhbatiga javob. `messages` — to'liq suhbat tarixi [{role, content}].
 // `systemPrompt` — akkauntga xos prompt (bilim bazasi bilan, Bosqich 2).
 export async function getClaudeReply(messages, systemPrompt = SYSTEM_PROMPT, model = MODEL_HAIKU) {
   try {
-    const response = await claude.messages.create({
+    const params = {
       model,
       max_tokens: 500,
       system: systemPrompt,
       messages,
-    });
-    return response.content[0].text;
+    };
+    // Sonnet-5 (va yangi modellar) sukut bo'yicha "adaptive thinking" yoqadi —
+    // bu qo'shimcha kechikish va token sarflaydi, hamda content[0] matn emas,
+    // "thinking" bloki bo'lib qoladi. Chatbot uchun to'g'ridan-to'g'ri, tez javob
+    // kerak, shuning uchun Haiku'dan boshqa modellarda thinking'ni o'chiramiz.
+    // (Haiku sukut bo'yicha thinkingsiz ishlaydi va "disabled" ni qabul qilmaydi.)
+    if (model !== MODEL_HAIKU) {
+      params.thinking = { type: "disabled" };
+    }
+    const response = await claude.messages.create(params);
+    const text = extractText(response);
+    return text || "Kechirasiz, javobni tayyorlab bo'lmadi. Iltimos, qayta yozing.";
   } catch (err) {
     console.error("⚠️ Claude xatoligi:", err.message);
     return "Kechirasiz, hozir javob bera olmayapman. Birozdan keyin urinib ko'ring.";
@@ -47,7 +66,7 @@ export async function getCommentReply(
         },
       ],
     });
-    return response.content[0].text.trim();
+    return extractText(response) || "Rahmat! 🙌";
   } catch (err) {
     console.error("⚠️ Claude (komment) xatoligi:", err.message);
     return "Rahmat! 🙌";

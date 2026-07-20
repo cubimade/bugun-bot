@@ -39,15 +39,17 @@ export async function initDb() {
   await pool.query(`
     -- Instagram akkauntlar (loyihalar)
     CREATE TABLE IF NOT EXISTS projects (
-      id            SERIAL PRIMARY KEY,
-      name          TEXT NOT NULL,
-      ig_account_id TEXT UNIQUE,
-      access_token  TEXT,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      id             SERIAL PRIMARY KEY,
+      name           TEXT NOT NULL,
+      ig_account_id  TEXT UNIQUE,
+      access_token   TEXT,
+      knowledge_base TEXT,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
-    -- Eski bazalar uchun: ustun bo'lmasa qo'shamiz
+    -- Eski bazalar uchun: ustunlar bo'lmasa qo'shamiz
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS access_token TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS knowledge_base TEXT;
 
     -- Mijozlar (Instagram foydalanuvchilari)
     CREATE TABLE IF NOT EXISTS contacts (
@@ -186,6 +188,49 @@ export async function getStats() {
     recent: recent.rows,
     topContacts: topContacts.rows,
   };
+}
+
+// ------------------------------------------------------------
+//  Bilim bazasi (knowledge base) — har akkaunt uchun biznes ma'lumoti
+// ------------------------------------------------------------
+export async function getProjectKnowledge(projectId) {
+  const { rows } = await pool.query(
+    `SELECT knowledge_base FROM projects WHERE id = $1`,
+    [projectId]
+  );
+  return rows[0]?.knowledge_base || "";
+}
+
+export async function setProjectKnowledge(projectId, text) {
+  await pool.query(`UPDATE projects SET knowledge_base = $2 WHERE id = $1`, [
+    projectId,
+    text,
+  ]);
+}
+
+// ------------------------------------------------------------
+//  Loyihalar (akkauntlar) ro'yxati va bittasi — dashboard uchun
+// ------------------------------------------------------------
+export async function listProjects() {
+  const { rows } = await pool.query(
+    `SELECT p.id, p.name, p.ig_account_id, p.knowledge_base, p.created_at,
+            (SELECT COUNT(*)::int FROM contacts c WHERE c.project_id = p.id) AS contacts,
+            (SELECT COUNT(*)::int FROM messages m
+               JOIN contacts c ON c.id = m.contact_id
+              WHERE c.project_id = p.id) AS messages
+       FROM projects p
+      ORDER BY p.id`
+  );
+  return rows;
+}
+
+export async function getProject(projectId) {
+  const { rows } = await pool.query(
+    `SELECT id, name, ig_account_id, knowledge_base, created_at
+       FROM projects WHERE id = $1`,
+    [projectId]
+  );
+  return rows[0] || null;
 }
 
 export { pool };

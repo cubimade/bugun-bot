@@ -62,3 +62,26 @@ Qoidalar:
 - Iliq, do'stona, samimiy ohang. 1-2 ta emoji ishlatsa bo'ladi.
 - Kommentga mos tabiiy javob yoz: minnatdorchilik, qisqa javob yoki savol bo'lsa DM'ga taklif.
 - Reklama qilma, ortiqcha uzun yozma.`;
+
+// ============================================================
+//  BILIM BAZASI — akkauntga xos biznes ma'lumotini promptga qo'shish
+//  (Bosqich 2). Agar bilim bazasi bo'sh bo'lsa — umumiy prompt.
+// ============================================================
+function withKnowledge(basePrompt, knowledge) {
+  if (!knowledge || !knowledge.trim()) return basePrompt;
+  return `${basePrompt}
+
+--- BIZNES MA'LUMOTI (shu akkaunt uchun, undan foydalanib javob ber) ---
+${knowledge.trim()}
+--- MA'LUMOT TUGADI ---
+Agar savolga javob yuqoridagi ma'lumotda bo'lsa, aniq va ishonchli ayt.
+Ma'lumotda yo'q narsani o'ylab topma — halol ayt va bog'lanishni taklif qil.`;
+}
+
+export function buildSystemPrompt(knowledge) {
+  return withKnowledge(SYSTEM_PROMPT, knowledge);
+}
+
+export function buildCommentSystemPrompt(knowledge) {
+  return withKnowledge(COMMENT_SYSTEM_PROMPT, knowledge);
+}

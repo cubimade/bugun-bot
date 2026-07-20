@@ -18,6 +18,8 @@ import {
   VERIFY_TOKEN,
   AUTO_DM_ON_COMMENT,
   parseAccounts,
+  buildSystemPrompt,
+  buildCommentSystemPrompt,
 } from "./config.js";
 import { getClaudeReply, getCommentReply } from "./claude.js";
 import {
@@ -32,6 +34,8 @@ import {
   saveMessage,
   getConversationHistory,
   getStats,
+  getProjectKnowledge,
+  setProjectKnowledge,
 } from "./db.js";
 import { renderPrivacyPage, renderDataDeletionPage, renderStatsPage } from "./pages.js";
 
@@ -144,7 +148,7 @@ APP.post("/webhook", async (req, res) => {
       for (const change of entry.changes || []) {
         console.log(`🔄 Change hodisasi: ${change.field}`);
         if (change.field === "comments") {
-          await handleComment(entry, change.value, token);
+          await handleComment(entry, change.value, projectId, token);
         }
       }
     }
@@ -195,7 +199,17 @@ async function handleDirectMessage(event, projectId, token) {
     history = [{ role: "user", content: userText }];
   }
 
-  const reply = await getClaudeReply(history);
+  // Shu akkauntning bilim bazasini promptga qo'shamiz
+  let knowledge = "";
+  if (DB_READY && projectId) {
+    try {
+      knowledge = await getProjectKnowledge(projectId);
+    } catch (dbErr) {
+      console.error("⚠️ Bilim bazasini o'qishda xatolik:", dbErr.message);
+    }
+  }
+
+  const reply = await getClaudeReply(history, buildSystemPrompt(knowledge));
   console.log(`🤖 Claude javobi: ${reply}`);
 
   // Botning javobini ham xotiraga yozamiz
@@ -213,7 +227,7 @@ async function handleDirectMessage(event, projectId, token) {
 // ============================================================
 //  KOMMENTNI qayta ishlash (ommaviy javob + ixtiyoriy DM)
 // ============================================================
-async function handleComment(entry, value, token) {
+async function handleComment(entry, value, projectId, token) {
   try {
     const commentId = value?.id;
     const commentText = value?.text;
@@ -234,7 +248,21 @@ async function handleComment(entry, value, token) {
 
     console.log(`💬 Yangi komment (@${username || fromId}): ${commentText}`);
 
-    const reply = await getCommentReply(commentText, username);
+    // Shu akkauntning bilim bazasi bilan komment javobini tayyorlaymiz
+    let knowledge = "";
+    if (DB_READY && projectId) {
+      try {
+        knowledge = await getProjectKnowledge(projectId);
+      } catch (dbErr) {
+        console.error("⚠️ Bilim bazasini o'qishda xatolik:", dbErr.message);
+      }
+    }
+
+    const reply = await getCommentReply(
+      commentText,
+      username,
+      buildCommentSystemPrompt(knowledge)
+    );
     console.log(`🤖 Komment javobi: ${reply}`);
 
     // 1) Ommaviy javob — komment ostiga yoziladi
@@ -249,6 +277,46 @@ async function handleComment(entry, value, token) {
     console.error("⚠️ Komment qayta ishlashda xatolik:", err.message);
   }
 }
+
+// ============================================================
+//  ADMIN HIMOYASI
+//  DASHBOARD_PASSWORD o'rnatilgan bo'lsa — parol talab qilinadi.
+//  O'rnatilmagan bo'lsa (hozircha) — ochiq (Bosqich 3 da yoqiladi).
+// ============================================================
+function adminAuth(req, res, next) {
+  const pass = process.env.DASHBOARD_PASSWORD;
+  if (!pass) return next(); // parol yo'q — ochiq
+  const given = req.get("x-admin-key") || req.query.key;
+  if (given === pass) return next();
+  res.status(401).json({ error: "Ruxsat yo'q — parol noto'g'ri" });
+}
+
+// ============================================================
+//  API — BILIM BAZASI (o'qish/yozish)
+// ============================================================
+APP.get("/api/knowledge/:projectId", adminAuth, async (req, res, next) => {
+  if (!DB_READY) return res.status(503).json({ error: "Database o'chiq" });
+  try {
+    const projectId = Number(req.params.projectId);
+    const knowledge = await getProjectKnowledge(projectId);
+    res.json({ projectId, knowledge });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.post("/api/knowledge/:projectId", adminAuth, async (req, res, next) => {
+  if (!DB_READY) return res.status(503).json({ error: "Database o'chiq" });
+  try {
+    const projectId = Number(req.params.projectId);
+    const text = typeof req.body?.knowledge === "string" ? req.body.knowledge : "";
+    await setProjectKnowledge(projectId, text);
+    console.log(`📝 Bilim bazasi yangilandi (loyiha ${projectId}, ${text.length} belgi)`);
+    res.json({ ok: true, projectId, length: text.length });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ============================================================
 //  SAHIFALAR — privacy, data-deletion, stats

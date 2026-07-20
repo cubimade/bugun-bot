@@ -17,7 +17,7 @@ import {
 const APP = express();
 const PORT = process.env.PORT || 3000;
 
-const IG_TOKEN = process.env.IG_ACCESS_TOKEN;
+const IG_TOKEN = process.env.IG_ACCESS_TOKEN; // asosiy (fallback) token
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -26,9 +26,27 @@ const claude = new Anthropic({ apiKey: ANTHROPIC_KEY });
 APP.use(express.json());
 
 // ============================================================
+//  KO'P AKKAUNT (multi-account) sozlamasi
+//  IG_ACCOUNTS env — bir nechta Instagram akkauntni ulash uchun JSON:
+//    [{"id":"1784...A","name":"Asosiy","token":"IGAA..."},
+//     {"id":"1784...B","name":"Ikkinchi","token":"IGAA..."}]
+//  "id" — akkauntning Instagram biznes IDsi (webhook'dagi entry.id).
+//  Agar IG_ACCOUNTS bo'sh bo'lsa — eski holat: bitta IG_ACCESS_TOKEN ishlaydi.
+// ============================================================
+let IG_ACCOUNTS = [];
+try {
+  if (process.env.IG_ACCOUNTS) IG_ACCOUNTS = JSON.parse(process.env.IG_ACCOUNTS);
+} catch (err) {
+  console.error("⚠️ IG_ACCOUNTS JSON o'qishda xatolik:", err.message);
+}
+
+// entry.id (string) -> { projectId, token, name }
+const ACCOUNTS_MAP = new Map();
+
+// ============================================================
 //  DATABASE holati
 //  DB_READY — jadvallar tayyor bo'lsa true.
-//  DEFAULT_PROJECT_ID — barcha mijozlar biriktiriladigan asosiy akkaunt.
+//  DEFAULT_PROJECT_ID — akkaunt ro'yxatda topilmasa ishlatiladigan asosiy loyiha.
 // ============================================================
 let DB_READY = false;
 let DEFAULT_PROJECT_ID = null;
@@ -36,14 +54,53 @@ let DEFAULT_PROJECT_ID = null;
 async function setupDatabase() {
   try {
     DB_READY = await initDb();
-    if (DB_READY) {
-      DEFAULT_PROJECT_ID = await getOrCreateProject("Elbek Eshmurodov Instagram");
-      console.log(`✅ Asosiy loyiha tayyor (id: ${DEFAULT_PROJECT_ID}).`);
-    }
   } catch (err) {
     console.error("⚠️ Database sozlashda xatolik:", err.message);
     DB_READY = false;
   }
+
+  // Asosiy (fallback) loyiha — ro'yxatda yo'q akkauntlar uchun
+  if (DB_READY) {
+    try {
+      DEFAULT_PROJECT_ID = await getOrCreateProject("Elbek Eshmurodov Instagram");
+      console.log(`✅ Asosiy loyiha tayyor (id: ${DEFAULT_PROJECT_ID}).`);
+    } catch (err) {
+      console.error("⚠️ Asosiy loyiha yaratishda xatolik:", err.message);
+    }
+  }
+
+  // Har bir akkauntni loyiha sifatida ro'yxatga olamiz va tokenini eslab qolamiz
+  for (const a of IG_ACCOUNTS) {
+    if (!a?.id || !a?.token) {
+      console.warn("⚠️ IG_ACCOUNTS elementida id yoki token yo'q — o'tkazamiz");
+      continue;
+    }
+    let projectId = DEFAULT_PROJECT_ID;
+    if (DB_READY) {
+      try {
+        projectId = await getOrCreateProject(a.name || `IG ${a.id}`, String(a.id), a.token);
+      } catch (err) {
+        console.error(`⚠️ Akkaunt loyihasini yaratishda xatolik (${a.id}):`, err.message);
+      }
+    }
+    ACCOUNTS_MAP.set(String(a.id), { projectId, token: a.token, name: a.name });
+  }
+
+  if (ACCOUNTS_MAP.size > 0) {
+    console.log(`✅ ${ACCOUNTS_MAP.size} ta Instagram akkaunt sozlandi (multi-account).`);
+  } else {
+    console.log("ℹ️ IG_ACCOUNTS yo'q — bitta akkaunt rejimida (IG_ACCESS_TOKEN).");
+  }
+}
+
+// entry.id bo'yicha to'g'ri akkauntni (loyiha + token) topish.
+// Ro'yxatda bo'lmasa — asosiy loyiha va fallback token ishlatiladi.
+function resolveAccount(entryId) {
+  const acct = ACCOUNTS_MAP.get(String(entryId));
+  if (acct) {
+    return { projectId: acct.projectId ?? DEFAULT_PROJECT_ID, token: acct.token };
+  }
+  return { projectId: DEFAULT_PROJECT_ID, token: IG_TOKEN };
 }
 
 // ============================================================
@@ -110,6 +167,13 @@ APP.post("/webhook", async (req, res) => {
     }
 
     for (const entry of body.entry || []) {
+      // Qaysi akkauntga tegishli — o'sha akkauntning loyihasi va tokeni
+      const { projectId, token } = resolveAccount(entry.id);
+      console.log(
+        `📇 Akkaunt: ${entry.id} → loyiha ${projectId ?? "-"} ` +
+          (ACCOUNTS_MAP.has(String(entry.id)) ? "(ro'yxatda)" : "(fallback)")
+      );
+
       const messagingEvents = entry.messaging || [];
       for (const event of messagingEvents) {
         if (event.message?.is_echo) {
@@ -131,12 +195,12 @@ APP.post("/webhook", async (req, res) => {
 
         console.log(`📩 Yangi xabar (${senderId}): ${userText}`);
 
-        // --- Doimiy xotira: mijoz + suhbat tarixi ---
+        // --- Doimiy xotira: mijoz + suhbat tarixi (shu akkaunt loyihasida) ---
         let contactId = null;
         let history = [];
-        if (DB_READY && DEFAULT_PROJECT_ID) {
+        if (DB_READY && projectId) {
           try {
-            contactId = await getOrCreateContact(DEFAULT_PROJECT_ID, senderId);
+            contactId = await getOrCreateContact(projectId, senderId);
             await saveMessage(contactId, "user", userText);
             history = await getConversationHistory(contactId, 20);
           } catch (dbErr) {
@@ -161,14 +225,14 @@ APP.post("/webhook", async (req, res) => {
           }
         }
 
-        await sendInstagramMessage(senderId, reply);
+        await sendInstagramMessage(senderId, reply, token);
       }
 
       const changes = entry.changes || [];
       for (const change of changes) {
         console.log(`🔄 Change hodisasi: ${change.field}`);
         if (change.field === "comments") {
-          await handleComment(entry, change.value);
+          await handleComment(entry, change.value, token);
         } else {
           console.log(JSON.stringify(change.value, null, 2));
         }
@@ -201,14 +265,14 @@ async function getClaudeReply(messages) {
 // ============================================================
 //  QISM 4: INSTAGRAM'GA XABAR YUBORISH
 // ============================================================
-async function sendInstagramMessage(recipientId, text) {
+async function sendInstagramMessage(recipientId, text, token = IG_TOKEN) {
   const url = `https://graph.instagram.com/v21.0/me/messages`;
 
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${IG_TOKEN}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -232,7 +296,7 @@ async function sendInstagramMessage(recipientId, text) {
 // ============================================================
 //  QISM 4B: KOMMENTLARGA JAVOB BERISH
 // ============================================================
-async function handleComment(entry, value) {
+async function handleComment(entry, value, token = IG_TOKEN) {
   try {
     const commentId = value?.id;
     const commentText = value?.text;
@@ -257,12 +321,12 @@ async function handleComment(entry, value) {
     console.log(`🤖 Komment javobi: ${reply}`);
 
     // 1) Ommaviy javob — komment ostiga yoziladi
-    await replyToComment(commentId, reply);
+    await replyToComment(commentId, reply, token);
 
     // 2) Ixtiyoriy: komment yozgan odamga shaxsiy DM (ManyChat uslubi)
     if (AUTO_DM_ON_COMMENT) {
       const dmText = `Salom${username ? " @" + username : ""}! Kommentingiz uchun rahmat 🙏 Savolingiz bo'lsa, shu yerda — DM'da bemalol yozing, yordam beraman. 😊`;
-      await sendPrivateReply(commentId, dmText);
+      await sendPrivateReply(commentId, dmText, token);
     }
   } catch (err) {
     console.error("⚠️ Komment qayta ishlashda xatolik:", err.message);
@@ -291,13 +355,13 @@ async function getCommentReply(commentText, username) {
 }
 
 // Kommentga ommaviy javob yozish (POST /{comment-id}/replies)
-async function replyToComment(commentId, text) {
+async function replyToComment(commentId, text, token = IG_TOKEN) {
   const url = `https://graph.instagram.com/v21.0/${commentId}/replies`;
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${IG_TOKEN}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ message: text }),
@@ -314,13 +378,13 @@ async function replyToComment(commentId, text) {
 }
 
 // Komment yozgan odamga shaxsiy DM (private reply — recipient.comment_id)
-async function sendPrivateReply(commentId, text) {
+async function sendPrivateReply(commentId, text, token = IG_TOKEN) {
   const url = `https://graph.instagram.com/v21.0/me/messages`;
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${IG_TOKEN}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

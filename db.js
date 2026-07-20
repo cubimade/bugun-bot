@@ -42,8 +42,12 @@ export async function initDb() {
       id            SERIAL PRIMARY KEY,
       name          TEXT NOT NULL,
       ig_account_id TEXT UNIQUE,
+      access_token  TEXT,
       created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Eski bazalar uchun: ustun bo'lmasa qo'shamiz
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS access_token TEXT;
 
     -- Mijozlar (Instagram foydalanuvchilari)
     CREATE TABLE IF NOT EXISTS contacts (
@@ -77,23 +81,32 @@ export async function initDb() {
 // ------------------------------------------------------------
 //  Loyihani (akkauntni) topish yoki yaratish
 // ------------------------------------------------------------
-export async function getOrCreateProject(name, igAccountId = null) {
+export async function getOrCreateProject(name, igAccountId = null, accessToken = null) {
+  // ig_account_id bo'lmagan holat (asosiy loyiha): nom bo'yicha topamiz/yaratamiz
+  if (!igAccountId) {
+    const found = await pool.query(
+      `SELECT id FROM projects WHERE name = $1 ORDER BY id LIMIT 1`,
+      [name]
+    );
+    if (found.rows[0]) return found.rows[0].id;
+    const ins = await pool.query(
+      `INSERT INTO projects (name) VALUES ($1) RETURNING id`,
+      [name]
+    );
+    return ins.rows[0].id;
+  }
+
+  // Akkaunt IDsi bor: id bo'yicha upsert, tokenni ham yangilaymiz
   const { rows } = await pool.query(
-    `INSERT INTO projects (name, ig_account_id)
-     VALUES ($1, $2)
-     ON CONFLICT (ig_account_id) DO UPDATE SET name = EXCLUDED.name
+    `INSERT INTO projects (name, ig_account_id, access_token)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (ig_account_id) DO UPDATE
+       SET name = EXCLUDED.name,
+           access_token = COALESCE(EXCLUDED.access_token, projects.access_token)
      RETURNING id`,
-    [name, igAccountId]
+    [name, String(igAccountId), accessToken]
   );
-
-  // ig_account_id null bo'lsa ON CONFLICT ishlamaydi — nom bo'yicha qidiramiz
-  if (rows[0]) return rows[0].id;
-
-  const found = await pool.query(
-    `SELECT id FROM projects WHERE name = $1 ORDER BY id LIMIT 1`,
-    [name]
-  );
-  return found.rows[0].id;
+  return rows[0].id;
 }
 
 // ------------------------------------------------------------

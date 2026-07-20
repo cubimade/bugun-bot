@@ -1,0 +1,17 @@
+{
+  "name": "bugun-bot",
+  "version": "1.0.0",
+  "description": "Instagram AI chat-bot - Claude API bilan ishlaydi",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

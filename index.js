@@ -36,8 +36,17 @@ import {
   getStats,
   getProjectKnowledge,
   setProjectKnowledge,
+  listProjects,
+  listContacts,
+  getContact,
+  getContactMessages,
 } from "./db.js";
-import { renderPrivacyPage, renderDataDeletionPage, renderStatsPage } from "./pages.js";
+import {
+  renderPrivacyPage,
+  renderDataDeletionPage,
+  renderStatsPage,
+  renderDashboardPage,
+} from "./pages.js";
 
 const APP = express();
 APP.use(express.json());
@@ -279,34 +288,89 @@ async function handleComment(entry, value, projectId, token) {
 }
 
 // ============================================================
-//  ADMIN HIMOYASI
+//  ADMIN HIMOYASI (Basic Auth)
 //  DASHBOARD_PASSWORD o'rnatilgan bo'lsa — parol talab qilinadi.
-//  O'rnatilmagan bo'lsa (hozircha) — ochiq (Bosqich 3 da yoqiladi).
+//  O'rnatilmagan bo'lsa — ochiq (Elbek Railway'da parolni qo'shishi kerak).
+//  Foydalanuvchi nomi ixtiyoriy (masalan "admin"), parol = DASHBOARD_PASSWORD.
 // ============================================================
-function adminAuth(req, res, next) {
+function protect(req, res, next) {
   const pass = process.env.DASHBOARD_PASSWORD;
   if (!pass) return next(); // parol yo'q — ochiq
-  const given = req.get("x-admin-key") || req.query.key;
-  if (given === pass) return next();
-  res.status(401).json({ error: "Ruxsat yo'q — parol noto'g'ri" });
+
+  const hdr = req.get("authorization") || "";
+  const [scheme, encoded] = hdr.split(" ");
+  if (scheme === "Basic" && encoded) {
+    const decoded = Buffer.from(encoded, "base64").toString();
+    const pwd = decoded.slice(decoded.indexOf(":") + 1);
+    if (pwd === pass) return next();
+  }
+  res.set("WWW-Authenticate", 'Basic realm="Bugun Bot Dashboard"');
+  res.status(401).send("Ruxsat yo'q — parol kerak");
+}
+
+function requireDb(req, res) {
+  if (!DB_READY) {
+    res.status(503).json({ error: "Database o'chiq" });
+    return false;
+  }
+  return true;
 }
 
 // ============================================================
-//  API — BILIM BAZASI (o'qish/yozish)
+//  API — DASHBOARD ma'lumotlari
 // ============================================================
-APP.get("/api/knowledge/:projectId", adminAuth, async (req, res, next) => {
-  if (!DB_READY) return res.status(503).json({ error: "Database o'chiq" });
+APP.get("/api/stats", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
   try {
-    const projectId = Number(req.params.projectId);
-    const knowledge = await getProjectKnowledge(projectId);
-    res.json({ projectId, knowledge });
+    res.json(await getStats());
   } catch (err) {
     next(err);
   }
 });
 
-APP.post("/api/knowledge/:projectId", adminAuth, async (req, res, next) => {
-  if (!DB_READY) return res.status(503).json({ error: "Database o'chiq" });
+APP.get("/api/projects", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    res.json({ projects: await listProjects() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.get("/api/contacts", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    res.json({ contacts: await listContacts(50) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.get("/api/conversation/:contactId", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.params.contactId);
+    const contact = await getContact(contactId);
+    const messages = await getContactMessages(contactId);
+    res.json({ contact, messages });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Bilim bazasi (o'qish/yozish) ---
+APP.get("/api/knowledge/:projectId", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const projectId = Number(req.params.projectId);
+    res.json({ projectId, knowledge: await getProjectKnowledge(projectId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.post("/api/knowledge/:projectId", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
   try {
     const projectId = Number(req.params.projectId);
     const text = typeof req.body?.knowledge === "string" ? req.body.knowledge : "";
@@ -317,6 +381,11 @@ APP.post("/api/knowledge/:projectId", adminAuth, async (req, res, next) => {
     next(err);
   }
 });
+
+// ============================================================
+//  DASHBOARD (boshqaruv paneli)
+// ============================================================
+APP.get("/dashboard", protect, (req, res) => res.send(renderDashboardPage()));
 
 // ============================================================
 //  SAHIFALAR — privacy, data-deletion, stats
@@ -340,7 +409,9 @@ APP.get("/stats", async (req, res, next) => {
 });
 
 APP.get("/", (req, res) => {
-  res.send("🤖 Bugun-bot ishlayapti! (v5 - modulli) — /stats ni oching");
+  res.send(
+    "🤖 Bugun-bot ishlayapti! (v5 - modulli) — <a href='/dashboard'>/dashboard</a> yoki <a href='/stats'>/stats</a>"
+  );
 });
 
 // ============================================================

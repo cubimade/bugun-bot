@@ -233,4 +233,43 @@ export async function getProject(projectId) {
   return rows[0] || null;
 }
 
+// ------------------------------------------------------------
+//  Suhbatlar (dashboard uchun) — mijozlar ro'yxati va to'liq yozishma
+// ------------------------------------------------------------
+export async function listContacts(limit = 50) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen,
+            p.name AS project_name,
+            (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
+            (SELECT text FROM messages m WHERE m.contact_id = c.id
+              ORDER BY created_at DESC LIMIT 1) AS last_text
+       FROM contacts c
+       JOIN projects p ON p.id = c.project_id
+      ORDER BY c.last_seen DESC
+      LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+export async function getContactMessages(contactId) {
+  const { rows } = await pool.query(
+    `SELECT role, text, created_at
+       FROM messages WHERE contact_id = $1
+      ORDER BY created_at ASC`,
+    [contactId]
+  );
+  return rows;
+}
+
+export async function getContact(contactId) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.ig_user_id, c.name, c.project_id, p.name AS project_name
+       FROM contacts c JOIN projects p ON p.id = c.project_id
+      WHERE c.id = $1`,
+    [contactId]
+  );
+  return rows[0] || null;
+}
+
 export { pool };

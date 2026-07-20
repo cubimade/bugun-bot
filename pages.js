@@ -73,6 +73,171 @@ export function renderDataDeletionPage() {
 }
 
 // ------------------------------------------------------------
+//  Dashboard (boshqaruv paneli) — bir sahifали ilova (Tailwind CDN)
+//  Ma'lumotlar /api/* endpointlaridan JS orqali olinadi.
+// ------------------------------------------------------------
+export function renderDashboardPage() {
+  return `<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boshqaruv paneli — Bugun Bot</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div class="max-w-6xl mx-auto p-5">
+    <header class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold">🤖 Bugun Bot — Boshqaruv paneli</h1>
+        <p class="text-slate-400 text-sm mt-1">Instagram AI avtomatik javob tizimi</p>
+      </div>
+      <a href="/stats" class="text-indigo-400 text-sm hover:underline">Statistika →</a>
+    </header>
+
+    <!-- Statistika kartalari -->
+    <div id="cards" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10"></div>
+
+    <!-- Ulangan akkauntlar -->
+    <section class="mb-10">
+      <h2 class="text-lg font-semibold mb-3">👥 Ulangan akkauntlar</h2>
+      <div id="accounts" class="space-y-3 text-slate-400 text-sm">Yuklanmoqda…</div>
+    </section>
+
+    <!-- Oxirgi suhbatlar -->
+    <section>
+      <h2 class="text-lg font-semibold mb-3">💬 Oxirgi suhbatlar</h2>
+      <div id="conversations" class="space-y-2 text-slate-400 text-sm">Yuklanmoqda…</div>
+    </section>
+  </div>
+
+  <!-- Modal (bilim bazasi / suhbat uchun) -->
+  <div id="modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col border border-slate-700">
+      <div class="flex items-center justify-between p-4 border-b border-slate-700">
+        <h3 id="modalTitle" class="font-semibold"></h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+      </div>
+      <div id="modalBody" class="p-4 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
+    const fmt = (d) => d ? new Date(d).toLocaleString("uz-UZ") : "—";
+
+    async function api(path, opts) {
+      const r = await fetch(path, opts);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }
+
+    function card(num, label) {
+      return \`<div class="bg-gradient-to-br from-slate-800 to-slate-700/60 border border-slate-700 rounded-xl p-5">
+        <div class="text-3xl font-bold text-indigo-400">\${num}</div>
+        <div class="text-slate-400 text-sm mt-1">\${label}</div></div>\`;
+    }
+
+    async function loadStats() {
+      try {
+        const s = await api("/api/stats");
+        $("cards").innerHTML = card(s.projects, "Akkauntlar") + card(s.contacts, "Mijozlar") + card(s.messages, "Jami xabarlar");
+      } catch (e) { $("cards").innerHTML = '<div class="text-slate-500">Statistika yuklanmadi</div>'; }
+    }
+
+    async function loadAccounts() {
+      try {
+        const { projects } = await api("/api/projects");
+        if (!projects.length) { $("accounts").textContent = "Hali akkaunt yo'q"; return; }
+        $("accounts").innerHTML = projects.map((p) => \`
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center justify-between gap-3">
+            <div>
+              <div class="font-medium text-slate-100">\${esc(p.name)}</div>
+              <div class="text-xs text-slate-500 mt-0.5">ID: \${esc(p.ig_account_id || "—")} · \${p.contacts} mijoz · \${p.messages} xabar
+                \${p.knowledge_base ? '· <span class="text-emerald-400">bilim bazasi bor</span>' : '· <span class="text-slate-500">bilim bazasi bo\\'sh</span>'}</div>
+            </div>
+            <button onclick="editKnowledge(\${p.id}, '\${esc(p.name).replace(/'/g, "&#39;")}')"
+              class="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-3 py-1.5 rounded-lg">Bilim bazasi</button>
+          </div>\`).join("");
+      } catch (e) { $("accounts").textContent = "Akkauntlar yuklanmadi"; }
+    }
+
+    async function loadConversations() {
+      try {
+        const { contacts } = await api("/api/contacts");
+        if (!contacts.length) { $("conversations").textContent = "Hali suhbat yo'q"; return; }
+        $("conversations").innerHTML = contacts.map((c) => \`
+          <div onclick="viewConversation(\${c.id})"
+            class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between gap-3 cursor-pointer hover:border-indigo-500">
+            <div class="min-w-0">
+              <div class="font-medium text-slate-100 truncate">\${esc(c.name || c.ig_user_id)}
+                <span class="text-xs text-slate-500 font-normal">· \${esc(c.project_name)}</span></div>
+              <div class="text-xs text-slate-500 truncate mt-0.5">\${esc(c.last_text || "")}</div>
+            </div>
+            <div class="text-xs text-slate-500 shrink-0 text-right">\${c.msg_count} xabar<br>\${fmt(c.last_seen)}</div>
+          </div>\`).join("");
+      } catch (e) { $("conversations").textContent = "Suhbatlar yuklanmadi"; }
+    }
+
+    function openModal(title) { $("modalTitle").textContent = title; $("modal").classList.remove("hidden"); $("modal").classList.add("flex"); }
+    function closeModal() { $("modal").classList.add("hidden"); $("modal").classList.remove("flex"); }
+
+    async function editKnowledge(projectId, name) {
+      openModal("Bilim bazasi — " + name);
+      $("modalBody").innerHTML = '<div class="text-slate-400">Yuklanmoqda…</div>';
+      try {
+        const { knowledge } = await api("/api/knowledge/" + projectId);
+        $("modalBody").innerHTML = \`
+          <p class="text-sm text-slate-400 mb-2">Biznes nomi, xizmatlar, narxlar, aloqa, ish vaqti, FAQ — bot shu ma'lumotdan foydalanadi.</p>
+          <textarea id="kbText" rows="12" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-sm text-slate-100 focus:outline-none focus:border-indigo-500"></textarea>
+          <div class="flex items-center gap-3 mt-3">
+            <button onclick="saveKnowledge(\${projectId})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-lg">Saqlash</button>
+            <span id="kbStatus" class="text-sm text-slate-400"></span>
+          </div>\`;
+        $("kbText").value = knowledge || "";
+      } catch (e) { $("modalBody").innerHTML = '<div class="text-red-400">Yuklashda xatolik</div>'; }
+    }
+
+    async function saveKnowledge(projectId) {
+      $("kbStatus").textContent = "Saqlanmoqda…";
+      try {
+        await api("/api/knowledge/" + projectId, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ knowledge: $("kbText").value }),
+        });
+        $("kbStatus").textContent = "✅ Saqlandi";
+        loadAccounts();
+      } catch (e) { $("kbStatus").textContent = "❌ Xatolik"; }
+    }
+
+    async function viewConversation(contactId) {
+      openModal("Suhbat");
+      $("modalBody").innerHTML = '<div class="text-slate-400">Yuklanmoqda…</div>';
+      try {
+        const { contact, messages } = await api("/api/conversation/" + contactId);
+        $("modalTitle").textContent = "Suhbat — " + (contact?.name || contact?.ig_user_id || "");
+        if (!messages.length) { $("modalBody").innerHTML = '<div class="text-slate-400">Xabarlar yo\\'q</div>'; return; }
+        $("modalBody").innerHTML = messages.map((m) => {
+          const me = m.role === "assistant";
+          return \`<div class="flex \${me ? "justify-end" : "justify-start"} mb-2">
+            <div class="max-w-[80%] rounded-2xl px-3 py-2 text-sm \${me ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-100"}">
+              \${esc(m.text)}<div class="text-[10px] opacity-60 mt-1">\${fmt(m.created_at)}</div>
+            </div></div>\`;
+        }).join("");
+      } catch (e) { $("modalBody").innerHTML = '<div class="text-red-400">Yuklashda xatolik</div>'; }
+    }
+
+    $("modal").addEventListener("click", (e) => { if (e.target === $("modal")) closeModal(); });
+
+    loadStats(); loadAccounts(); loadConversations();
+  </script>
+</body>
+</html>`;
+}
+
+// ------------------------------------------------------------
 //  Statistika sahifasi
 // ------------------------------------------------------------
 export function renderStatsPage(stats) {

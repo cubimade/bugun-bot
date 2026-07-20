@@ -63,6 +63,19 @@ Qanday javob berasan:
 
 Sen mijoz bilan birinchi aloqadasan — iliq va yordamga tayyor bo'l.`;
 
+// Kommentlarga javob uchun alohida, qisqaroq "aql"
+const COMMENT_SYSTEM_PROMPT = `Sen Elbek Eshmurodovning Instagram postlaridagi kommentlarga javob beruvchi assistentsan.
+Qoidalar:
+- Faqat o'zbek tilida (lotin alifbosida) yoz.
+- JUDA qisqa javob ber — 1 gap, ko'pi bilan 2 gap.
+- Iliq, do'stona, samimiy ohang. 1-2 ta emoji ishlatsa bo'ladi.
+- Kommentga mos tabiiy javob yoz: minnatdorchilik, qisqa javob yoki savol bo'lsa DM'ga taklif.
+- Reklama qilma, ortiqcha uzun yozma.`;
+
+// Ixtiyoriy: komment yozgan odamga avtomatik DM yuborish (ManyChat uslubi).
+// Railway'da AUTO_DM_ON_COMMENT=false qilib o'chirib qo'yish mumkin.
+const AUTO_DM_ON_COMMENT = (process.env.AUTO_DM_ON_COMMENT ?? "true") !== "false";
+
 // ============================================================
 //  QISM 1: Webhook TEKSHIRUVI
 // ============================================================
@@ -154,7 +167,11 @@ APP.post("/webhook", async (req, res) => {
       const changes = entry.changes || [];
       for (const change of changes) {
         console.log(`🔄 Change hodisasi: ${change.field}`);
-        console.log(JSON.stringify(change.value, null, 2));
+        if (change.field === "comments") {
+          await handleComment(entry, change.value);
+        } else {
+          console.log(JSON.stringify(change.value, null, 2));
+        }
       }
     }
   } catch (err) {
@@ -209,6 +226,116 @@ async function sendInstagramMessage(recipientId, text) {
     }
   } catch (err) {
     console.error("⚠️ Yuborishda xatolik:", err.message);
+  }
+}
+
+// ============================================================
+//  QISM 4B: KOMMENTLARGA JAVOB BERISH
+// ============================================================
+async function handleComment(entry, value) {
+  try {
+    const commentId = value?.id;
+    const commentText = value?.text;
+    const fromId = value?.from?.id;
+    const username = value?.from?.username;
+    const accountId = entry?.id; // webhook kelgan biznes-akkaunt IDsi
+
+    if (!commentId || !commentText) {
+      console.log("ℹ️ Komment matni yoki ID yo'q — o'tkazamiz");
+      return;
+    }
+
+    // O'z kommentimizga javob bermaymiz (cheksiz tsikl oldini olish)
+    if (fromId && accountId && fromId === accountId) {
+      console.log("↩️ Bu botning o'z kommenti — o'tkazamiz");
+      return;
+    }
+
+    console.log(`💬 Yangi komment (@${username || fromId}): ${commentText}`);
+
+    const reply = await getCommentReply(commentText, username);
+    console.log(`🤖 Komment javobi: ${reply}`);
+
+    // 1) Ommaviy javob — komment ostiga yoziladi
+    await replyToComment(commentId, reply);
+
+    // 2) Ixtiyoriy: komment yozgan odamga shaxsiy DM (ManyChat uslubi)
+    if (AUTO_DM_ON_COMMENT) {
+      const dmText = `Salom${username ? " @" + username : ""}! Kommentingiz uchun rahmat 🙏 Savolingiz bo'lsa, shu yerda — DM'da bemalol yozing, yordam beraman. 😊`;
+      await sendPrivateReply(commentId, dmText);
+    }
+  } catch (err) {
+    console.error("⚠️ Komment qayta ishlashda xatolik:", err.message);
+  }
+}
+
+// Komment uchun qisqa Claude javobi
+async function getCommentReply(commentText, username) {
+  try {
+    const response = await claude.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 150,
+      system: COMMENT_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: `Komment${username ? " (@" + username + ")" : ""}: ${commentText}`,
+        },
+      ],
+    });
+    return response.content[0].text.trim();
+  } catch (err) {
+    console.error("⚠️ Claude (komment) xatoligi:", err.message);
+    return "Rahmat! 🙌";
+  }
+}
+
+// Kommentga ommaviy javob yozish (POST /{comment-id}/replies)
+async function replyToComment(commentId, text) {
+  const url = `https://graph.instagram.com/v21.0/${commentId}/replies`;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${IG_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message: text }),
+    });
+    const data = await response.json();
+    if (data.error) {
+      console.error("⚠️ Kommentga javob xatoligi:", JSON.stringify(data.error));
+    } else {
+      console.log("✅ Kommentga ommaviy javob yozildi!", JSON.stringify(data));
+    }
+  } catch (err) {
+    console.error("⚠️ Kommentga javobda xatolik:", err.message);
+  }
+}
+
+// Komment yozgan odamga shaxsiy DM (private reply — recipient.comment_id)
+async function sendPrivateReply(commentId, text) {
+  const url = `https://graph.instagram.com/v21.0/me/messages`;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${IG_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        recipient: { comment_id: commentId },
+        message: { text: text },
+      }),
+    });
+    const data = await response.json();
+    if (data.error) {
+      console.error("⚠️ Shaxsiy DM xatoligi:", JSON.stringify(data.error));
+    } else {
+      console.log("✅ Kommentga shaxsiy DM yuborildi!", JSON.stringify(data));
+    }
+  } catch (err) {
+    console.error("⚠️ Shaxsiy DM'da xatolik:", err.message);
   }
 }
 

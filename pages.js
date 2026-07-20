@@ -100,7 +100,10 @@ export function renderDashboardPage() {
 
     <!-- Ulangan akkauntlar -->
     <section class="mb-10">
-      <h2 class="text-lg font-semibold mb-3">👥 Ulangan akkauntlar</h2>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">👥 Ulangan akkauntlar</h2>
+        <button onclick="addAccountForm()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-3 py-1.5 rounded-lg">+ Yangi akkaunt</button>
+      </div>
       <div id="accounts" class="space-y-3 text-slate-400 text-sm">Yuklanmoqda…</div>
     </section>
 
@@ -227,6 +230,40 @@ export function renderDashboardPage() {
             </div></div>\`;
         }).join("");
       } catch (e) { $("modalBody").innerHTML = '<div class="text-red-400">Yuklashda xatolik</div>'; }
+    }
+
+    function addAccountForm() {
+      openModal("Yangi Instagram akkaunt qo'shish");
+      $("modalBody").innerHTML = \`
+        <p class="text-sm text-slate-400 mb-3">Meta panelida akkauntning ID va tokenini oling, so'ng shu yerga kiriting. Webhook obunasini Meta'da qo'shishni unutmang.</p>
+        <label class="block text-sm text-slate-300 mb-1">Akkaunt nomi</label>
+        <input id="acName" placeholder="Masalan: Ikkinchi biznes" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm mb-3">
+        <label class="block text-sm text-slate-300 mb-1">Instagram akkaunt IDsi (entry.id)</label>
+        <input id="acId" placeholder="17841..." class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm mb-3">
+        <label class="block text-sm text-slate-300 mb-1">Access token</label>
+        <input id="acToken" placeholder="IGAA..." class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-sm mb-3">
+        <div class="flex items-center gap-3">
+          <button onclick="submitAccount()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-4 py-2 rounded-lg">Qo'shish</button>
+          <span id="acStatus" class="text-sm text-slate-400"></span>
+        </div>\`;
+    }
+
+    async function submitAccount() {
+      const name = $("acName").value.trim();
+      const ig_account_id = $("acId").value.trim();
+      const token = $("acToken").value.trim();
+      if (!ig_account_id || !token) { $("acStatus").textContent = "ID va token kerak"; return; }
+      $("acStatus").textContent = "Qo'shilmoqda…";
+      try {
+        await api("/api/accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, ig_account_id, token }),
+        });
+        $("acStatus").textContent = "✅ Qo'shildi";
+        loadAccounts(); loadStats();
+        setTimeout(closeModal, 800);
+      } catch (e) { $("acStatus").textContent = "❌ Xatolik"; }
     }
 
     $("modal").addEventListener("click", (e) => { if (e.target === $("modal")) closeModal(); });

@@ -40,6 +40,7 @@ import {
   listContacts,
   getContact,
   getContactMessages,
+  listAccountsWithTokens,
 } from "./db.js";
 import {
   renderPrivacyPage,
@@ -97,10 +98,25 @@ async function setupDatabase() {
     ACCOUNTS_MAP.set(String(a.id), { projectId, token: a.token, name: a.name });
   }
 
+  // Database'da saqlangan akkauntlarni ham yuklaymiz (dashboard orqali
+  // qo'shilganlar restart'dan keyin ham ishlashi uchun). Env ustuvor.
+  if (DB_READY) {
+    try {
+      for (const p of await listAccountsWithTokens()) {
+        const key = String(p.ig_account_id);
+        if (!ACCOUNTS_MAP.has(key)) {
+          ACCOUNTS_MAP.set(key, { projectId: p.id, token: p.access_token, name: p.name });
+        }
+      }
+    } catch (err) {
+      console.error("⚠️ DB akkauntlarini yuklashda xatolik:", err.message);
+    }
+  }
+
   if (ACCOUNTS_MAP.size > 0) {
     console.log(`✅ ${ACCOUNTS_MAP.size} ta Instagram akkaunt sozlandi (multi-account).`);
   } else {
-    console.log("ℹ️ IG_ACCOUNTS yo'q — bitta akkaunt rejimida (IG_ACCESS_TOKEN).");
+    console.log("ℹ️ Ro'yxatda akkaunt yo'q — bitta akkaunt rejimida (IG_ACCESS_TOKEN).");
   }
 }
 
@@ -112,6 +128,21 @@ function resolveAccount(entryId) {
     return { projectId: acct.projectId ?? DEFAULT_PROJECT_ID, token: acct.token };
   }
   return { projectId: DEFAULT_PROJECT_ID, token: IG_TOKEN };
+}
+
+// Yangi akkauntni ro'yxatga olish (dashboard "Yangi akkaunt qo'shish" uchun).
+// DB'ga yozadi va xotira xaritasini darhol yangilaydi (restart shart emas).
+async function registerAccount({ name, igAccountId, token }) {
+  let projectId = DEFAULT_PROJECT_ID;
+  if (DB_READY) {
+    projectId = await getOrCreateProject(
+      name || `IG ${igAccountId}`,
+      String(igAccountId),
+      token
+    );
+  }
+  ACCOUNTS_MAP.set(String(igAccountId), { projectId, token, name });
+  return projectId;
 }
 
 // ============================================================
@@ -377,6 +408,26 @@ APP.post("/api/knowledge/:projectId", protect, async (req, res, next) => {
     await setProjectKnowledge(projectId, text);
     console.log(`📝 Bilim bazasi yangilandi (loyiha ${projectId}, ${text.length} belgi)`);
     res.json({ ok: true, projectId, length: text.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Yangi akkaunt qo'shish (multi-account) ---
+APP.post("/api/accounts", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const { name, ig_account_id, token } = req.body || {};
+    if (!ig_account_id || !token) {
+      return res.status(400).json({ error: "ig_account_id va token majburiy" });
+    }
+    const projectId = await registerAccount({
+      name,
+      igAccountId: ig_account_id,
+      token,
+    });
+    console.log(`➕ Yangi akkaunt qo'shildi: ${ig_account_id} (loyiha ${projectId})`);
+    res.json({ ok: true, projectId });
   } catch (err) {
     next(err);
   }

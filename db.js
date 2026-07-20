@@ -233,6 +233,17 @@ export async function getProject(projectId) {
   return rows[0] || null;
 }
 
+// Tokeni bor akkauntlar — startup'da xotira xaritasiga yuklash uchun.
+// (Dashboard orqali qo'shilgan akkauntlar restart'dan keyin ham ishlaydi.)
+export async function listAccountsWithTokens() {
+  const { rows } = await pool.query(
+    `SELECT id, name, ig_account_id, access_token
+       FROM projects
+      WHERE ig_account_id IS NOT NULL AND access_token IS NOT NULL`
+  );
+  return rows;
+}
+
 // ------------------------------------------------------------
 //  Suhbatlar (dashboard uchun) — mijozlar ro'yxati va to'liq yozishma
 // ------------------------------------------------------------

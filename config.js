@@ -12,8 +12,66 @@ export const IG_TOKEN = process.env.IG_ACCESS_TOKEN; // asosiy (fallback) token
 export const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 export const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
-// --- Claude modeli ---
-export const MODEL_HAIKU = "claude-haiku-4-5-20251001";
+// --- Claude modellari ---
+export const MODEL_HAIKU = "claude-haiku-4-5-20251001"; // arzon, tez — oddiy savollar
+export const MODEL_SONNET = "claude-sonnet-5"; // aqlliroq — murakkab savollar
+
+// Oddiy savolga Haiku, murakkabga Sonnet tanlaydi (arzon + aqlli muvozanat).
+export function pickModel(text) {
+  const t = String(text || "");
+  if (t.length > 220) return MODEL_SONNET;
+  const hints = [
+    "nega",
+    "qanday qilib",
+    "farqi",
+    "taqqosla",
+    "tushuntir",
+    "batafsil",
+    "strategiya",
+    "muammo",
+    "maslahat",
+  ];
+  const low = t.toLowerCase();
+  return hints.some((h) => low.includes(h)) ? MODEL_SONNET : MODEL_HAIKU;
+}
+
+// --- "Odam kerak" (jonli operator) aniqlash ---
+const HUMAN_KEYWORDS = [
+  "odam bilan",
+  "operator",
+  "menejer",
+  "menejyer",
+  "jonli",
+  "human",
+  "qo'ng'iroq",
+  "telefon",
+  "murojaat qilaman",
+];
+export function needsHuman(text) {
+  const t = String(text || "").toLowerCase();
+  return HUMAN_KEYWORDS.some((k) => t.includes(k));
+}
+
+// --- Ish vaqti (O'zbekiston, UTC+5) ---
+export const WORK_HOURS_ENABLED = (process.env.WORK_HOURS_ENABLED ?? "false") === "true";
+export const WORK_START = Number(process.env.WORK_START ?? 9);
+export const WORK_END = Number(process.env.WORK_END ?? 21);
+export const TZ_OFFSET = Number(process.env.TZ_OFFSET ?? 5);
+export const OFF_HOURS_MESSAGE =
+  process.env.OFF_HOURS_MESSAGE ??
+  "Rahmat, xabaringiz qabul qilindi! 🙏 Hozir ish vaqtimiz tugagan — ish vaqtida (ertaga) albatta javob beramiz. 😊";
+
+export function isWithinWorkHours(date = new Date()) {
+  if (!WORK_HOURS_ENABLED) return true;
+  const local = new Date(date.getTime() + TZ_OFFSET * 3600 * 1000);
+  const h = local.getUTCHours();
+  if (WORK_START <= WORK_END) return h >= WORK_START && h < WORK_END;
+  return h >= WORK_START || h < WORK_END; // tungi smena (masalan 22–06)
+}
+
+// --- Rate limiting (spam himoyasi) ---
+export const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX ?? 8);
+export const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS ?? 60000);
 
 // --- Xulq sozlamalari ---
 // Komment yozgan odamga avtomatik DM yuborish (ManyChat uslubi).

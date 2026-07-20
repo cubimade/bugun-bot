@@ -57,10 +57,14 @@ export async function initDb() {
       project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
       ig_user_id  TEXT NOT NULL,
       name        TEXT,
+      needs_human BOOLEAN NOT NULL DEFAULT false,
       first_seen  TIMESTAMPTZ NOT NULL DEFAULT now(),
       last_seen   TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (project_id, ig_user_id)
     );
+
+    -- Eski bazalar uchun: ustun bo'lmasa qo'shamiz
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS needs_human BOOLEAN NOT NULL DEFAULT false;
 
     -- Suhbat xabarlari (doimiy xotira)
     CREATE TABLE IF NOT EXISTS messages (
@@ -249,7 +253,7 @@ export async function listAccountsWithTokens() {
 // ------------------------------------------------------------
 export async function listContacts(limit = 50) {
   const { rows } = await pool.query(
-    `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen,
+    `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
             p.name AS project_name,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
@@ -261,6 +265,14 @@ export async function listContacts(limit = 50) {
     [limit]
   );
   return rows;
+}
+
+// Mijozni "jonli operator kerak" deb belgilash (yoki bekor qilish)
+export async function setNeedsHuman(contactId, value) {
+  await pool.query(`UPDATE contacts SET needs_human = $2 WHERE id = $1`, [
+    contactId,
+    value,
+  ]);
 }
 
 export async function getContactMessages(contactId) {

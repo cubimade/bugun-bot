@@ -14,10 +14,10 @@ const claude = new Anthropic({ apiKey: ANTHROPIC_KEY });
 
 // DM suhbatiga javob. `messages` — to'liq suhbat tarixi [{role, content}].
 // `systemPrompt` — akkauntga xos prompt (bilim bazasi bilan, Bosqich 2).
-export async function getClaudeReply(messages, systemPrompt = SYSTEM_PROMPT) {
+export async function getClaudeReply(messages, systemPrompt = SYSTEM_PROMPT, model = MODEL_HAIKU) {
   try {
     const response = await claude.messages.create({
-      model: MODEL_HAIKU,
+      model,
       max_tokens: 500,
       system: systemPrompt,
       messages,

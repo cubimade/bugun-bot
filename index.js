@@ -20,6 +20,12 @@ import {
   parseAccounts,
   buildSystemPrompt,
   buildCommentSystemPrompt,
+  pickModel,
+  needsHuman,
+  isWithinWorkHours,
+  OFF_HOURS_MESSAGE,
+  RATE_LIMIT_MAX,
+  RATE_LIMIT_WINDOW_MS,
 } from "./config.js";
 import { getClaudeReply, getCommentReply } from "./claude.js";
 import {
@@ -41,6 +47,7 @@ import {
   getContact,
   getContactMessages,
   listAccountsWithTokens,
+  setNeedsHuman,
 } from "./db.js";
 import {
   renderPrivacyPage,
@@ -198,8 +205,20 @@ APP.post("/webhook", async (req, res) => {
   }
 });
 
+// --- Rate limiting (spam himoyasi) — xotirada, senderId bo'yicha ---
+const rateMap = new Map();
+function isRateLimited(senderId) {
+  const now = Date.now();
+  const arr = (rateMap.get(senderId) || []).filter(
+    (t) => now - t < RATE_LIMIT_WINDOW_MS
+  );
+  arr.push(now);
+  rateMap.set(senderId, arr);
+  return arr.length > RATE_LIMIT_MAX;
+}
+
 // ============================================================
-//  DM ni qayta ishlash (doimiy xotira + Claude javobi)
+//  DM ni qayta ishlash (xotira + bilim bazasi + yaxshilanishlar)
 // ============================================================
 async function handleDirectMessage(event, projectId, token) {
   if (event.message?.is_echo) {
@@ -219,6 +238,12 @@ async function handleDirectMessage(event, projectId, token) {
     return;
   }
 
+  // 1) Spam himoyasi — juda ko'p yozsa, jim o'tkazamiz (xarajatni tejaymiz)
+  if (isRateLimited(senderId)) {
+    console.log(`🚦 Rate limit: ${senderId} juda ko'p yozdi — o'tkazamiz`);
+    return;
+  }
+
   console.log(`📩 Yangi xabar (${senderId}): ${userText}`);
 
   // --- Doimiy xotira: mijoz + suhbat tarixi (shu akkaunt loyihasida) ---
@@ -234,12 +259,40 @@ async function handleDirectMessage(event, projectId, token) {
     }
   }
 
+  // Bu mijozning birinchi xabari? (tarixда faqat shu xabar bo'lsa — yangi)
+  const isNewContact = history.length <= 1;
+
   // Agar tarix bo'lmasa (DB o'chiq), joriy xabarning o'zini beramiz
   if (history.length === 0) {
     history = [{ role: "user", content: userText }];
   }
 
-  // Shu akkauntning bilim bazasini promptga qo'shamiz
+  // 2) Ish vaqti — tashqarida bo'lsa, tayyor xabar (AI chaqirilmaydi)
+  if (!isWithinWorkHours()) {
+    console.log("🌙 Ish vaqti emas — tayyor javob yuboramiz");
+    if (contactId) {
+      try {
+        await saveMessage(contactId, "assistant", OFF_HOURS_MESSAGE);
+      } catch (dbErr) {
+        console.error("⚠️ Saqlashda xatolik:", dbErr.message);
+      }
+    }
+    await sendInstagramMessage(senderId, OFF_HOURS_MESSAGE, token);
+    return;
+  }
+
+  // 3) "Odam kerak" — mijoz jonli operator so'radimi
+  const handoff = needsHuman(userText);
+  if (handoff && contactId) {
+    try {
+      await setNeedsHuman(contactId, true);
+      console.log("🙋 'Odam kerak' deb belgilandi (dashboard'da ko'rinadi)");
+    } catch (dbErr) {
+      console.error("⚠️ needs_human belgilashда xatolik:", dbErr.message);
+    }
+  }
+
+  // Shu akkauntning bilim bazasi
   let knowledge = "";
   if (DB_READY && projectId) {
     try {
@@ -249,8 +302,21 @@ async function handleDirectMessage(event, projectId, token) {
     }
   }
 
-  const reply = await getClaudeReply(history, buildSystemPrompt(knowledge));
-  console.log(`🤖 Claude javobi: ${reply}`);
+  // System prompt: bilim bazasi + (yangi mijoz salomi) + (odam kerak eslatmasi)
+  let systemPrompt = buildSystemPrompt(knowledge);
+  if (isNewContact) {
+    systemPrompt +=
+      "\n\nEslatma: bu mijozning birinchi xabari — iliq salomlash va o'zingni qisqa tanishtir.";
+  }
+  if (handoff) {
+    systemPrompt +=
+      "\n\nEslatma: mijoz jonli operator/menejer so'radi. Samimiy ayt: tez orada menejer bog'lanadi.";
+  }
+
+  // 4) Model tanlash: oddiy → Haiku, murakkab → Sonnet
+  const model = pickModel(userText);
+  const reply = await getClaudeReply(history, systemPrompt, model);
+  console.log(`🤖 Claude javobi (${model.includes("sonnet") ? "Sonnet" : "Haiku"}): ${reply}`);
 
   // Botning javobini ham xotiraga yozamiz
   if (contactId) {

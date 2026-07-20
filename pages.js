@@ -175,7 +175,8 @@ export function renderDashboardPage() {
             class="bg-slate-800 border border-slate-700 rounded-xl p-3 flex items-center justify-between gap-3 cursor-pointer hover:border-indigo-500">
             <div class="min-w-0">
               <div class="font-medium text-slate-100 truncate">\${esc(c.name || c.ig_user_id)}
-                <span class="text-xs text-slate-500 font-normal">· \${esc(c.project_name)}</span></div>
+                <span class="text-xs text-slate-500 font-normal">· \${esc(c.project_name)}</span>
+                \${c.needs_human ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full ml-1">🙋 odam kerak</span>' : ''}</div>
               <div class="text-xs text-slate-500 truncate mt-0.5">\${esc(c.last_text || "")}</div>
             </div>
             <div class="text-xs text-slate-500 shrink-0 text-right">\${c.msg_count} xabar<br>\${fmt(c.last_seen)}</div>

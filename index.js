@@ -55,6 +55,7 @@ import {
   renderStatsPage,
   renderDashboardPage,
 } from "./pages.js";
+import { recordError, getRecentErrors } from "./logger.js";
 
 const APP = express();
 APP.use(express.json());
@@ -443,6 +444,11 @@ APP.get("/api/contacts", protect, async (req, res, next) => {
   }
 });
 
+// Oxirgi xatolar (muammolarni tez topish uchun)
+APP.get("/api/errors", protect, (req, res) => {
+  res.json({ errors: getRecentErrors() });
+});
+
 APP.get("/api/conversation/:contactId", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
@@ -536,8 +542,7 @@ APP.get("/", (req, res) => {
 // ============================================================
 // Express marshrutlaridagi kutilmagan xatolar shu yerga tushadi.
 APP.use((err, req, res, next) => {
-  console.error("⚠️ Marshrut xatoligi:", err.message);
-  console.error(err.stack);
+  recordError("route", err);
   if (!res.headersSent) {
     res.status(500).send("<h1>Xatolik</h1><p>Ichki xatolik yuz berdi.</p>");
   }
@@ -545,11 +550,10 @@ APP.use((err, req, res, next) => {
 
 // Butun jarayon darajasidagi ushlanmagan xatolar — server o'chib qolmasin.
 process.on("unhandledRejection", (reason) => {
-  console.error("⚠️ Ushlanmagan promise xatoligi:", reason);
+  recordError("unhandledRejection", reason);
 });
 process.on("uncaughtException", (err) => {
-  console.error("⚠️ Ushlanmagan xatolik:", err.message);
-  console.error(err.stack);
+  recordError("uncaughtException", err);
 });
 
 // ============================================================

@@ -56,6 +56,7 @@ import {
   getProjectToken,
   insertBroadcast,
   listBroadcasts,
+  deleteProject,
 } from "./db.js";
 import {
   renderPrivacyPage,
@@ -445,7 +446,32 @@ APP.get("/api/stats", protect, async (req, res, next) => {
 APP.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    res.json({ projects: await listProjects() });
+    // Har akkauntga faollik holatini qo'shamiz: token DB'da yoki xotira
+    // xaritasida bo'lsa — faol (webhook xabarlariga javob bera oladi).
+    const projects = (await listProjects()).map((p) => ({
+      ...p,
+      active: p.ig_account_id
+        ? Boolean(p.has_token || ACCOUNTS_MAP.has(String(p.ig_account_id)))
+        : Boolean(IG_TOKEN), // asosiy (fallback) loyiha
+    }));
+    res.json({ projects });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Akkauntni o'chirish (mijozlar va xabarlar ham o'chadi — CASCADE)
+APP.delete("/api/accounts/:projectId", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const projectId = Number(req.params.projectId);
+    if (DEFAULT_PROJECT_ID && projectId === DEFAULT_PROJECT_ID) {
+      return res.status(400).json({ error: "Asosiy loyihani o'chirib bo'lmaydi" });
+    }
+    const igId = await deleteProject(projectId);
+    if (igId) ACCOUNTS_MAP.delete(String(igId));
+    console.log(`🗑 Akkaunt o'chirildi (loyiha ${projectId})`);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

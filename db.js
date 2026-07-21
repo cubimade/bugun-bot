@@ -262,6 +262,7 @@ export async function setProjectKnowledge(projectId, text) {
 export async function listProjects() {
   const { rows } = await pool.query(
     `SELECT p.id, p.name, p.ig_account_id, p.knowledge_base, p.created_at,
+            (p.access_token IS NOT NULL) AS has_token,
             (SELECT COUNT(*)::int FROM contacts c WHERE c.project_id = p.id) AS contacts,
             (SELECT COUNT(*)::int FROM messages m
                JOIN contacts c ON c.id = m.contact_id
@@ -279,6 +280,16 @@ export async function getProject(projectId) {
     [projectId]
   );
   return rows[0] || null;
+}
+
+// Akkauntni (loyihani) o'chirish — mijozlar va xabarlar CASCADE bilan o'chadi.
+// O'chirilgan loyihaning ig_account_id sini qaytaradi (xotira xaritasidan olib tashlash uchun).
+export async function deleteProject(projectId) {
+  const { rows } = await pool.query(
+    `DELETE FROM projects WHERE id = $1 RETURNING ig_account_id`,
+    [projectId]
+  );
+  return rows[0]?.ig_account_id || null;
 }
 
 // Tokeni bor akkauntlar — startup'da xotira xaritasiga yuklash uchun.

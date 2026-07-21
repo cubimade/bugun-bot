@@ -65,6 +65,8 @@ export async function initDb() {
 
     -- Eski bazalar uchun: ustun bo'lmasa qo'shamiz
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS needs_human BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS unread INTEGER NOT NULL DEFAULT 0;
 
     -- Suhbat xabarlari (doimiy xotira)
     CREATE TABLE IF NOT EXISTS messages (
@@ -139,6 +141,17 @@ export async function saveMessage(contactId, role, text) {
     `INSERT INTO messages (contact_id, role, text) VALUES ($1, $2, $3)`,
     [contactId, role, text]
   );
+  // Mijoz xabari — o'qilmagan hisoblagichni oshiramiz (inbox belgisi uchun)
+  if (role === "user") {
+    await pool.query(`UPDATE contacts SET unread = unread + 1 WHERE id = $1`, [
+      contactId,
+    ]);
+  }
+}
+
+// Suhbat ochilganda o'qilmaganlarni nolga tushirish
+export async function markContactRead(contactId) {
+  await pool.query(`UPDATE contacts SET unread = 0 WHERE id = $1`, [contactId]);
 }
 
 // ------------------------------------------------------------
@@ -273,6 +286,7 @@ export async function listAccountsWithTokens() {
 export async function listContacts(limit = 50) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
+            c.tags, c.unread, c.first_seen,
             p.name AS project_name,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
@@ -306,12 +320,42 @@ export async function getContactMessages(contactId) {
 
 export async function getContact(contactId) {
   const { rows } = await pool.query(
-    `SELECT c.id, c.ig_user_id, c.name, c.project_id, p.name AS project_name
+    `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.needs_human, c.tags,
+            c.unread, p.name AS project_name
        FROM contacts c JOIN projects p ON p.id = c.project_id
       WHERE c.id = $1`,
     [contactId]
   );
   return rows[0] || null;
+}
+
+// Mijoz + akkaunt tokeni (qo'lda javob yuborish uchun)
+export async function getContactAccount(contactId) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.ig_user_id, c.project_id,
+            p.ig_account_id, p.access_token
+       FROM contacts c JOIN projects p ON p.id = c.project_id
+      WHERE c.id = $1`,
+    [contactId]
+  );
+  return rows[0] || null;
+}
+
+// ------------------------------------------------------------
+//  Teglar — mijozlarni belgilash (VIP, yangi, qiziqqan ...)
+// ------------------------------------------------------------
+export async function setContactTags(contactId, tags) {
+  await pool.query(`UPDATE contacts SET tags = $2 WHERE id = $1`, [
+    contactId,
+    tags,
+  ]);
+}
+
+export async function listAllTags() {
+  const { rows } = await pool.query(
+    `SELECT DISTINCT unnest(tags) AS tag FROM contacts ORDER BY 1`
+  );
+  return rows.map((r) => r.tag);
 }
 
 export { pool };

@@ -48,6 +48,10 @@ import {
   getContactMessages,
   listAccountsWithTokens,
   setNeedsHuman,
+  markContactRead,
+  setContactTags,
+  listAllTags,
+  getContactAccount,
 } from "./db.js";
 import {
   renderPrivacyPage,
@@ -446,7 +450,8 @@ APP.get("/api/projects", protect, async (req, res, next) => {
 APP.get("/api/contacts", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    res.json({ contacts: await listContacts(50) });
+    const limit = Math.min(Number(req.query.limit) || 100, 300);
+    res.json({ contacts: await listContacts(limit) });
   } catch (err) {
     next(err);
   }
@@ -462,8 +467,90 @@ APP.get("/api/conversation/:contactId", protect, async (req, res, next) => {
   try {
     const contactId = Number(req.params.contactId);
     const contact = await getContact(contactId);
+    if (!contact) return res.status(404).json({ error: "Mijoz topilmadi" });
     const messages = await getContactMessages(contactId);
+    await markContactRead(contactId); // suhbat ochildi — o'qildi deb belgilaymiz
     res.json({ contact, messages });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Teglar ---
+APP.get("/api/tags", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    res.json({ tags: await listAllTags() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.post("/api/contacts/:id/tags", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.params.id);
+    let tags = Array.isArray(req.body?.tags) ? req.body.tags : [];
+    // Tozalash: satr, bo'sh emas, 30 belgigacha, ko'pi bilan 15 ta, takrorsiz
+    tags = [...new Set(
+      tags
+        .map((t) => String(t).trim().slice(0, 30))
+        .filter(Boolean)
+    )].slice(0, 15);
+    await setContactTags(contactId, tags);
+    res.json({ ok: true, tags });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- "Odam kerak" holatini boshqarish (hal qilindi deb belgilash) ---
+APP.post("/api/contacts/:id/needs-human", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.params.id);
+    const value = Boolean(req.body?.value);
+    await setNeedsHuman(contactId, value);
+    res.json({ ok: true, value });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Qo'lda javob yuborish (operator bot o'rniga yozadi) ---
+APP.post("/api/reply", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.body?.contactId);
+    const text = String(req.body?.text || "").trim();
+    if (!contactId || !text) {
+      return res.status(400).json({ error: "contactId va text majburiy" });
+    }
+    if (text.length > 1000) {
+      return res.status(400).json({ error: "Xabar juda uzun (1000 belgigacha)" });
+    }
+
+    const acct = await getContactAccount(contactId);
+    if (!acct) return res.status(404).json({ error: "Mijoz topilmadi" });
+
+    // Token: loyihadagi token → xotira xaritasi → asosiy (fallback) token
+    const token =
+      acct.access_token ||
+      ACCOUNTS_MAP.get(String(acct.ig_account_id || ""))?.token ||
+      IG_TOKEN;
+    if (!token) {
+      return res.status(400).json({ error: "Bu akkaunt uchun token topilmadi" });
+    }
+
+    const result = await sendInstagramMessage(acct.ig_user_id, text, token);
+    if (!result.ok) {
+      return res.status(502).json({ error: "Instagram: " + result.error });
+    }
+
+    await saveMessage(contactId, "assistant", text);
+    await setNeedsHuman(contactId, false); // operator javob berdi — hal qilindi
+    console.log(`👤 Operator javobi yuborildi (mijoz ${contactId})`);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

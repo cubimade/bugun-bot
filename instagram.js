@@ -21,6 +21,8 @@ async function igPost(url, body, token) {
 }
 
 // DM (shaxsiy xabar) yuborish.
+// Natija: { ok: true } yoki { ok: false, error: "..." } — dashboard'dagi
+// qo'lda javob va broadcast muvaffaqiyatni bilishi uchun.
 export async function sendInstagramMessage(recipientId, text, token = IG_TOKEN) {
   try {
     const data = await igPost(
@@ -30,11 +32,13 @@ export async function sendInstagramMessage(recipientId, text, token = IG_TOKEN) 
     );
     if (data.error) {
       console.error("⚠️ Instagram yuborish xatoligi:", JSON.stringify(data.error));
-    } else {
-      console.log("✅ Javob yuborildi!", JSON.stringify(data));
+      return { ok: false, error: data.error.message || "Instagram xatoligi" };
     }
+    console.log("✅ Javob yuborildi!", JSON.stringify(data));
+    return { ok: true };
   } catch (err) {
     console.error("⚠️ Yuborishda xatolik:", err.message);
+    return { ok: false, error: err.message };
   }
 }
 

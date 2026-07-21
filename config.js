@@ -61,12 +61,17 @@ export const OFF_HOURS_MESSAGE =
   process.env.OFF_HOURS_MESSAGE ??
   "Rahmat, xabaringiz qabul qilindi! 🙏 Hozir ish vaqtimiz tugagan — ish vaqtida (ertaga) albatta javob beramiz. 😊";
 
-export function isWithinWorkHours(date = new Date()) {
-  if (!WORK_HOURS_ENABLED) return true;
+// overrides — dashboard sozlamalari (database'dan): { enabled, start, end }.
+// Berilmasa env qiymatlari ishlatiladi.
+export function isWithinWorkHours(date = new Date(), overrides = {}) {
+  const enabled = overrides.enabled ?? WORK_HOURS_ENABLED;
+  const start = Number(overrides.start ?? WORK_START);
+  const end = Number(overrides.end ?? WORK_END);
+  if (!enabled) return true;
   const local = new Date(date.getTime() + TZ_OFFSET * 3600 * 1000);
   const h = local.getUTCHours();
-  if (WORK_START <= WORK_END) return h >= WORK_START && h < WORK_END;
-  return h >= WORK_START || h < WORK_END; // tungi smena (masalan 22–06)
+  if (start <= end) return h >= start && h < end;
+  return h >= start || h < end; // tungi smena (masalan 22–06)
 }
 
 // --- Rate limiting (spam himoyasi) ---

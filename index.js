@@ -57,7 +57,10 @@ import {
   insertBroadcast,
   listBroadcasts,
   deleteProject,
+  getAllSettings,
+  saveSettings,
 } from "./db.js";
+import { APP_VERSION } from "./templates.js";
 import {
   renderPrivacyPage,
   renderDataDeletionPage,
@@ -87,6 +90,26 @@ let DB_READY = false;
 let DEFAULT_PROJECT_ID = null;
 const ACCOUNTS_MAP = new Map();
 const IG_ACCOUNTS = parseAccounts();
+const STARTED_AT = new Date();
+
+// Dashboard sozlamalari (database'dan, env'dan ustun turadi)
+let SETTINGS = {};
+async function reloadSettings() {
+  if (!DB_READY) return;
+  try {
+    SETTINGS = await getAllSettings();
+  } catch (err) {
+    console.error("⚠️ Sozlamalarni yuklashda xatolik:", err.message);
+  }
+}
+function workHoursOverrides() {
+  const o = {};
+  if (SETTINGS.work_hours_enabled != null)
+    o.enabled = SETTINGS.work_hours_enabled === "true";
+  if (SETTINGS.work_start != null) o.start = SETTINGS.work_start;
+  if (SETTINGS.work_end != null) o.end = SETTINGS.work_end;
+  return o;
+}
 
 async function setupDatabase() {
   try {
@@ -142,6 +165,11 @@ async function setupDatabase() {
     console.log(`✅ ${ACCOUNTS_MAP.size} ta Instagram akkaunt sozlandi (multi-account).`);
   } else {
     console.log("ℹ️ Ro'yxatda akkaunt yo'q — bitta akkaunt rejimida (IG_ACCESS_TOKEN).");
+  }
+
+  await reloadSettings();
+  if (Object.keys(SETTINGS).length) {
+    console.log(`⚙️ ${Object.keys(SETTINGS).length} ta sozlama database'dan yuklandi.`);
   }
 }
 
@@ -286,16 +314,17 @@ async function handleDirectMessage(event, projectId, token) {
   }
 
   // 2) Ish vaqti — tashqarida bo'lsa, tayyor xabar (AI chaqirilmaydi)
-  if (!isWithinWorkHours()) {
+  if (!isWithinWorkHours(new Date(), workHoursOverrides())) {
     console.log("🌙 Ish vaqti emas — tayyor javob yuboramiz");
+    const offMsg = SETTINGS.off_hours_message || OFF_HOURS_MESSAGE;
     if (contactId) {
       try {
-        await saveMessage(contactId, "assistant", OFF_HOURS_MESSAGE);
+        await saveMessage(contactId, "assistant", offMsg);
       } catch (dbErr) {
         console.error("⚠️ Saqlashda xatolik:", dbErr.message);
       }
     }
-    await sendInstagramMessage(senderId, OFF_HOURS_MESSAGE, token);
+    await sendInstagramMessage(senderId, offMsg, token);
     return;
   }
 
@@ -325,6 +354,15 @@ async function handleDirectMessage(event, projectId, token) {
   if (isNewContact) {
     systemPrompt +=
       "\n\nEslatma: bu mijozning birinchi xabari — iliq salomlash va o'zingni qisqa tanishtir.";
+    if (SETTINGS.greeting_message) {
+      systemPrompt += `\nSalomlashishda ushbu matn/uslubdan foydalan: "${SETTINGS.greeting_message}"`;
+    }
+  }
+  // Javob uzunligi sozlamasi (dashboard'dan)
+  if (SETTINGS.reply_length === "qisqa") {
+    systemPrompt += "\n\nJavobni JUDA qisqa tut — 1-2 gap.";
+  } else if (SETTINGS.reply_length === "batafsil") {
+    systemPrompt += "\n\nKerak bo'lsa batafsilroq javob ber (4-6 gap) — lekin suvsiz, aniq.";
   }
   if (handoff) {
     systemPrompt +=
@@ -628,6 +666,83 @@ APP.post("/api/accounts", protect, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// ============================================================
+//  SOZLAMALAR va TIZIM HOLATI
+// ============================================================
+const SETTING_KEYS = [
+  "work_hours_enabled",
+  "work_start",
+  "work_end",
+  "off_hours_message",
+  "greeting_message",
+  "reply_length",
+];
+
+APP.get("/api/settings", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    await reloadSettings();
+    // Standart qiymatlar (env) + database ustunligi
+    res.json({
+      settings: {
+        work_hours_enabled:
+          SETTINGS.work_hours_enabled ??
+          String((process.env.WORK_HOURS_ENABLED ?? "false") === "true"),
+        work_start: SETTINGS.work_start ?? String(process.env.WORK_START ?? 9),
+        work_end: SETTINGS.work_end ?? String(process.env.WORK_END ?? 21),
+        off_hours_message: SETTINGS.off_hours_message ?? OFF_HOURS_MESSAGE,
+        greeting_message: SETTINGS.greeting_message ?? "",
+        reply_length: SETTINGS.reply_length ?? "orta",
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.post("/api/settings", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const body = req.body || {};
+    const toSave = {};
+    for (const k of SETTING_KEYS) {
+      if (body[k] != null) toSave[k] = String(body[k]).slice(0, 2000);
+    }
+    if (!Object.keys(toSave).length) {
+      return res.status(400).json({ error: "Saqlash uchun sozlama yo'q" });
+    }
+    await saveSettings(toSave);
+    await reloadSettings();
+    console.log(`⚙️ Sozlamalar yangilandi: ${Object.keys(toSave).join(", ")}`);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Tizim holati (sozlamalar sahifasidagi "Tizim" kartasi uchun)
+APP.get("/api/system", protect, async (req, res) => {
+  let dbOk = false;
+  if (DB_READY) {
+    try {
+      const { pool } = await import("./db.js");
+      await pool.query("SELECT 1");
+      dbOk = true;
+    } catch (err) {
+      dbOk = false;
+    }
+  }
+  res.json({
+    version: APP_VERSION,
+    node: process.version,
+    db: dbOk,
+    accounts: ACCOUNTS_MAP.size,
+    startedAt: STARTED_AT.toISOString(),
+    uptimeSec: Math.floor(process.uptime()),
+    models: { haiku: "Haiku 4.5 (oddiy savollar)", sonnet: "Sonnet 5 (murakkab savollar)" },
+  });
 });
 
 // ============================================================

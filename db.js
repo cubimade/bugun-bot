@@ -77,6 +77,13 @@ export async function initDb() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- Sozlamalar (dashboard orqali boshqariladi, kalit-qiymat)
+    CREATE TABLE IF NOT EXISTS settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- Broadcast (ommaviy xabar) tarixi
     CREATE TABLE IF NOT EXISTS broadcasts (
       id          SERIAL PRIMARY KEY,
@@ -433,6 +440,24 @@ export async function listBroadcasts(limit = 20) {
     [limit]
   );
   return rows;
+}
+
+// ------------------------------------------------------------
+//  SOZLAMALAR — kalit-qiymat (dashboard'dan boshqariladi)
+// ------------------------------------------------------------
+export async function getAllSettings() {
+  const { rows } = await pool.query(`SELECT key, value FROM settings`);
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
+export async function saveSettings(obj) {
+  for (const [key, value] of Object.entries(obj)) {
+    await pool.query(
+      `INSERT INTO settings (key, value) VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [key, String(value)]
+    );
+  }
 }
 
 export { pool };

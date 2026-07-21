@@ -297,17 +297,6 @@ ${script}</script>
 </html>`;
 }
 
-// ------------------------------------------------------------
-//  Vaqtinchalik sahifa (keyingi vazifalarda to'ldiriladi)
-// ------------------------------------------------------------
-function renderPlaceholder(title, active, emoji, note) {
-  return renderLayout({
-    title,
-    active,
-    content: `<div class="card"><div class="empty"><span class="emoji">${emoji}</span>${esc(note)}<br><span class="small muted">Bu sahifa tez orada tayyor bo'ladi.</span></div></div>`,
-  });
-}
-
 // ============================================================
 //  1. BOSHQARUV (Dashboard) — /dashboard
 //  4 statistika kartasi + 7 kun grafigi + suhbatlar + tezkor amallar

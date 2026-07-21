@@ -1,12 +1,14 @@
 // ============================================================
-//  BUGUN-BOT — Instagram AI chat-bot (v5 - modulli struktura)
+//  BUGUN-BOT — Instagram AI chat-bot (v3 — ko'p sahifali platforma)
 //  Elbek Eshmurodov uchun | Claude API + PostgreSQL | Railway
 //
 //  Fayllar tuzilishi:
 //    config.js    — sozlamalar, promptlar, env o'zgaruvchilar
 //    claude.js    — AI javob mantiqi (Claude)
 //    instagram.js — Instagram'ga xabar/komment yuborish
-//    db.js        — PostgreSQL (projects, contacts, messages)
+//    db.js        — PostgreSQL (projects, contacts, messages, broadcasts, settings)
+//    templates.js — dashboard sahifalari (layout + 7 sahifa, dizayn tizimi)
+//    pages.js     — ommaviy sahifalar (privacy, data-deletion, stats)
 //    index.js     — server, marshrutlar, webhook orkestratsiyasi (shu fayl)
 // ============================================================
 
@@ -869,7 +871,8 @@ APP.get("/dashboard/settings", protect, (req, res) => res.send(renderSettingsPag
 APP.get("/privacy", (req, res) => res.send(renderPrivacyPage()));
 APP.get("/data-deletion", (req, res) => res.send(renderDataDeletionPage()));
 
-APP.get("/stats", async (req, res, next) => {
+// Statistika ham parol bilan himoyalangan (mijoz xabarlari ko'rinadi)
+APP.get("/stats", protect, async (req, res, next) => {
   if (!DB_READY) {
     res
       .status(503)
@@ -886,7 +889,7 @@ APP.get("/stats", async (req, res, next) => {
 
 APP.get("/", (req, res) => {
   res.send(
-    "🤖 Bugun-bot ishlayapti! (v5 - modulli) — <a href='/dashboard'>/dashboard</a> yoki <a href='/stats'>/stats</a>"
+    `🤖 Bugun-bot ishlayapti! (v${APP_VERSION}) — <a href='/dashboard'>Boshqaruv paneli</a>`
   );
 });
 
@@ -913,6 +916,6 @@ process.on("uncaughtException", (err) => {
 //  SERVERNI ISHGA TUSHIRISH
 // ============================================================
 APP.listen(PORT, async () => {
-  console.log(`🚀 Bugun-bot ${PORT}-portda ishga tushdi! (v5 - modulli)`);
+  console.log(`🚀 Bugun-bot ${PORT}-portda ishga tushdi! (v${APP_VERSION} — ko'p sahifali platforma)`);
   await setupDatabase();
 });

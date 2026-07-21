@@ -851,8 +851,178 @@ loadData();`;
     script,
   });
 }
+// ============================================================
+//  4. BROADCAST — /dashboard/broadcast
+//  Forma + oldindan ko'rish + 24 soat ogohlantirishi + progress + tarix
+// ============================================================
 export function renderBroadcastPage() {
-  return renderPlaceholder("Broadcast", "broadcast", "📢", "Ommaviy xabar yuborish.");
+  const content = `
+  <div class="card" style="display:flex;gap:12px;align-items:flex-start;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.06);margin-bottom:18px">
+    <span style="font-size:20px">⚠️</span>
+    <div>
+      <strong style="color:#fbbf24">Instagram 24 soat qoidasi</strong>
+      <div class="small muted" style="margin-top:2px">Xabar faqat oxirgi 24 soat ichida sizga yozgan mijozlarga yuboriladi. Boshqalarga Instagram ruxsat bermaydi.</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px" class="two-col">
+    <div class="card">
+      <h3 style="margin-bottom:14px">📢 Yangi broadcast</h3>
+      <label class="lbl">Akkaunt</label>
+      <select class="input" id="account" onchange="updateCount()" style="margin-bottom:12px"></select>
+      <label class="lbl">Auditoriya</label>
+      <select class="input" id="audience" onchange="updateCount()" style="margin-bottom:12px">
+        <option value="">Hammasi (24 soat ichida yozganlar)</option>
+      </select>
+      <label class="lbl">Xabar matni</label>
+      <textarea class="input" id="message" rows="5" maxlength="900" placeholder="Salom! Sizga maxsus taklifimiz bor..." oninput="updatePreview()"></textarea>
+      <div class="small muted" style="text-align:right;margin:4px 0 14px"><span id="charCount">0</span>/900</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="sendBtn" onclick="confirmSend()">${ICONS.broadcast} Yuborish</button>
+        <span class="small muted" id="countInfo"></span>
+      </div>
+      <div id="progressWrap" style="display:none;margin-top:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px" class="small">
+          <span id="progressLabel">Yuborilmoqda...</span><span id="progressNums"></span>
+        </div>
+        <div style="height:10px;background:var(--panel2);border-radius:999px;overflow:hidden">
+          <div id="progressBar" style="height:100%;width:0%;background:var(--grad);border-radius:999px;transition:width .4s"></div>
+        </div>
+        <div id="progressResult" class="small" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card">
+        <h3 style="margin-bottom:12px">👁 Oldindan ko'rish</h3>
+        <div style="background:var(--bg);border-radius:12px;padding:16px;min-height:90px;display:flex;justify-content:flex-end">
+          <div id="preview" style="max-width:85%;padding:9px 13px;border-radius:16px;border-bottom-right-radius:5px;background:linear-gradient(135deg,#6366f1,#7c5ff0);color:#fff;font-size:14px;white-space:pre-wrap;word-break:break-word">
+            <span class="muted" style="color:rgba(255,255,255,.65)">Xabar matni shu yerda ko'rinadi...</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:12px">🕓 Oldingi broadcastlar</h3>
+        <div id="history"><div class="skeleton" style="height:48px"></div></div>
+      </div>
+    </div>
+  </div>
+  <style>@media (max-width: 900px) { .two-col { grid-template-columns: 1fr !important; } }</style>`;
+
+  const script = `
+let PROJECTS = [];
+async function loadData() {
+  try {
+    const [p, t] = await Promise.all([api("/api/projects"), api("/api/tags")]);
+    PROJECTS = p.projects;
+    $("account").innerHTML = PROJECTS.length
+      ? PROJECTS.map((x) => \`<option value="\${x.id}">\${esc(x.name)}</option>\`).join("")
+      : '<option value="">Akkaunt yo\\'q</option>';
+    $("audience").innerHTML = '<option value="">Hammasi (24 soat ichida yozganlar)</option>' +
+      (t.tags || []).map((x) => \`<option value="\${esc(x)}">🏷 Teg: \${esc(x)}</option>\`).join("");
+    updateCount();
+  } catch (e) { toast("Yuklashda xatolik: " + e.message, false); }
+  loadHistory();
+}
+async function loadHistory() {
+  try {
+    const { broadcasts } = await api("/api/broadcasts");
+    if (!broadcasts.length) { $("history").innerHTML = emptyState("📢", "Hali broadcast yo'q"); return; }
+    $("history").innerHTML = broadcasts.map((b) => \`
+      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <strong class="small">\${esc(b.project_name || "—")}</strong>
+          <span class="small muted">\${timeAgo(b.created_at)}</span>
+        </div>
+        <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0">\${esc(b.message)}</div>
+        <div style="display:flex;gap:6px">
+          <span class="badge b-gray">\${esc(b.audience)}</span>
+          <span class="badge b-green">✓ \${b.sent}/\${b.total}</span>
+          \${b.failed ? \`<span class="badge b-red">✕ \${b.failed}</span>\` : ""}
+        </div>
+      </div>\`).join("");
+  } catch (e) { $("history").innerHTML = emptyState("📢", "Tarix yuklanmadi"); }
+}
+let COUNT = 0;
+async function updateCount() {
+  const pid = $("account").value;
+  if (!pid) { $("countInfo").textContent = ""; return; }
+  $("countInfo").innerHTML = '<span class="spinner" style="width:13px;height:13px"></span> hisoblanmoqda...';
+  try {
+    const tag = $("audience").value;
+    const { count } = await api("/api/broadcast/recipients?projectId=" + pid + (tag ? "&tag=" + encodeURIComponent(tag) : ""));
+    COUNT = count;
+    $("countInfo").innerHTML = count
+      ? \`<strong style="color:#4ade80">\${count} ta mijozga</strong> yuboriladi\`
+      : '<span style="color:var(--warn)">Hozircha mos mijoz yo\\'q (24 soat qoidasi)</span>';
+  } catch (e) { $("countInfo").textContent = ""; }
+}
+function updatePreview() {
+  const v = $("message").value;
+  $("charCount").textContent = v.length;
+  $("preview").innerHTML = v ? esc(v) : '<span style="color:rgba(255,255,255,.65)">Xabar matni shu yerda ko\\'rinadi...</span>';
+}
+function confirmSend() {
+  const msg = $("message").value.trim();
+  if (!$("account").value) return toast("Akkaunt tanlang", false);
+  if (!msg) return toast("Xabar matnini yozing", false);
+  if (!COUNT) return toast("Yuborish uchun mijoz yo'q (24 soat qoidasi)", false);
+  openModal("Tasdiqlash", \`
+    <p style="margin-bottom:8px"><strong>\${COUNT} ta mijozga</strong> quyidagi xabar yuboriladi:</p>
+    <div style="background:var(--panel2);border-radius:12px;padding:12px;margin-bottom:16px;white-space:pre-wrap;font-size:13px">\${esc(msg)}</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">Bekor qilish</button>
+      <button class="btn btn-primary" onclick="closeModal();doSend()">Ha, yuborish</button>
+    </div>\`);
+}
+async function doSend() {
+  const btn = $("sendBtn");
+  btn.disabled = true;
+  $("progressWrap").style.display = "";
+  $("progressResult").textContent = "";
+  $("progressBar").style.width = "0%";
+  $("progressLabel").textContent = "Yuborilmoqda...";
+  try {
+    const { jobId, total } = await postJson("/api/broadcast", {
+      projectId: Number($("account").value),
+      tag: $("audience").value || null,
+      message: $("message").value.trim(),
+    });
+    $("progressNums").textContent = "0/" + total;
+    const timer = setInterval(async () => {
+      try {
+        const j = await api("/api/broadcast/status/" + jobId);
+        const donePct = Math.round(((j.sent + j.failed) / j.total) * 100);
+        $("progressBar").style.width = donePct + "%";
+        $("progressNums").textContent = (j.sent + j.failed) + "/" + j.total;
+        if (j.done) {
+          clearInterval(timer);
+          $("progressLabel").textContent = "Tugadi ✓";
+          $("progressResult").innerHTML =
+            \`<span style="color:#4ade80">✓ \${j.sent} ta yuborildi</span>\` +
+            (j.failed ? \` · <span style="color:#f87171">✕ \${j.failed} ta xato</span>\` : "");
+          toast("Broadcast tugadi: " + j.sent + "/" + j.total + " yuborildi ✓");
+          btn.disabled = false;
+          $("message").value = ""; updatePreview();
+          loadHistory(); updateCount();
+        }
+      } catch (e) { clearInterval(timer); btn.disabled = false; }
+    }, 1000);
+  } catch (e) {
+    toast("Xatolik: " + e.message, false);
+    $("progressWrap").style.display = "none";
+    btn.disabled = false;
+  }
+}
+loadData();`;
+
+  return renderLayout({
+    title: "Broadcast",
+    active: "broadcast",
+    headerAction: "",
+    content,
+    script,
+  });
 }
 export function renderKnowledgePage() {
   return renderPlaceholder("Bilim bazasi", "knowledge", "🧠", "Har akkaunt uchun biznes ma'lumotlari.");

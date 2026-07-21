@@ -52,6 +52,10 @@ import {
   setContactTags,
   listAllTags,
   getContactAccount,
+  listBroadcastRecipients,
+  getProjectToken,
+  insertBroadcast,
+  listBroadcasts,
 } from "./db.js";
 import {
   renderPrivacyPage,
@@ -595,6 +599,112 @@ APP.post("/api/accounts", protect, async (req, res, next) => {
     });
     console.log(`➕ Yangi akkaunt qo'shildi: ${ig_account_id} (loyiha ${projectId})`);
     res.json({ ok: true, projectId });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================
+//  BROADCAST — ommaviy xabar (jonli progress bilan)
+//  Ishlar xotirada: jobId -> { total, sent, failed, done }
+// ============================================================
+const BROADCAST_JOBS = new Map();
+let BROADCAST_SEQ = 1;
+
+// Qabul qiluvchilar sonini oldindan ko'rish
+APP.get("/api/broadcast/recipients", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const projectId = Number(req.query.projectId);
+    const tag = req.query.tag ? String(req.query.tag) : null;
+    if (!projectId) return res.status(400).json({ error: "projectId majburiy" });
+    const recipients = await listBroadcastRecipients(projectId, tag);
+    res.json({ count: recipients.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.post("/api/broadcast", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const projectId = Number(req.body?.projectId);
+    const tag = req.body?.tag ? String(req.body.tag) : null;
+    const message = String(req.body?.message || "").trim();
+    if (!projectId || !message) {
+      return res.status(400).json({ error: "projectId va message majburiy" });
+    }
+    if (message.length > 900) {
+      return res.status(400).json({ error: "Xabar juda uzun (900 belgigacha)" });
+    }
+
+    const project = await getProjectToken(projectId);
+    if (!project) return res.status(404).json({ error: "Akkaunt topilmadi" });
+    const token =
+      project.access_token ||
+      ACCOUNTS_MAP.get(String(project.ig_account_id || ""))?.token ||
+      IG_TOKEN;
+    if (!token) return res.status(400).json({ error: "Bu akkaunt uchun token topilmadi" });
+
+    const recipients = await listBroadcastRecipients(projectId, tag);
+    if (!recipients.length) {
+      return res.status(400).json({ error: "Yuborish uchun mijoz yo'q (24 soat qoidasi)" });
+    }
+
+    const jobId = String(BROADCAST_SEQ++);
+    const job = { total: recipients.length, sent: 0, failed: 0, done: false };
+    BROADCAST_JOBS.set(jobId, job);
+    res.json({ jobId, total: job.total });
+
+    // Fon jarayoni: ketma-ket yuboramiz (Instagram rate-limit uchun pauza bilan)
+    (async () => {
+      for (const r of recipients) {
+        try {
+          const result = await sendInstagramMessage(r.ig_user_id, message, token);
+          if (result.ok) {
+            job.sent++;
+            await saveMessage(r.id, "assistant", message);
+          } else {
+            job.failed++;
+          }
+        } catch (err) {
+          job.failed++;
+          console.error(`⚠️ Broadcast xatoligi (mijoz ${r.id}):`, err.message);
+        }
+        await new Promise((ok) => setTimeout(ok, 350));
+      }
+      job.done = true;
+      try {
+        await insertBroadcast({
+          projectId,
+          audience: tag ? `Teg: ${tag}` : "Hammasi (24 soat)",
+          message,
+          total: job.total,
+          sent: job.sent,
+          failed: job.failed,
+        });
+      } catch (err) {
+        console.error("⚠️ Broadcast tarixini saqlashda xatolik:", err.message);
+      }
+      console.log(`📢 Broadcast tugadi: ${job.sent}/${job.total} yuborildi, ${job.failed} xato`);
+      // Xotirani tozalash (5 daqiqadan keyin)
+      setTimeout(() => BROADCAST_JOBS.delete(jobId), 5 * 60 * 1000);
+    })();
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.get("/api/broadcast/status/:jobId", protect, (req, res) => {
+  const job = BROADCAST_JOBS.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: "Ish topilmadi" });
+  res.json(job);
+});
+
+APP.get("/api/broadcasts", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    res.json({ broadcasts: await listBroadcasts(20) });
   } catch (err) {
     next(err);
   }

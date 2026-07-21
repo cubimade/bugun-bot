@@ -77,6 +77,18 @@ export async function initDb() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- Broadcast (ommaviy xabar) tarixi
+    CREATE TABLE IF NOT EXISTS broadcasts (
+      id          SERIAL PRIMARY KEY,
+      project_id  INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+      audience    TEXT NOT NULL,
+      message     TEXT NOT NULL,
+      total       INTEGER NOT NULL DEFAULT 0,
+      sent        INTEGER NOT NULL DEFAULT 0,
+      failed      INTEGER NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- Tez qidiruv uchun indekslar
     CREATE INDEX IF NOT EXISTS idx_messages_contact ON messages(contact_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_contacts_project ON contacts(project_id);
@@ -356,6 +368,60 @@ export async function listAllTags() {
     `SELECT DISTINCT unnest(tags) AS tag FROM contacts ORDER BY 1`
   );
   return rows.map((r) => r.tag);
+}
+
+// ------------------------------------------------------------
+//  BROADCAST — ommaviy xabar yuborish
+// ------------------------------------------------------------
+
+// Instagram 24 soat qoidasi: faqat oxirgi 24 soatda o'zi yozgan
+// mijozlarga xabar yuborish mumkin. Teg berilsa — shu teg bo'yicha.
+export async function listBroadcastRecipients(projectId, tag = null) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.ig_user_id
+       FROM contacts c
+      WHERE c.project_id = $1
+        AND ($2::text IS NULL OR $2 = ANY(c.tags))
+        AND EXISTS (
+          SELECT 1 FROM messages m
+           WHERE m.contact_id = c.id AND m.role = 'user'
+             AND m.created_at >= now() - interval '24 hours'
+        )
+      ORDER BY c.last_seen DESC`,
+    [projectId, tag]
+  );
+  return rows;
+}
+
+// Akkaunt tokeni (broadcast/qo'lda javob uchun)
+export async function getProjectToken(projectId) {
+  const { rows } = await pool.query(
+    `SELECT id, name, ig_account_id, access_token FROM projects WHERE id = $1`,
+    [projectId]
+  );
+  return rows[0] || null;
+}
+
+export async function insertBroadcast({ projectId, audience, message, total, sent, failed }) {
+  const { rows } = await pool.query(
+    `INSERT INTO broadcasts (project_id, audience, message, total, sent, failed)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [projectId, audience, message, total, sent, failed]
+  );
+  return rows[0].id;
+}
+
+export async function listBroadcasts(limit = 20) {
+  const { rows } = await pool.query(
+    `SELECT b.id, b.audience, b.message, b.total, b.sent, b.failed, b.created_at,
+            p.name AS project_name
+       FROM broadcasts b
+       LEFT JOIN projects p ON p.id = b.project_id
+      ORDER BY b.created_at DESC
+      LIMIT $1`,
+    [limit]
+  );
+  return rows;
 }
 
 export { pool };

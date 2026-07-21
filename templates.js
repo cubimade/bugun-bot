@@ -310,44 +310,108 @@ function renderPlaceholder(title, active, emoji, note) {
 
 // ============================================================
 //  1. BOSHQARUV (Dashboard) — /dashboard
-//  (Vazifa 2'da to'liq qayta ishlanadi; hozircha asosiy widgetlar)
+//  4 statistika kartasi + 7 kun grafigi + suhbatlar + tezkor amallar
 // ============================================================
 export function renderDashboardHome() {
   const content = `
-  <div class="stat-grid" id="cards">${'<div class="card skeleton" style="height:86px"></div>'.repeat(3)}</div>
+  <div id="humanAlert"></div>
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px" class="two-col">
+  <div class="stat-grid" id="cards">${'<div class="card skeleton" style="height:86px"></div>'.repeat(4)}</div>
+
+  <div class="card" style="margin-top:18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3>📈 Oxirgi 7 kun faolligi</h3>
+      <span class="small muted">xabarlar soni</span>
+    </div>
+    <div id="chart" class="skeleton" style="height:150px"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-top:18px" class="two-col">
     <div class="card">
-      <h3 style="margin-bottom:12px">💬 Oxirgi suhbatlar</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3>💬 Oxirgi suhbatlar</h3>
+        <a href="/dashboard/inbox" class="small" style="color:#a5b4fc">Hammasi →</a>
+      </div>
       <div id="conversations">${'<div class="skeleton" style="height:52px;margin-bottom:8px"></div>'.repeat(4)}</div>
     </div>
     <div class="card">
-      <h3 style="margin-bottom:12px">📱 Akkauntlar</h3>
-      <div id="accounts">${'<div class="skeleton" style="height:52px;margin-bottom:8px"></div>'.repeat(2)}</div>
+      <h3 style="margin-bottom:12px">⚡ Tezkor amallar</h3>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <a class="btn" href="/dashboard/broadcast" style="justify-content:flex-start">${ICONS.broadcast} Broadcast yuborish</a>
+        <a class="btn" href="/dashboard/knowledge" style="justify-content:flex-start">${ICONS.knowledge} Bilim bazasini tahrirlash</a>
+        <a class="btn" href="/dashboard/accounts" style="justify-content:flex-start">${ICONS.plus} Yangi akkaunt qo'shish</a>
+        <a class="btn" href="/dashboard/contacts" style="justify-content:flex-start">${ICONS.contacts} Kontaktlarni ko'rish</a>
+      </div>
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+        <h3 style="margin-bottom:10px">📱 Akkauntlar</h3>
+        <div id="accounts"><div class="skeleton" style="height:44px"></div></div>
+      </div>
     </div>
   </div>
-  <style>@media (max-width: 860px) { .two-col { grid-template-columns: 1fr !important; } }</style>`;
+  <style>@media (max-width: 900px) { .two-col { grid-template-columns: 1fr !important; } }</style>`;
 
   const script = `
+const CHART_DAYS = 7;
+const DAY_NAMES = ["Yak", "Du", "Se", "Chor", "Pay", "Ju", "Shan"];
+
 async function loadStats() {
   try {
     const s = await api("/api/stats");
     $("cards").innerHTML =
-      statCard("${"📱"}", s.projects, "Akkauntlar") +
-      statCard("${"👥"}", s.contacts, "Mijozlar") +
-      statCard("${"💬"}", s.messages, "Jami xabarlar");
-  } catch (e) { $("cards").innerHTML = emptyState("📊", "Statistika yuklanmadi"); }
+      statCard("📱", s.projects, "Akkauntlar", "rgba(99,102,241,.14)") +
+      statCard("👥", s.contacts, "Jami mijozlar", "rgba(139,92,246,.14)") +
+      statCard("💬", s.messages, "Jami xabarlar", "rgba(34,197,94,.12)") +
+      statCard("🕒", s.today ?? 0, "Bugungi xabarlar", "rgba(245,158,11,.12)");
+    renderChart(s.week || []);
+    renderHumanAlert(s.needsHuman || 0);
+  } catch (e) {
+    $("cards").innerHTML = emptyState("📊", "Statistika yuklanmadi: " + e.message);
+    $("chart").classList.remove("skeleton");
+    $("chart").innerHTML = emptyState("📈", "Grafik mavjud emas");
+  }
 }
-function statCard(emoji, num, label) {
+function statCard(emoji, num, label, bg) {
   return \`<div class="card stat-card hoverable">
-    <div class="stat-ic" style="background:rgba(99,102,241,.14);font-size:20px">\${emoji}</div>
+    <div class="stat-ic" style="background:\${bg};font-size:20px">\${emoji}</div>
     <div><div class="stat-num">\${num}</div><div class="stat-lbl">\${label}</div></div></div>\`;
+}
+function renderHumanAlert(n) {
+  if (!n) { $("humanAlert").innerHTML = ""; return; }
+  $("humanAlert").innerHTML = \`
+    <a href="/dashboard/inbox?filter=human" class="card hoverable" style="display:flex;align-items:center;gap:12px;margin-bottom:18px;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.07)">
+      <span style="font-size:22px">🙋</span>
+      <span style="flex:1"><strong style="color:#fbbf24">\${n} ta suhbat sizni kutmoqda</strong><br>
+      <span class="small muted">Mijozlar jonli operator so'ragan — ko'rib chiqing</span></span>
+      <span class="badge b-amber">Ko'rish →</span>
+    </a>\`;
+}
+function renderChart(week) {
+  const el = $("chart");
+  el.classList.remove("skeleton");
+  // Oxirgi 7 kunni to'ldiramiz (bo'sh kunlar 0)
+  const map = Object.fromEntries(week.map((w) => [w.day, w.n]));
+  const days = [];
+  for (let i = CHART_DAYS - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    days.push({ key, label: DAY_NAMES[d.getDay()], n: map[key] || 0, isToday: i === 0 });
+  }
+  const max = Math.max(1, ...days.map((d) => d.n));
+  el.innerHTML = \`<div style="display:flex;align-items:flex-end;gap:10px;height:150px">\` +
+    days.map((d) => \`
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end" title="\${d.key}: \${d.n} xabar">
+        <span class="small" style="color:\${d.n ? "#a5b4fc" : "var(--muted)"};font-weight:600">\${d.n || ""}</span>
+        <div style="width:100%;max-width:46px;height:\${Math.max(4, Math.round((d.n / max) * 100))}px;border-radius:8px 8px 3px 3px;
+          background:\${d.n ? "linear-gradient(180deg,#8b5cf6,#6366f1)" : "var(--panel2)"};
+          transition:height .5s ease;box-shadow:\${d.n ? "0 4px 12px rgba(99,102,241,.25)" : "none"}"></div>
+        <span class="small" style="color:\${d.isToday ? "var(--text)" : "var(--muted)"};font-weight:\${d.isToday ? "600" : "400"}">\${d.label}</span>
+      </div>\`).join("") + \`</div>\`;
 }
 async function loadConversations() {
   try {
     const { contacts } = await api("/api/contacts");
     if (!contacts.length) { $("conversations").innerHTML = emptyState("💬", "Hali suhbatlar yo'q"); return; }
-    $("conversations").innerHTML = contacts.slice(0, 6).map((c) => \`
+    $("conversations").innerHTML = contacts.slice(0, 5).map((c) => \`
       <a href="/dashboard/inbox?contact=\${c.id}" style="display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:12px;transition:background .15s"
          onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">
         \${avatar(c.name || c.ig_user_id, 36)}
@@ -367,15 +431,15 @@ async function loadAccounts() {
     const { projects } = await api("/api/projects");
     if (!projects.length) { $("accounts").innerHTML = emptyState("📱", "Hali akkaunt yo'q"); return; }
     $("accounts").innerHTML = projects.map((p) => \`
-      <div style="display:flex;align-items:center;gap:11px;padding:9px 10px">
-        \${avatar(p.name, 36)}
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 4px">
+        \${avatar(p.name, 32)}
         <span style="min-width:0;flex:1">
-          <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
+          <strong class="small" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
           <span class="small muted">\${p.contacts} mijoz · \${p.messages} xabar</span>
         </span>
-        \${p.knowledge_base ? '<span class="badge b-green">bilim bazasi ✓</span>' : '<span class="badge b-gray">bo\\'sh</span>'}
+        \${p.knowledge_base ? '<span class="badge b-green">✓</span>' : '<span class="badge b-gray">bo\\'sh</span>'}
       </div>\`).join("");
-  } catch (e) { $("accounts").innerHTML = emptyState("📱", "Akkauntlar yuklanmadi"); }
+  } catch (e) { $("accounts").innerHTML = emptyState("📱", "Yuklanmadi"); }
 }
 loadStats(); loadConversations(); loadAccounts();`;
 

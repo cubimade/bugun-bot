@@ -164,31 +164,50 @@ export async function getConversationHistory(contactId, limit = 20) {
 //  Statistika (/stats sahifasi uchun)
 // ------------------------------------------------------------
 export async function getStats() {
-  const [projects, contacts, messages, recent, topContacts] = await Promise.all([
-    pool.query(`SELECT COUNT(*)::int AS n FROM projects`),
-    pool.query(`SELECT COUNT(*)::int AS n FROM contacts`),
-    pool.query(`SELECT COUNT(*)::int AS n FROM messages`),
-    pool.query(
-      `SELECT m.role, m.text, m.created_at, c.ig_user_id, c.name
+  const [projects, contacts, messages, today, week, needsHuman, recent, topContacts] =
+    await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS n FROM projects`),
+      pool.query(`SELECT COUNT(*)::int AS n FROM contacts`),
+      pool.query(`SELECT COUNT(*)::int AS n FROM messages`),
+      // Bugungi xabarlar (O'zbekiston vaqti bo'yicha)
+      pool.query(
+        `SELECT COUNT(*)::int AS n FROM messages
+         WHERE (created_at AT TIME ZONE 'Asia/Tashkent')::date =
+               (now() AT TIME ZONE 'Asia/Tashkent')::date`
+      ),
+      // Oxirgi 7 kun faolligi (kun bo'yicha xabarlar soni)
+      pool.query(
+        `SELECT to_char((created_at AT TIME ZONE 'Asia/Tashkent')::date, 'YYYY-MM-DD') AS day,
+                COUNT(*)::int AS n
+           FROM messages
+          WHERE created_at >= now() - interval '7 days'
+          GROUP BY 1 ORDER BY 1`
+      ),
+      pool.query(`SELECT COUNT(*)::int AS n FROM contacts WHERE needs_human`),
+      pool.query(
+        `SELECT m.role, m.text, m.created_at, c.ig_user_id, c.name
        FROM messages m
        JOIN contacts c ON c.id = m.contact_id
        ORDER BY m.created_at DESC
        LIMIT 30`
-    ),
-    pool.query(
-      `SELECT c.ig_user_id, c.name, COUNT(m.id)::int AS msg_count, MAX(m.created_at) AS last_msg
+      ),
+      pool.query(
+        `SELECT c.ig_user_id, c.name, COUNT(m.id)::int AS msg_count, MAX(m.created_at) AS last_msg
        FROM contacts c
        LEFT JOIN messages m ON m.contact_id = c.id
        GROUP BY c.id
        ORDER BY msg_count DESC, last_msg DESC NULLS LAST
        LIMIT 10`
-    ),
-  ]);
+      ),
+    ]);
 
   return {
     projects: projects.rows[0].n,
     contacts: contacts.rows[0].n,
     messages: messages.rows[0].n,
+    today: today.rows[0].n,
+    week: week.rows,
+    needsHuman: needsHuman.rows[0].n,
     recent: recent.rows,
     topContacts: topContacts.rows,
   };

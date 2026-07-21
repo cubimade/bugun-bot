@@ -53,8 +53,16 @@ import {
   renderPrivacyPage,
   renderDataDeletionPage,
   renderStatsPage,
-  renderDashboardPage,
 } from "./pages.js";
+import {
+  renderDashboardHome,
+  renderInboxPage,
+  renderContactsPage,
+  renderBroadcastPage,
+  renderKnowledgePage,
+  renderAccountsPage,
+  renderSettingsPage,
+} from "./templates.js";
 import { recordError, getRecentErrors } from "./logger.js";
 
 const APP = express();
@@ -506,9 +514,16 @@ APP.post("/api/accounts", protect, async (req, res, next) => {
 });
 
 // ============================================================
-//  DASHBOARD (boshqaruv paneli)
+//  DASHBOARD (boshqaruv paneli) — ko'p sahifali platforma
+//  Barcha /dashboard* yo'llar Basic Auth bilan himoyalangan.
 // ============================================================
-APP.get("/dashboard", protect, (req, res) => res.send(renderDashboardPage()));
+APP.get("/dashboard", protect, (req, res) => res.send(renderDashboardHome()));
+APP.get("/dashboard/inbox", protect, (req, res) => res.send(renderInboxPage()));
+APP.get("/dashboard/contacts", protect, (req, res) => res.send(renderContactsPage()));
+APP.get("/dashboard/broadcast", protect, (req, res) => res.send(renderBroadcastPage()));
+APP.get("/dashboard/knowledge", protect, (req, res) => res.send(renderKnowledgePage()));
+APP.get("/dashboard/accounts", protect, (req, res) => res.send(renderAccountsPage()));
+APP.get("/dashboard/settings", protect, (req, res) => res.send(renderSettingsPage()));
 
 // ============================================================
 //  SAHIFALAR — privacy, data-deletion, stats

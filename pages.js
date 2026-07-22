@@ -108,24 +108,31 @@ export function renderStatsPage(stats) {
   <title>Statistika — Bugun Bot</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0f0f1e; color: #e8e8f0; margin: 0; padding: 24px; }
-    h1 { color: #fff; margin: 0 0 4px; }
-    .sub { color: #888; font-size: 14px; margin-bottom: 24px; }
+    body { font-family: 'Inter', -apple-system, Segoe UI, Arial, sans-serif; margin: 0; padding: 24px;
+      background: #0a0b10; color: #f4f5f7;
+      background-image: radial-gradient(60% 50% at 20% 10%, rgba(99,102,241,.14) 0%, transparent 60%),
+                        radial-gradient(50% 40% at 85% 20%, rgba(217,70,239,.10) 0%, transparent 60%),
+                        radial-gradient(40% 40% at 60% 90%, rgba(34,211,238,.08) 0%, transparent 60%);
+      background-attachment: fixed; }
+    h1 { color: #fff; margin: 0 0 4px; letter-spacing: -0.02em; }
+    .sub { color: #9ca3b8; font-size: 14px; margin-bottom: 24px; }
     .cards { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; }
-    .card { background: linear-gradient(135deg, #1a1a2e, #23234a); border: 1px solid #2d2d55; border-radius: 14px; padding: 20px 28px; min-width: 160px; }
-    .card .num { font-size: 40px; font-weight: 700; color: #7c8cff; }
-    .card .label { color: #aaa; font-size: 14px; margin-top: 4px; }
-    h2 { color: #fff; font-size: 18px; margin: 28px 0 12px; }
-    table { width: 100%; border-collapse: collapse; background: #16162a; border-radius: 12px; overflow: hidden; }
-    th, td { padding: 10px 14px; text-align: left; font-size: 14px; border-bottom: 1px solid #26264a; }
-    th { background: #1e1e3a; color: #bbb; font-weight: 600; }
+    .card { background: rgba(255,255,255,.03); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 20px 28px; min-width: 160px; }
+    .card .num { font-size: 38px; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #d946ef 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .card .label { color: #9ca3b8; font-size: 14px; margin-top: 4px; }
+    h2 { color: #fff; font-size: 18px; margin: 28px 0 12px; letter-spacing: -0.02em; }
+    table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,.03); border-radius: 16px; overflow: hidden; }
+    th, td { padding: 10px 14px; text-align: left; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    th { background: rgba(255,255,255,.02); color: #9ca3b8; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: .4px; }
     td { color: #ddd; vertical-align: top; }
     tr:last-child td { border-bottom: none; }
     .badge { padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-    .badge.user { background: #2a4d69; color: #9cd; }
-    .badge.assistant { background: #3d2a5a; color: #c9a; }
-    .wrap { overflow-x: auto; }
-    .empty { color: #777; padding: 16px; }
+    .badge.user { background: rgba(34,211,238,.13); color: #22d3ee; }
+    .badge.assistant { background: rgba(139,92,246,.15); color: #c4b5fd; }
+    .wrap { overflow-x: auto; border-radius: 16px; }
+    .empty { color: #6b7280; padding: 16px; }
   </style>
 </head>
 <body>

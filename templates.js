@@ -1236,7 +1236,7 @@ export function renderBroadcastPage() {
       <div class="card">
         <h3 style="margin-bottom:12px">👁 Oldindan ko'rish</h3>
         <div style="background:var(--bg);border-radius:12px;padding:16px;min-height:90px;display:flex;justify-content:flex-end">
-          <div id="preview" style="max-width:85%;padding:9px 13px;border-radius:16px;border-bottom-right-radius:5px;background:linear-gradient(135deg,#6366f1,#7c5ff0);color:#fff;font-size:14px;white-space:pre-wrap;word-break:break-word">
+          <div id="preview" style="max-width:85%;padding:9px 13px;border-radius:16px;border-bottom-right-radius:5px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 4px 14px rgba(99,102,241,.25)">
             <span class="muted" style="color:rgba(255,255,255,.65)">Xabar matni shu yerda ko'rinadi...</span>
           </div>
         </div>

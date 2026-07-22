@@ -723,13 +723,18 @@ export function renderInboxPage() {
     .chat-pane { display: flex; flex-direction: column; min-width: 0; background: rgba(10,11,16,.55); }
     .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
     .chat-msgs { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 4px; }
-    .bubble-row { display: flex; margin-bottom: 6px; }
+    .bubble-row { display: flex; margin-bottom: 6px; animation: bubbleIn .22s ease; }
+    @keyframes bubbleIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
     .bubble { max-width: 74%; padding: 9px 13px; border-radius: 16px; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
     .bubble .t { font-size: 10px; opacity: .6; margin-top: 3px; text-align: right; }
     .from-user { justify-content: flex-start; }
-    .from-user .bubble { background: var(--panel2); border-bottom-left-radius: 5px; }
+    .from-user .bubble { background: rgba(255,255,255,.06); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border-subtle); border-bottom-left-radius: 5px; }
     .from-bot { justify-content: flex-end; }
-    .from-bot .bubble { background: linear-gradient(135deg, #6366f1, #7c5ff0); color: #fff; border-bottom-right-radius: 5px; }
+    .from-bot .bubble { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border-bottom-right-radius: 5px; box-shadow: 0 4px 14px rgba(99,102,241,.25); }
+    .from-bot .bubble.from-op { background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.45); color: var(--text-primary); box-shadow: none; }
+    .op-tag { font-size: 10px; color: var(--accent-3); font-weight: 700; letter-spacing: .3px; margin-bottom: 3px; text-transform: uppercase; }
+    .bubble-row.fresh .bubble { animation: freshGlow 1.8s ease; }
+    @keyframes freshGlow { 0% { box-shadow: 0 0 0 3px rgba(34,211,238,.45); } 100% { box-shadow: 0 0 0 3px rgba(34,211,238,0); } }
     .composer { padding: 12px; border-top: 1px solid var(--border); background: rgba(255,255,255,.02); display: flex; gap: 9px; align-items: flex-end; }
     .composer textarea { resize: none; max-height: 120px; min-height: 42px; }
     .back-btn { display: none; }
@@ -911,12 +916,19 @@ function renderChatHead() {
     <button class="btn btn-sm" onclick="openTagEditor()" title="Teg qo'shish">🏷</button>
     \${c.needs_human ? '<button class="btn btn-sm" onclick="resolveHuman()" title="Hal qilindi deb belgilash">✓ Hal qilindi</button>' : ""}\`;
 }
-function renderMessages(messages) {
-  if (!messages.length) { $("chatMsgs").innerHTML = emptyState("💬", "Xabarlar yo'q"); return; }
-  $("chatMsgs").innerHTML = messages.map((m) => \`
-    <div class="bubble-row \${m.role === "assistant" ? "from-bot" : "from-user"}">
-      <div class="bubble">\${esc(m.text)}<div class="t">\${fmt(m.created_at)}</div></div>
-    </div>\`).join("");
+let MSG_COUNT = 0;
+function renderMessages(messages, highlightNew) {
+  if (!messages.length) { $("chatMsgs").innerHTML = emptyState("💬", "Xabarlar yo'q"); MSG_COUNT = 0; return; }
+  const prevCount = MSG_COUNT;
+  $("chatMsgs").innerHTML = messages.map((m, i) => {
+    const op = m.role === "assistant" && m.is_operator;
+    const fresh = highlightNew && i >= prevCount;
+    return \`
+    <div class="bubble-row \${m.role === "assistant" ? "from-bot" : "from-user"}\${fresh ? " fresh" : ""}">
+      <div class="bubble\${op ? " from-op" : ""}">\${op ? '<div class="op-tag">👤 Operator</div>' : ""}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div></div>
+    </div>\`;
+  }).join("");
+  MSG_COUNT = messages.length;
   $("chatMsgs").scrollTop = $("chatMsgs").scrollHeight;
 }
 function closeChat() {
@@ -989,7 +1001,7 @@ async function removeTag(t) {
   catch (e) { toast("Xatolik: " + e.message, false); }
 }
 
-// Yengil avto-yangilash: ro'yxat har 20 soniyada (ochiq suhbatga tegmaydi)
+// Real-vaqt his: har 15 soniyada yangilanish, yangi xabar yumshoq highlight bilan
 setInterval(async () => {
   try {
     const { contacts } = await api("/api/contacts?limit=300");
@@ -998,15 +1010,21 @@ setInterval(async () => {
     if (SELECTED) {
       const cur = CONTACTS.find((c) => c.id === SELECTED);
       if (cur && cur.unread > openUnread) {
-        // Ochiq suhbatga yangi xabar keldi — chatni yangilaymiz
+        // Ochiq suhbatga yangi xabar keldi — chatni yangilaymiz (highlight bilan)
         const { contact, messages } = await api("/api/conversation/" + SELECTED);
-        CURRENT = contact; renderChatHead(); renderMessages(messages);
+        CURRENT = contact; renderChatHead(); renderMessages(messages, true);
         cur.unread = 0;
       } else if (cur) cur.unread = 0;
     }
     renderList();
   } catch (e) { /* jim — keyingi urinishda */ }
-}, 20000);
+}, 15000);
+
+// Yozish maydoni: avto-balandlik (Enter=yuborish, Shift+Enter=yangi qator)
+$("replyText").addEventListener("input", function () {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
 
 loadData();
 ${DRAWER_JS}`;

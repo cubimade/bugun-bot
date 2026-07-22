@@ -78,6 +78,64 @@ export async function getDailySummary(digest) {
   }
 }
 
+// D1: Suhbatlar tahlili (AI Insights) — Haiku, kunlik kesh bilan chaqiriladi.
+// messagesText: "[contact_id] Ism: xabar" qatorlari. JSON qaytaradi yoki null.
+export async function getInsights(messagesText) {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 900,
+      system:
+        "Sen Instagram biznes-suhbatlarini tahlil qiluvchi yordamchisan. " +
+        "Faqat toza JSON qaytar (markdown yoki izohsiz), o'zbek tilida (lotin). Format: " +
+        '{"top_questions":[{"question":"...","count":N}],' +
+        '"sales_ready":[{"contact_id":N,"name":"...","reason":"..."}],' +
+        '"kb_gaps":["bilim bazasiga qo\'shish kerak bo\'lgan ma\'lumot"]}. ' +
+        "top_questions — eng ko'p so'ralgan 5 tagacha savol mavzusi; " +
+        "sales_ready — narx so'ragan yoki sotib olishga qiziqqan mijozlar; " +
+        "kb_gaps — bot aniq javob berolmasligi mumkin bo'lgan, bilim bazasiga qo'shish tavsiya etiladigan mavzular (5 tagacha).",
+      messages: [
+        {
+          role: "user",
+          content: `Oxirgi 7 kunlik mijoz xabarlari:\n${messagesText}\n\nTahlil qilib JSON qaytar.`,
+        },
+      ],
+    });
+    const raw = extractText(response)
+      .replace(/^```(json)?/m, "")
+      .replace(/```\s*$/m, "")
+      .trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    return JSON.parse(raw.slice(start, end + 1));
+  } catch (err) {
+    console.error("⚠️ Claude (insights) xatoligi:", err.message);
+    return null;
+  }
+}
+
+// D2: Mijoz kayfiyati (sentiment) — juda arzon Haiku chaqiruvi.
+// 'positive' | 'neutral' | 'negative' yoki "" (xatoda).
+export async function getSentiment(userTexts) {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 8,
+      system:
+        "Mijozning oxirgi xabarlari asosida kayfiyatini aniqla. " +
+        "FAQAT bitta so'z qaytar: positive, neutral yoki negative.",
+      messages: [{ role: "user", content: userTexts.join("\n").slice(0, 1500) }],
+    });
+    const word = extractText(response).toLowerCase().trim();
+    if (["positive", "neutral", "negative"].includes(word)) return word;
+    return "";
+  } catch (err) {
+    console.error("⚠️ Claude (sentiment) xatoligi:", err.message);
+    return "";
+  }
+}
+
 // Kommentga qisqa javob.
 export async function getCommentReply(
   commentText,

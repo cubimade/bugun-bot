@@ -29,7 +29,13 @@ import {
   RATE_LIMIT_MAX,
   RATE_LIMIT_WINDOW_MS,
 } from "./config.js";
-import { getClaudeReply, getCommentReply, getDailySummary } from "./claude.js";
+import {
+  getClaudeReply,
+  getCommentReply,
+  getDailySummary,
+  getInsights,
+  getSentiment,
+} from "./claude.js";
 import {
   sendInstagramMessage,
   replyToComment,
@@ -71,6 +77,8 @@ import {
   claimDueBroadcasts,
   finishBroadcast,
   cancelScheduledBroadcast,
+  getRecentUserMessages,
+  setContactSentiment,
 } from "./db.js";
 import { APP_VERSION } from "./templates.js";
 import {
@@ -86,6 +94,7 @@ import {
   renderKnowledgePage,
   renderAccountsPage,
   renderSettingsPage,
+  renderInsightsPage,
 } from "./templates.js";
 import { recordError, getRecentErrors } from "./logger.js";
 
@@ -417,6 +426,21 @@ async function handleDirectMessage(event, projectId, token) {
   }
 
   await sendInstagramMessage(senderId, reply, token);
+
+  // D2: Kayfiyat (sentiment) tahlili — javobni kechiktirmaydi (fonda ishlaydi)
+  if (contactId) {
+    const userTexts = history
+      .filter((m) => m.role === "user")
+      .slice(-5)
+      .map((m) => m.content);
+    (async () => {
+      const s = await getSentiment(userTexts);
+      if (s) {
+        await setContactSentiment(contactId, s);
+        if (s === "negative") console.log(`😟 Salbiy kayfiyat aniqlandi (mijoz ${contactId})`);
+      }
+    })().catch((err) => console.error("⚠️ Sentiment saqlashda xatolik:", err.message));
+  }
 }
 
 // ============================================================
@@ -543,6 +567,41 @@ APP.get("/api/summary", protect, async (req, res, next) => {
     const text = (await getDailySummary(digest)) || buildSummaryFallback(digest);
     SUMMARY_CACHE = { text, digest, at: now };
     res.json({ text, digest, cachedAt: new Date(now).toISOString() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- D1: AI Insights (Haiku, 24 soatlik kesh — tejamkor) ---
+const INSIGHTS_TTL_MS = 24 * 60 * 60 * 1000;
+let INSIGHTS_CACHE = { data: null, at: 0, sample: 0 };
+
+APP.get("/api/insights", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const force = req.query.refresh === "1";
+    const now = Date.now();
+    if (!force && INSIGHTS_CACHE.data && now - INSIGHTS_CACHE.at < INSIGHTS_TTL_MS) {
+      return res.json({
+        insights: INSIGHTS_CACHE.data,
+        sample: INSIGHTS_CACHE.sample,
+        cachedAt: new Date(INSIGHTS_CACHE.at).toISOString(),
+      });
+    }
+    const messages = await getRecentUserMessages(250);
+    if (!messages.length) {
+      return res.json({ insights: null, sample: 0, cachedAt: new Date(now).toISOString() });
+    }
+    const lines = messages
+      .map((m) => `[${m.contact_id}] ${m.name || m.ig_user_id}: ${String(m.text).slice(0, 120)}`)
+      .join("\n")
+      .slice(0, 18000);
+    const insights = await getInsights(lines);
+    if (!insights) {
+      return res.status(502).json({ error: "AI tahlilni tayyorlab bo'lmadi — birozdan keyin urinib ko'ring" });
+    }
+    INSIGHTS_CACHE = { data: insights, at: now, sample: messages.length };
+    res.json({ insights, sample: messages.length, cachedAt: new Date(now).toISOString() });
   } catch (err) {
     next(err);
   }
@@ -1089,6 +1148,7 @@ setInterval(async () => {
 APP.get("/dashboard", protect, (req, res) => res.send(renderDashboardHome()));
 APP.get("/dashboard/inbox", protect, (req, res) => res.send(renderInboxPage()));
 APP.get("/dashboard/contacts", protect, (req, res) => res.send(renderContactsPage()));
+APP.get("/dashboard/insights", protect, (req, res) => res.send(renderInsightsPage()));
 APP.get("/dashboard/broadcast", protect, (req, res) => res.send(renderBroadcastPage()));
 APP.get("/dashboard/knowledge", protect, (req, res) => res.send(renderKnowledgePage()));
 APP.get("/dashboard/accounts", protect, (req, res) => res.send(renderAccountsPage()));

@@ -312,6 +312,22 @@ export async function getDailyDigest() {
 }
 
 // ------------------------------------------------------------
+//  AI Insights uchun: oxirgi 7 kunlik mijoz xabarlari
+// ------------------------------------------------------------
+export async function getRecentUserMessages(limit = 250) {
+  const { rows } = await pool.query(
+    `SELECT m.text, c.id AS contact_id, c.name, c.ig_user_id
+       FROM messages m
+       JOIN contacts c ON c.id = m.contact_id
+      WHERE m.role = 'user' AND m.created_at >= now() - interval '7 days'
+      ORDER BY m.created_at DESC
+      LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+// ------------------------------------------------------------
 //  Bilim bazasi (knowledge base) — har akkaunt uchun biznes ma'lumoti
 // ------------------------------------------------------------
 export async function getProjectKnowledge(projectId) {

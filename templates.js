@@ -39,6 +39,8 @@ export const ICONS = {
   tag: I('<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.2" fill="currentColor" stroke="none"/>'),
   book: I('<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'),
   clock: I('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'),
+  insights: I('<path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/>'),
+  sparkle: I('<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/>'),
 };
 
 // ------------------------------------------------------------
@@ -48,6 +50,7 @@ const NAV_ITEMS = [
   { key: "dashboard", label: "Boshqaruv", href: "/dashboard", icon: "dashboard" },
   { key: "inbox", label: "Suhbatlar", href: "/dashboard/inbox", icon: "inbox" },
   { key: "contacts", label: "Kontaktlar", href: "/dashboard/contacts", icon: "contacts" },
+  { key: "insights", label: "Tahlil", href: "/dashboard/insights", icon: "insights" },
   { key: "broadcast", label: "Broadcast", href: "/dashboard/broadcast", icon: "broadcast" },
   { key: "knowledge", label: "Bilim bazasi", href: "/dashboard/knowledge", icon: "knowledge" },
   { key: "accounts", label: "Akkauntlar", href: "/dashboard/accounts", icon: "accounts" },
@@ -825,6 +828,8 @@ function renderFilters() {
   const chips = [
     { k: "all", label: "Hammasi" },
     { k: "human", label: "🙋 Odam kerak" },
+    { k: "negative", label: "😟 Salbiy" },
+    { k: "paused", label: "🔕 Pauzada" },
     ...ALL_TAGS.map((t) => ({ k: "tag:" + t, label: "🏷 " + t })),
   ];
   $("filters").innerHTML = chips.map((c) =>
@@ -834,6 +839,8 @@ function renderFilters() {
 function setFilter(k) { FILTER = k; renderFilters(); renderList(); }
 function matchesFilter(c) {
   if (FILTER === "human") return c.needs_human;
+  if (FILTER === "negative") return c.sentiment === "negative";
+  if (FILTER === "paused") return c.bot_paused;
   if (FILTER.startsWith("tag:")) return (c.tags || []).includes(FILTER.slice(4));
   return true;
 }
@@ -852,6 +859,7 @@ function renderList() {
           <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">\${esc(c.name || c.ig_user_id)}</strong>
           \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
           \${c.bot_paused ? '<span title="Bot pauzada — operator gaplashadi">🔕</span>' : ""}
+          \${c.sentiment === "negative" ? '<span title="Salbiy kayfiyat — tez aralashing!">😟</span>' : ""}
         </div>
         <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(c.last_text || "—")}</div>
       </div>
@@ -1823,6 +1831,106 @@ loadSettings(); loadSystem(); loadQuickReplies();`;
     title: "Sozlamalar",
     active: "settings",
     headerAction: "",
+    content,
+    script,
+  });
+}
+
+// ============================================================
+//  8. TAHLIL (AI Insights) — /dashboard/insights
+//  Claude suhbatlarni tahlil qiladi: top savollar, sotuvga tayyor
+//  mijozlar, bilim bazasi kamchiliklari. ChatPlace'da YO'Q!
+// ============================================================
+export function renderInsightsPage() {
+  const content = `
+  <style>
+    .ins-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+    .ins-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border-subtle); }
+    .ins-item:last-child { border-bottom: none; }
+    .ins-rank { width: 26px; height: 26px; border-radius: 8px; background: rgba(99,102,241,.14); color: #a5b4fc; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  </style>
+
+  <div class="card glow" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+    <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">🧠</div>
+    <div style="flex:1;min-width:220px">
+      <strong>AI suhbatlar tahlili</strong>
+      <div class="small muted" style="margin-top:2px">Claude oxirgi 7 kunlik mijoz xabarlarini o'qib, sizga xulosa beradi. Kuniga bir marta yangilanadi.</div>
+    </div>
+    <span class="small muted" id="insMeta"></span>
+  </div>
+
+  <div id="insBody">
+    <div class="ins-grid">
+      ${'<div class="card skeleton" style="height:220px"></div>'.repeat(3)}
+    </div>
+  </div>`;
+
+  const script = `
+async function loadInsights(force) {
+  if (force) {
+    $("insBody").innerHTML = '<div class="ins-grid">' + '<div class="card skeleton" style="height:220px"></div>'.repeat(3) + "</div>";
+    $("insMeta").innerHTML = '<span class="spinner" style="width:13px;height:13px"></span> tahlil qilinmoqda...';
+  }
+  try {
+    const { insights, sample, cachedAt } = await api("/api/insights" + (force ? "?refresh=1" : ""));
+    if (!insights) {
+      $("insBody").innerHTML = '<div class="card">' + emptyState("📈", "Hali tahlil uchun xabar yo'q — mijozlar yozganda AI tahlil paydo bo'ladi") + "</div>";
+      $("insMeta").textContent = "";
+      return;
+    }
+    $("insMeta").textContent = sample + " ta xabar tahlil qilindi · " + fmt(cachedAt);
+    const tq = insights.top_questions || [];
+    const sr = insights.sales_ready || [];
+    const kg = insights.kb_gaps || [];
+    $("insBody").innerHTML = \`
+    <div class="ins-grid">
+      <div class="card hoverable">
+        <h3 style="margin-bottom:6px">❓ Eng ko'p so'ralgan savollar</h3>
+        <p class="small muted" style="margin-bottom:8px">Mijozlar nimani so'rayapti</p>
+        \${tq.length ? tq.map((q, i) => \`
+          <div class="ins-item">
+            <span class="ins-rank">\${i + 1}</span>
+            <span style="flex:1">\${esc(q.question)}</span>
+            \${q.count ? \`<span class="badge b-indigo">\${q.count}×</span>\` : ""}
+          </div>\`).join("") : emptyState("❓", "Aniq takrorlanuvchi savollar topilmadi")}
+      </div>
+
+      <div class="card hoverable">
+        <h3 style="margin-bottom:6px">💰 Sotuvga tayyor mijozlar</h3>
+        <p class="small muted" style="margin-bottom:8px">Narx so'raganlar va qiziqqanlar — tezroq bog'laning!</p>
+        \${sr.length ? sr.map((c) => \`
+          <div class="ins-item">
+            \${avatar(c.name || "?", 30)}
+            <span style="flex:1;min-width:0">
+              <strong class="small" style="display:block">\${esc(c.name || "Mijoz #" + c.contact_id)}</strong>
+              <span class="small muted">\${esc(c.reason || "")}</span>
+            </span>
+            \${c.contact_id ? \`<a class="btn btn-sm" href="/dashboard/inbox?contact=\${Number(c.contact_id)}">💬</a>\` : ""}
+          </div>\`).join("") : emptyState("💰", "Hozircha sotuvga tayyor mijoz aniqlanmadi")}
+      </div>
+
+      <div class="card hoverable">
+        <h3 style="margin-bottom:6px">🧩 Bilim bazasi kamchiliklari</h3>
+        <p class="small muted" style="margin-bottom:8px">Bot yaxshi javob berishi uchun nima qo'shish kerak</p>
+        \${kg.length ? kg.map((g) => \`
+          <div class="ins-item">
+            <span style="flex-shrink:0">💡</span>
+            <span style="flex:1">\${esc(g)}</span>
+          </div>\`).join("") : emptyState("🧩", "Kamchilik topilmadi — bilim bazasi yetarli ko'rinadi")}
+        \${kg.length ? '<a class="btn btn-sm" href="/dashboard/knowledge" style="margin-top:10px">🧠 Bilim bazasini to\\'ldirish</a>' : ""}
+      </div>
+    </div>\`;
+  } catch (e) {
+    $("insBody").innerHTML = '<div class="card">' + emptyState("⚠️", "Tahlil yuklanmadi: " + e.message) + "</div>";
+    $("insMeta").textContent = "";
+  }
+}
+loadInsights(false);`;
+
+  return renderLayout({
+    title: "Tahlil",
+    active: "insights",
+    headerAction: `<button class="btn" onclick="loadInsights(true)">🔄 Yangilash</button>`,
     content,
     script,
   });

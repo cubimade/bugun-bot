@@ -62,6 +62,15 @@ import {
   getAllSettings,
   saveSettings,
   getDailyDigest,
+  setBotPaused,
+  setContactNote,
+  listSavedReplies,
+  insertSavedReply,
+  deleteSavedReply,
+  insertScheduledBroadcast,
+  claimDueBroadcasts,
+  finishBroadcast,
+  cancelScheduledBroadcast,
 } from "./db.js";
 import { APP_VERSION } from "./templates.js";
 import {
@@ -298,14 +307,35 @@ async function handleDirectMessage(event, projectId, token) {
   // --- Doimiy xotira: mijoz + suhbat tarixi (shu akkaunt loyihasida) ---
   let contactId = null;
   let history = [];
+  let paused = false;
   if (DB_READY && projectId) {
     try {
-      contactId = await getOrCreateContact(projectId, senderId);
+      const contact = await getOrCreateContact(projectId, senderId);
+      contactId = contact.id;
       await saveMessage(contactId, "user", userText);
+
+      // C1: Bot pauza (operator rejimi) tekshiruvi
+      if (contact.bot_paused) {
+        const until = contact.paused_until ? new Date(contact.paused_until) : null;
+        if (until && until <= new Date()) {
+          // Avto-pauza muddati tugadi — bot o'zi qayta yoqiladi
+          await setBotPaused(contactId, false, null);
+          console.log(`▶️ Avto-pauza tugadi — bot qayta yoqildi (mijoz ${contactId})`);
+        } else {
+          paused = true;
+        }
+      }
+
       history = await getConversationHistory(contactId, 20);
     } catch (dbErr) {
       console.error("⚠️ Xabarni saqlashda xatolik:", dbErr.message);
     }
+  }
+
+  // Pauzada: xabar saqlandi, lekin bot javob BERMAYDI (operator gaplashadi)
+  if (paused) {
+    console.log(`🔕 Bot pauzada (mijoz ${contactId}) — javob berilmaydi, operator gaplashadi`);
+    return;
   }
 
   // Bu mijozning birinchi xabari? (tarixда faqat shu xabar bo'lsa — yangi)
@@ -622,6 +652,81 @@ APP.post("/api/contacts/:id/needs-human", protect, async (req, res, next) => {
   }
 });
 
+// --- C4: Kontakt profili (drawer uchun — xabarlarsiz, yengil) ---
+APP.get("/api/contacts/:id/profile", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contact = await getContact(Number(req.params.id));
+    if (!contact) return res.status(404).json({ error: "Mijoz topilmadi" });
+    res.json({ contact });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- C1: Bot pauza (operator rejimi) — qo'lda yoqish/o'chirish ---
+APP.post("/api/contacts/:id/pause", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.params.id);
+    const value = Boolean(req.body?.value);
+    // Qo'lda pauza — muddatsiz (operator o'zi qayta yoqadi)
+    await setBotPaused(contactId, value, null);
+    console.log(`${value ? "🔕 Bot pauza qilindi" : "▶️ Bot qayta yoqildi"} (mijoz ${contactId})`);
+    res.json({ ok: true, value });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- C4: Mijoz izohi (nota) — mini-CRM ---
+APP.post("/api/contacts/:id/note", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.params.id);
+    const note = String(req.body?.note ?? "").slice(0, 2000);
+    await setContactNote(contactId, note);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- C2: Tezkor javoblar (saved replies) ---
+APP.get("/api/saved-replies", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    res.json({ replies: await listSavedReplies() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.post("/api/saved-replies", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const title = String(req.body?.title || "").trim().slice(0, 80);
+    const text = String(req.body?.text || "").trim().slice(0, 1000);
+    if (!title || !text) {
+      return res.status(400).json({ error: "title va text majburiy" });
+    }
+    const id = await insertSavedReply(title, text);
+    res.json({ ok: true, id });
+  } catch (err) {
+    next(err);
+  }
+});
+
+APP.delete("/api/saved-replies/:id", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    await deleteSavedReply(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // --- Qo'lda javob yuborish (operator bot o'rniga yozadi) ---
 APP.post("/api/reply", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -652,10 +757,16 @@ APP.post("/api/reply", protect, async (req, res, next) => {
       return res.status(502).json({ error: "Instagram: " + result.error });
     }
 
-    await saveMessage(contactId, "assistant", text);
+    await saveMessage(contactId, "assistant", text, true); // operator belgisi bilan
     await setNeedsHuman(contactId, false); // operator javob berdi — hal qilindi
-    console.log(`👤 Operator javobi yuborildi (mijoz ${contactId})`);
-    res.json({ ok: true });
+
+    // AVTO-PAUZA: operator qo'lda yozdi — bot 30 daqiqa jim turadi,
+    // muddat tugagach o'zi qayta yoqiladi (ChatPlace'dan aqlliroq).
+    const pausedUntil = new Date(Date.now() + 30 * 60 * 1000);
+    await setBotPaused(contactId, true, pausedUntil);
+
+    console.log(`👤 Operator javobi yuborildi (mijoz ${contactId}) — bot 30 daqiqa pauzada`);
+    res.json({ ok: true, botPausedUntil: pausedUntil.toISOString() });
   } catch (err) {
     next(err);
   }
@@ -824,6 +935,23 @@ APP.post("/api/broadcast", protect, async (req, res, next) => {
       IG_TOKEN;
     if (!token) return res.status(400).json({ error: "Bu akkaunt uchun token topilmadi" });
 
+    // C3: Rejalashtirish — sana berilsa hozir yubormaymiz, server o'zi vaqtida yuboradi
+    const scheduledAt = req.body?.scheduledAt ? new Date(req.body.scheduledAt) : null;
+    if (scheduledAt) {
+      if (isNaN(scheduledAt.getTime()) || scheduledAt.getTime() < Date.now() + 30 * 1000) {
+        return res.status(400).json({ error: "Rejalashtirish vaqti kelajakda bo'lishi kerak" });
+      }
+      const id = await insertScheduledBroadcast({
+        projectId,
+        audience: tag ? `Teg: ${tag}` : "Hammasi (24 soat)",
+        tag,
+        message,
+        scheduledAt: scheduledAt.toISOString(),
+      });
+      console.log(`🗓 Broadcast rejalashtirildi (#${id}): ${scheduledAt.toISOString()}`);
+      return res.json({ scheduled: true, id, scheduledAt: scheduledAt.toISOString() });
+    }
+
     const recipients = await listBroadcastRecipients(projectId, tag);
     if (!recipients.length) {
       return res.status(400).json({ error: "Yuborish uchun mijoz yo'q (24 soat qoidasi)" });
@@ -887,6 +1015,72 @@ APP.get("/api/broadcasts", protect, async (req, res, next) => {
     next(err);
   }
 });
+
+// Rejalashtirilgan (hali yuborilmagan) broadcastni bekor qilish
+APP.delete("/api/broadcasts/:id", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const id = await cancelScheduledBroadcast(Number(req.params.id));
+    if (!id) {
+      return res.status(400).json({ error: "Faqat rejalashtirilgan broadcastni bekor qilish mumkin" });
+    }
+    console.log(`🗑 Rejalashtirilgan broadcast bekor qilindi (#${id})`);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================
+//  C3: BROADCAST SCHEDULER — har daqiqada vaqti kelganlarni yuboradi
+// ============================================================
+setInterval(async () => {
+  if (!DB_READY) return;
+  try {
+    const due = await claimDueBroadcasts();
+    for (const b of due) {
+      try {
+        const project = await getProjectToken(b.project_id);
+        const token =
+          project?.access_token ||
+          ACCOUNTS_MAP.get(String(project?.ig_account_id || ""))?.token ||
+          IG_TOKEN;
+        if (!token) {
+          await finishBroadcast(b.id, { total: 0, sent: 0, failed: 0, status: "failed" });
+          continue;
+        }
+        const recipients = await listBroadcastRecipients(b.project_id, b.tag);
+        let sent = 0;
+        let failed = 0;
+        for (const r of recipients) {
+          try {
+            const result = await sendInstagramMessage(r.ig_user_id, b.message, token);
+            if (result.ok) {
+              sent++;
+              await saveMessage(r.id, "assistant", b.message);
+            } else {
+              failed++;
+            }
+          } catch (err) {
+            failed++;
+          }
+          await new Promise((ok) => setTimeout(ok, 350));
+        }
+        await finishBroadcast(b.id, { total: recipients.length, sent, failed, status: "sent" });
+        console.log(`🗓📢 Rejalashtirilgan broadcast #${b.id} yuborildi: ${sent}/${recipients.length}`);
+      } catch (err) {
+        console.error(`⚠️ Rejalashtirilgan broadcast #${b.id} xatoligi:`, err.message);
+        try {
+          await finishBroadcast(b.id, { total: 0, sent: 0, failed: 0, status: "failed" });
+        } catch (e2) {
+          /* jim */
+        }
+      }
+    }
+  } catch (err) {
+    console.error("⚠️ Broadcast scheduler xatoligi:", err.message);
+  }
+}, 60 * 1000);
 
 // ============================================================
 //  DASHBOARD (boshqaruv paneli) — ko'p sahifali platforma

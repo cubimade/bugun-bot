@@ -67,12 +67,28 @@ export async function initDb() {
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS needs_human BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS unread INTEGER NOT NULL DEFAULT 0;
+    -- Operator rejimi (bot pauza) va mini-CRM (4-bosqich)
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS bot_paused BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS paused_until TIMESTAMPTZ;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS note TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS sentiment TEXT;
 
     -- Suhbat xabarlari (doimiy xotira)
     CREATE TABLE IF NOT EXISTS messages (
       id          SERIAL PRIMARY KEY,
       contact_id  INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
       role        TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+      text        TEXT NOT NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- Operator javobini ajratish uchun (inbox'da alohida rangda)
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_operator BOOLEAN NOT NULL DEFAULT false;
+
+    -- Tezkor javoblar (saved replies)
+    CREATE TABLE IF NOT EXISTS saved_replies (
+      id          SERIAL PRIMARY KEY,
+      title       TEXT NOT NULL,
       text        TEXT NOT NULL,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
@@ -95,6 +111,11 @@ export async function initDb() {
       failed      INTEGER NOT NULL DEFAULT 0,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Broadcast rejalashtirish (4-bosqich)
+    ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
+    ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'sent';
+    ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS tag TEXT;
 
     -- Tez qidiruv uchun indekslar
     CREATE INDEX IF NOT EXISTS idx_messages_contact ON messages(contact_id, created_at);
@@ -146,19 +167,29 @@ export async function getOrCreateContact(projectId, igUserId, name = null) {
      ON CONFLICT (project_id, ig_user_id)
      DO UPDATE SET last_seen = now(),
                    name = COALESCE(EXCLUDED.name, contacts.name)
-     RETURNING id`,
+     RETURNING id, bot_paused, paused_until`,
     [projectId, igUserId, name]
   );
-  return rows[0].id;
+  return rows[0];
+}
+
+// --- Bot pauza (operator rejimi) ---
+// paused=true, until=null  → doimiy pauza (operator qo'lda yoqadi)
+// paused=true, until=vaqt  → avto-pauza (vaqti kelganda bot o'zi yoqiladi)
+export async function setBotPaused(contactId, paused, until = null) {
+  await pool.query(
+    `UPDATE contacts SET bot_paused = $2, paused_until = $3 WHERE id = $1`,
+    [contactId, paused, until]
+  );
 }
 
 // ------------------------------------------------------------
 //  Xabarni saqlash
 // ------------------------------------------------------------
-export async function saveMessage(contactId, role, text) {
+export async function saveMessage(contactId, role, text, isOperator = false) {
   await pool.query(
-    `INSERT INTO messages (contact_id, role, text) VALUES ($1, $2, $3)`,
-    [contactId, role, text]
+    `INSERT INTO messages (contact_id, role, text, is_operator) VALUES ($1, $2, $3, $4)`,
+    [contactId, role, text, isOperator]
   );
   // Mijoz xabari — o'qilmagan hisoblagichni oshiramiz (inbox belgisi uchun)
   if (role === "user") {
@@ -351,7 +382,7 @@ export async function listAccountsWithTokens() {
 export async function listContacts(limit = 50) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
-            c.tags, c.unread, c.first_seen,
+            c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
             p.name AS project_name,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
@@ -375,7 +406,7 @@ export async function setNeedsHuman(contactId, value) {
 
 export async function getContactMessages(contactId) {
   const { rows } = await pool.query(
-    `SELECT role, text, created_at
+    `SELECT role, text, created_at, is_operator
        FROM messages WHERE contact_id = $1
       ORDER BY created_at ASC`,
     [contactId]
@@ -386,12 +417,30 @@ export async function getContactMessages(contactId) {
 export async function getContact(contactId) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.needs_human, c.tags,
-            c.unread, p.name AS project_name
+            c.unread, c.first_seen, c.last_seen, c.bot_paused, c.paused_until,
+            c.note, c.sentiment, p.name AS project_name,
+            (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count
        FROM contacts c JOIN projects p ON p.id = c.project_id
       WHERE c.id = $1`,
     [contactId]
   );
   return rows[0] || null;
+}
+
+// Mijoz izohini (nota) saqlash — mini-CRM
+export async function setContactNote(contactId, note) {
+  await pool.query(`UPDATE contacts SET note = $2 WHERE id = $1`, [
+    contactId,
+    note,
+  ]);
+}
+
+// Mijoz kayfiyatini saqlash (AI aniqlaydi)
+export async function setContactSentiment(contactId, sentiment) {
+  await pool.query(`UPDATE contacts SET sentiment = $2 WHERE id = $1`, [
+    contactId,
+    sentiment,
+  ]);
 }
 
 // Mijoz + akkaunt tokeni (qo'lda javob yuborish uchun)
@@ -464,17 +513,76 @@ export async function insertBroadcast({ projectId, audience, message, total, sen
   return rows[0].id;
 }
 
+// --- Rejalashtirilgan broadcast (C3) ---
+export async function insertScheduledBroadcast({ projectId, audience, tag, message, scheduledAt }) {
+  const { rows } = await pool.query(
+    `INSERT INTO broadcasts (project_id, audience, tag, message, status, scheduled_at)
+     VALUES ($1, $2, $3, $4, 'scheduled', $5) RETURNING id`,
+    [projectId, audience, tag, message, scheduledAt]
+  );
+  return rows[0].id;
+}
+
+// Vaqti kelgan broadcastlarni atomik "olish" (ikki marta yuborilmasligi uchun)
+export async function claimDueBroadcasts() {
+  const { rows } = await pool.query(
+    `UPDATE broadcasts SET status = 'sending'
+      WHERE status = 'scheduled' AND scheduled_at <= now()
+      RETURNING id, project_id, tag, message`
+  );
+  return rows;
+}
+
+export async function finishBroadcast(id, { total, sent, failed, status = "sent" }) {
+  await pool.query(
+    `UPDATE broadcasts SET total = $2, sent = $3, failed = $4, status = $5 WHERE id = $1`,
+    [id, total, sent, failed, status]
+  );
+}
+
+// Faqat hali yuborilmagan (scheduled) broadcastni bekor qilish mumkin
+export async function cancelScheduledBroadcast(id) {
+  const { rows } = await pool.query(
+    `DELETE FROM broadcasts WHERE id = $1 AND status = 'scheduled' RETURNING id`,
+    [id]
+  );
+  return rows[0]?.id || null;
+}
+
 export async function listBroadcasts(limit = 20) {
   const { rows } = await pool.query(
     `SELECT b.id, b.audience, b.message, b.total, b.sent, b.failed, b.created_at,
+            b.status, b.scheduled_at, b.tag,
             p.name AS project_name
        FROM broadcasts b
        LEFT JOIN projects p ON p.id = b.project_id
-      ORDER BY b.created_at DESC
+      ORDER BY (b.status = 'scheduled') DESC, COALESCE(b.scheduled_at, b.created_at) DESC
       LIMIT $1`,
     [limit]
   );
   return rows;
+}
+
+// ------------------------------------------------------------
+//  TEZKOR JAVOBLAR (saved replies) — operator uchun tayyor matnlar
+// ------------------------------------------------------------
+export async function listSavedReplies() {
+  const { rows } = await pool.query(
+    `SELECT id, title, text FROM saved_replies ORDER BY id`
+  );
+  return rows;
+}
+
+export async function insertSavedReply(title, text) {
+  const { rows } = await pool.query(
+    `INSERT INTO saved_replies (title, text) VALUES ($1, $2) RETURNING id`,
+    [title, text]
+  );
+  return rows[0].id;
+}
+
+export async function deleteSavedReply(id) {
+  await pool.query(`DELETE FROM saved_replies WHERE id = $1`, [id]);
 }
 
 // ------------------------------------------------------------

@@ -293,6 +293,104 @@ function toggleSidebar(open) {
 `;
 
 // ------------------------------------------------------------
+//  KONTAKT PROFILI (drawer) — mini-CRM, inbox va kontaktlarda ishlatiladi
+// ------------------------------------------------------------
+const DRAWER_CSS = `
+  .drawer-back { position: fixed; inset: 0; background: rgba(4,5,10,.5); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 90; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .drawer-back.show { opacity: 1; pointer-events: auto; }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100vw; background: rgba(18,20,28,.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-left: 1px solid var(--border-subtle); z-index: 95; transform: translateX(100%); transition: transform .28s cubic-bezier(.22,1,.36,1); display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.45); }
+  .drawer.show { transform: none; }
+  .drawer-head { padding: 18px 20px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 12px; }
+  .drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .drawer-stat { background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px 12px; }
+  @media (max-width: 560px) { .drawer { width: 100vw; } }
+`;
+
+const DRAWER_HTML = `
+  <div class="drawer-back" id="drawerBack" onclick="closeProfile()"></div>
+  <aside class="drawer" id="drawer" aria-label="Kontakt profili">
+    <div class="drawer-head" id="drawerHead"></div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>`;
+
+const DRAWER_JS = `
+let PROFILE = null;
+function sentimentBadge(s) {
+  if (s === "positive") return '<span class="badge b-green">😊 ijobiy</span>';
+  if (s === "negative") return '<span class="badge b-red">😟 salbiy</span>';
+  if (s === "neutral") return '<span class="badge b-gray">😐 neytral</span>';
+  return "";
+}
+async function openProfile(contactId) {
+  $("drawerBack").classList.add("show");
+  $("drawer").classList.add("show");
+  $("drawerHead").innerHTML = '<div class="skeleton" style="height:44px;width:100%"></div>';
+  $("drawerBody").innerHTML = skeletonRows(4, 62);
+  try {
+    const { contact } = await api("/api/contacts/" + contactId + "/profile");
+    PROFILE = contact;
+    renderProfile();
+  } catch (e) {
+    $("drawerBody").innerHTML = emptyState("⚠️", "Profil yuklanmadi: " + e.message);
+  }
+}
+function renderProfile() {
+  const c = PROFILE;
+  $("drawerHead").innerHTML = \`
+    \${avatar(c.name || c.ig_user_id, 44)}
+    <div style="min-width:0;flex:1">
+      <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px">\${esc(c.name || c.ig_user_id)}</strong>
+      <span class="small muted">ID: \${esc(c.ig_user_id)}</span>
+    </div>
+    <button class="modal-x" onclick="closeProfile()" aria-label="Yopish">✕</button>\`;
+  $("drawerBody").innerHTML = \`
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      \${c.bot_paused ? '<span class="badge b-amber">🔕 bot pauzada</span>' : '<span class="badge b-green">🤖 bot faol</span>'}
+      \${c.needs_human ? '<span class="badge b-amber">🙋 odam kerak</span>' : ""}
+      \${sentimentBadge(c.sentiment)}
+      \${(c.tags || []).map((t) => '<span class="badge b-indigo">' + esc(t) + "</span>").join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="drawer-stat"><div class="small muted" style="margin-bottom:3px">Xabarlar</div><strong>\${c.msg_count ?? 0} ta</strong></div>
+      <div class="drawer-stat"><div class="small muted" style="margin-bottom:3px">Akkaunt</div><strong class="small">\${esc(c.project_name || "—")}</strong></div>
+      <div class="drawer-stat"><div class="small muted" style="margin-bottom:3px">Birinchi ko'rilgan</div><strong class="small">\${fmt(c.first_seen)}</strong></div>
+      <div class="drawer-stat"><div class="small muted" style="margin-bottom:3px">Oxirgi faollik</div><strong class="small">\${fmt(c.last_seen)}</strong></div>
+    </div>
+    <div>
+      <label class="lbl">📝 Izoh (faqat sizga ko'rinadi)</label>
+      <textarea class="input" id="noteText" rows="4" maxlength="2000" placeholder="Masalan: narx so'radi, ertaga qo'ng'iroq qilish kerak...">\${esc(c.note || "")}</textarea>
+      <button class="btn btn-sm" style="margin-top:8px" onclick="saveNote(this)">Izohni saqlash</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px">
+      <a class="btn btn-primary" href="/dashboard/inbox?contact=\${c.id}" style="flex:1;min-width:150px">💬 Suhbatga o'tish</a>
+      <button class="btn" onclick="toggleProfilePause()">\${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
+    </div>\`;
+}
+async function saveNote(btn) {
+  btn.disabled = true;
+  try {
+    await postJson("/api/contacts/" + PROFILE.id + "/note", { note: $("noteText").value });
+    toast("Izoh saqlandi ✓");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+async function toggleProfilePause() {
+  try {
+    const v = !PROFILE.bot_paused;
+    await postJson("/api/contacts/" + PROFILE.id + "/pause", { value: v });
+    PROFILE.bot_paused = v; PROFILE.paused_until = null;
+    renderProfile();
+    if (typeof onPauseChanged === "function") onPauseChanged(PROFILE.id, v);
+    toast(v ? "Bot pauza qilindi — endi siz gaplashasiz 🔕" : "Bot qayta yoqildi ▶️");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+function closeProfile() {
+  $("drawerBack").classList.remove("show");
+  $("drawer").classList.remove("show");
+}
+`;
+
+// ------------------------------------------------------------
 //  LAYOUT — barcha dashboard sahifalari uchun umumiy shablon
 // ------------------------------------------------------------
 export function renderLayout({ title, active, headerAction = "", content, script = "" }) {
@@ -605,7 +703,7 @@ loadSummary(); loadStats(); loadConversations(); loadAccounts();`;
 // ============================================================
 export function renderInboxPage() {
   const content = `
-  <style>
+  <style>${DRAWER_CSS}
     .inbox-wrap { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 170px); min-height: 460px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--bg-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
     .conv-list { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
     .conv-tools { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 9px; }
@@ -654,12 +752,14 @@ export function renderInboxPage() {
       <div class="chat-head" id="chatHead" style="display:none"></div>
       <div class="chat-msgs" id="chatMsgs" style="display:none"></div>
       <div class="composer" id="composer" style="display:none">
+        <button class="btn" onclick="openQuickReplies()" title="Tezkor javoblar" style="padding:9px 12px">⚡</button>
         <textarea class="input" id="replyText" rows="1" placeholder="Qo'lda javob yozish... (bot o'rniga siz)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendReply()">${ICONS.send} Yuborish</button>
       </div>
     </div>
-  </div>`;
+  </div>
+  ${DRAWER_HTML}`;
 
   const script = `
 let CONTACTS = [];
@@ -668,6 +768,7 @@ let FILTER = new URLSearchParams(location.search).get("filter") || "all";
 let SELECTED = Number(new URLSearchParams(location.search).get("contact")) || null;
 let CURRENT = null; // ochiq suhbat kontakti
 
+let SAVED_REPLIES = [];
 async function loadData() {
   try {
     const [c, t] = await Promise.all([api("/api/contacts?limit=300"), api("/api/tags")]);
@@ -677,6 +778,48 @@ async function loadData() {
   } catch (e) {
     $("convItems").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message);
   }
+  try { SAVED_REPLIES = (await api("/api/saved-replies")).replies || []; } catch (e) { /* jim */ }
+}
+
+// C2: Tezkor javoblar — bir bosishda tayyor matn
+function openQuickReplies() {
+  if (!SAVED_REPLIES.length) {
+    openModal("⚡ Tezkor javoblar", '<p class="muted" style="line-height:1.7">Hali tezkor javob yo\\'q.<br><a href="/dashboard/settings" style="color:#a5b4fc">Sozlamalar</a> sahifasida "Tezkor javoblar" bo\\'limidan qo\\'shing.</p>');
+    return;
+  }
+  openModal("⚡ Tezkor javoblar", SAVED_REPLIES.map((r) => \`
+    <button class="btn" style="width:100%;justify-content:flex-start;text-align:left;margin-bottom:8px;white-space:normal;padding:11px 14px" onclick="useQuickReply(\${r.id})">
+      <span style="min-width:0"><strong style="display:block;margin-bottom:2px">\${esc(r.title)}</strong>
+      <span class="small muted">\${esc(r.text.length > 90 ? r.text.slice(0, 90) + "…" : r.text)}</span></span>
+    </button>\`).join(""));
+}
+function useQuickReply(id) {
+  const r = SAVED_REPLIES.find((x) => x.id === id);
+  if (!r) return;
+  $("replyText").value = r.text;
+  closeModal();
+  $("replyText").focus();
+  $("replyText").dispatchEvent(new Event("input"));
+}
+
+// C1: Bot pauza (operator rejimi)
+async function togglePause() {
+  try {
+    const v = !CURRENT.bot_paused;
+    await postJson("/api/contacts/" + SELECTED + "/pause", { value: v });
+    CURRENT.bot_paused = v; CURRENT.paused_until = null;
+    const local = CONTACTS.find((c) => c.id === SELECTED);
+    if (local) { local.bot_paused = v; local.paused_until = null; }
+    renderChatHead(); renderList();
+    toast(v ? "Bot pauza qilindi — endi siz gaplashasiz 🔕" : "Bot qayta yoqildi ▶️");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+// Drawer'dan pauza o'zgarsa — inbox ro'yxatini ham yangilaymiz
+function onPauseChanged(id, v) {
+  const local = CONTACTS.find((c) => c.id === id);
+  if (local) { local.bot_paused = v; local.paused_until = null; }
+  if (CURRENT && CURRENT.id === id) { CURRENT.bot_paused = v; renderChatHead(); }
+  renderList();
 }
 function renderFilters() {
   const chips = [
@@ -708,6 +851,7 @@ function renderList() {
         <div style="display:flex;align-items:center;gap:6px">
           <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">\${esc(c.name || c.ig_user_id)}</strong>
           \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
+          \${c.bot_paused ? '<span title="Bot pauzada — operator gaplashadi">🔕</span>' : ""}
         </div>
         <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(c.last_text || "—")}</div>
       </div>
@@ -746,13 +890,17 @@ function renderChatHead() {
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
         <strong>\${esc(c.name || c.ig_user_id)}</strong>
         \${c.needs_human ? '<span class="badge b-amber">🙋 odam kerak</span>' : ""}
+        \${c.bot_paused ? '<span class="badge b-amber">🔕 bot pauzada</span>' : ""}
+        \${sentimentBadge(c.sentiment)}
       </div>
       <div class="small muted" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         \${esc(c.project_name || "")} · ID: \${esc(c.ig_user_id)}
         <span id="tagBadges">\${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join(" ")}</span>
       </div>
     </div>
-    <button class="btn btn-sm" onclick="openTagEditor()">🏷 Teg qo'shish</button>
+    <button class="btn btn-sm" onclick="togglePause()" title="\${c.bot_paused ? "Bot bu suhbatda yana javob beradi" : "Bot bu suhbatda javob bermaydi — siz gaplashasiz"}">\${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
+    <button class="btn btn-sm" onclick="openProfile(SELECTED)">👤 Profil</button>
+    <button class="btn btn-sm" onclick="openTagEditor()" title="Teg qo'shish">🏷</button>
     \${c.needs_human ? '<button class="btn btn-sm" onclick="resolveHuman()" title="Hal qilindi deb belgilash">✓ Hal qilindi</button>' : ""}\`;
 }
 function renderMessages(messages) {
@@ -778,11 +926,11 @@ async function sendReply() {
   try {
     await postJson("/api/reply", { contactId: SELECTED, text });
     $("replyText").value = "";
-    toast("Javob yuborildi ✓");
+    toast("Javob yuborildi ✓ — bot 30 daqiqa pauzada 🔕");
     const { contact, messages } = await api("/api/conversation/" + SELECTED);
     CURRENT = contact; renderChatHead(); renderMessages(messages);
     const local = CONTACTS.find((c) => c.id === SELECTED);
-    if (local) { local.last_text = text; local.needs_human = false; }
+    if (local) { local.last_text = text; local.needs_human = false; local.bot_paused = contact.bot_paused; }
     renderList();
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false; btn.innerHTML = 'Yuborish';
@@ -852,7 +1000,8 @@ setInterval(async () => {
   } catch (e) { /* jim — keyingi urinishda */ }
 }, 20000);
 
-loadData();`;
+loadData();
+${DRAWER_JS}`;
 
   return renderLayout({
     title: "Suhbatlar",
@@ -885,7 +1034,9 @@ export function renderContactsPage() {
       </tr></thead>
       <tbody id="rows"><tr><td colspan="6">${'<div class="skeleton" style="height:44px;margin:6px 0"></div>'.repeat(4)}</td></tr></tbody>
     </table>
-  </div>`;
+  </div>
+  <style>${DRAWER_CSS}</style>
+  ${DRAWER_HTML}`;
 
   const script = `
 let CONTACTS = [];
@@ -933,6 +1084,7 @@ function renderTable() {
           <span style="min-width:0">
             <strong style="display:flex;align-items:center;gap:6px">\${esc(c.name || c.ig_user_id)}
               \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
+              \${c.bot_paused ? '<span title="Bot pauzada">🔕</span>' : ""}
               \${c.unread ? \`<span class="badge" style="background:var(--grad);color:#fff">\${c.unread}</span>\` : ""}</strong>
             <span class="small muted">ID: \${esc(c.ig_user_id)}</span>
           </span>
@@ -948,7 +1100,10 @@ function renderTable() {
       </td>
       <td style="text-align:center">\${c.msg_count}</td>
       <td class="small muted" title="\${fmt(c.last_seen)}">\${timeAgo(c.last_seen)}</td>
-      <td><a class="btn btn-sm" href="/dashboard/inbox?contact=\${c.id}">💬 Suhbat</a></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm" onclick="openProfile(\${c.id})">👤 Profil</button>
+        <a class="btn btn-sm" href="/dashboard/inbox?contact=\${c.id}">💬 Suhbat</a>
+      </td>
     </tr>\`).join("");
 }
 
@@ -985,7 +1140,14 @@ async function removeTag(t) {
   try { await saveTags((EDITING.tags || []).filter((x) => x !== t)); toast("Teg o'chirildi"); }
   catch (e) { toast("Xatolik: " + e.message, false); }
 }
-loadData();`;
+// Drawer'dan pauza o'zgarsa — jadvalni yangilaymiz
+function onPauseChanged(id, v) {
+  const local = CONTACTS.find((c) => c.id === id);
+  if (local) { local.bot_paused = v; local.paused_until = null; }
+  renderTable();
+}
+loadData();
+${DRAWER_JS}`;
 
   return renderLayout({
     title: "Kontaktlar",
@@ -1021,6 +1183,14 @@ export function renderBroadcastPage() {
       <label class="lbl">Xabar matni</label>
       <textarea class="input" id="message" rows="5" maxlength="900" placeholder="Salom! Sizga maxsus taklifimiz bor..." oninput="updatePreview()"></textarea>
       <div class="small muted" style="text-align:right;margin:4px 0 14px"><span id="charCount">0</span>/900</div>
+      <label class="lbl">Qachon yuborilsin?</label>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <select class="input" id="whenSel" style="width:auto" onchange="toggleSchedule()">
+          <option value="now">Hozir yuborish</option>
+          <option value="later">🗓 Rejalashtirish</option>
+        </select>
+        <input type="datetime-local" class="input" id="schedAt" style="display:none;width:auto;color-scheme:dark">
+      </div>
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <button class="btn btn-primary" id="sendBtn" onclick="confirmSend()">${ICONS.broadcast} Yuborish</button>
         <span class="small muted" id="countInfo"></span>
@@ -1076,16 +1246,43 @@ async function loadHistory() {
       <div style="padding:10px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
           <strong class="small">\${esc(b.project_name || "—")}</strong>
-          <span class="small muted">\${timeAgo(b.created_at)}</span>
+          <span class="small muted">\${b.status === "scheduled" ? "" : timeAgo(b.created_at)}</span>
         </div>
         <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0">\${esc(b.message)}</div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
           <span class="badge b-gray">\${esc(b.audience)}</span>
-          <span class="badge b-green">✓ \${b.sent}/\${b.total}</span>
-          \${b.failed ? \`<span class="badge b-red">✕ \${b.failed}</span>\` : ""}
+          \${broadcastStatus(b)}
         </div>
       </div>\`).join("");
   } catch (e) { $("history").innerHTML = emptyState("📢", "Tarix yuklanmadi"); }
+}
+function broadcastStatus(b) {
+  if (b.status === "scheduled") {
+    return \`<span class="badge b-cyan">🗓 \${fmt(b.scheduled_at)}</span>
+      <button class="btn btn-sm btn-danger" style="padding:2px 9px;font-size:11px" onclick="cancelScheduled(\${b.id})">Bekor qilish</button>\`;
+  }
+  if (b.status === "sending") return '<span class="badge b-amber">⏳ yuborilmoqda...</span>';
+  if (b.status === "failed") return '<span class="badge b-red">✕ xato</span>';
+  return \`<span class="badge b-green">✓ \${b.sent}/\${b.total}</span>\` +
+    (b.failed ? \` <span class="badge b-red">✕ \${b.failed}</span>\` : "");
+}
+async function cancelScheduled(id) {
+  try {
+    await api("/api/broadcasts/" + id, { method: "DELETE" });
+    toast("Rejalashtirilgan broadcast bekor qilindi");
+    loadHistory();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+function toggleSchedule() {
+  const later = $("whenSel").value === "later";
+  $("schedAt").style.display = later ? "" : "none";
+  if (later && !$("schedAt").value) {
+    // Standart: 1 soat keyin (lokal vaqt, datetime-local formatida)
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    const p = (n) => String(n).padStart(2, "0");
+    $("schedAt").value = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+  $("sendBtn").innerHTML = later ? "🗓 Rejalashtirish" : "Yuborish";
 }
 let COUNT = 0;
 async function updateCount() {
@@ -1110,6 +1307,23 @@ function confirmSend() {
   const msg = $("message").value.trim();
   if (!$("account").value) return toast("Akkaunt tanlang", false);
   if (!msg) return toast("Xabar matnini yozing", false);
+  const later = $("whenSel").value === "later";
+  if (later) {
+    const v = $("schedAt").value;
+    if (!v) return toast("Sana va vaqtni tanlang", false);
+    const when = new Date(v);
+    if (isNaN(when.getTime()) || when.getTime() < Date.now() + 60 * 1000) {
+      return toast("Vaqt kamida 1 daqiqa kelajakda bo'lishi kerak", false);
+    }
+    openModal("Rejalashtirishni tasdiqlash", \`
+      <p style="margin-bottom:8px"><strong>\${fmt(when)}</strong> da yuboriladi — o'sha paytda 24 soat qoidasiga mos mijozlarga:</p>
+      <div style="background:var(--panel2);border-radius:12px;padding:12px;margin-bottom:16px;white-space:pre-wrap;font-size:13px">\${esc(msg)}</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn" onclick="closeModal()">Bekor qilish</button>
+        <button class="btn btn-primary" onclick="closeModal();doSend()">🗓 Rejalashtirish</button>
+      </div>\`);
+    return;
+  }
   if (!COUNT) return toast("Yuborish uchun mijoz yo'q (24 soat qoidasi)", false);
   openModal("Tasdiqlash", \`
     <p style="margin-bottom:8px"><strong>\${COUNT} ta mijozga</strong> quyidagi xabar yuboriladi:</p>
@@ -1121,7 +1335,26 @@ function confirmSend() {
 }
 async function doSend() {
   const btn = $("sendBtn");
+  const later = $("whenSel").value === "later";
   btn.disabled = true;
+
+  // Rejalashtirish: server o'zi vaqtida yuboradi, progress kerak emas
+  if (later) {
+    try {
+      const r = await postJson("/api/broadcast", {
+        projectId: Number($("account").value),
+        tag: $("audience").value || null,
+        message: $("message").value.trim(),
+        scheduledAt: new Date($("schedAt").value).toISOString(),
+      });
+      toast("Broadcast rejalashtirildi 🗓 " + fmt(r.scheduledAt));
+      $("message").value = ""; updatePreview();
+      loadHistory();
+    } catch (e) { toast("Xatolik: " + e.message, false); }
+    btn.disabled = false;
+    return;
+  }
+
   $("progressWrap").style.display = "";
   $("progressResult").textContent = "";
   $("progressBar").style.width = "0%";
@@ -1460,6 +1693,17 @@ export function renderSettingsPage() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px">⚡ Tezkor javoblar</h3>
+      <p class="small muted" style="margin-bottom:14px">Inbox'da bir bosishda qo'yiladigan tayyor javoblar (masalan "Narxlar haqida", "Aloqa ma'lumoti").</p>
+      <div id="qrList"><div class="skeleton" style="height:44px"></div></div>
+      <div style="display:grid;gap:8px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px">
+        <input class="input" id="qrTitle" placeholder="Sarlavha (masalan: Narxlar haqida)" maxlength="80">
+        <textarea class="input" id="qrText" rows="3" maxlength="1000" placeholder="Javob matni — inbox'da shu matn qo'yiladi..."></textarea>
+        <button class="btn btn-primary" style="justify-self:start" onclick="addQuickReply(this)">${ICONS.plus} Qo'shish</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px">🖥 Tizim</h3>
       <p class="small muted" style="margin-bottom:16px">Server va database holati.</p>
       <div id="sysInfo"><div class="skeleton" style="height:100px"></div></div>
@@ -1535,7 +1779,45 @@ function sysRow(label, valueHtml) {
     <div class="small muted" style="margin-bottom:4px">\${label}</div>
     <div style="display:flex;align-items:center;gap:7px;font-weight:600;font-size:13px">\${valueHtml}</div></div>\`;
 }
-loadSettings(); loadSystem();`;
+// C2: Tezkor javoblarni boshqarish
+async function loadQuickReplies() {
+  try {
+    const { replies } = await api("/api/saved-replies");
+    if (!replies.length) {
+      $("qrList").innerHTML = emptyState("⚡", "Hali tezkor javob yo'q — birinchisini qo'shing");
+      return;
+    }
+    $("qrList").innerHTML = replies.map((r) => \`
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="min-width:0;flex:1">
+          <strong class="small" style="display:block">\${esc(r.title)}</strong>
+          <span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(r.text)}</span>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="deleteQuickReply(\${r.id})" title="O'chirish">✕</button>
+      </div>\`).join("");
+  } catch (e) { $("qrList").innerHTML = emptyState("⚡", "Yuklanmadi: " + e.message); }
+}
+async function addQuickReply(btn) {
+  const title = $("qrTitle").value.trim();
+  const text = $("qrText").value.trim();
+  if (!title || !text) return toast("Sarlavha va matn majburiy", false);
+  btn.disabled = true;
+  try {
+    await postJson("/api/saved-replies", { title, text });
+    $("qrTitle").value = ""; $("qrText").value = "";
+    toast("Tezkor javob qo'shildi ✓");
+    loadQuickReplies();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+async function deleteQuickReply(id) {
+  try {
+    await api("/api/saved-replies/" + id, { method: "DELETE" });
+    toast("O'chirildi");
+    loadQuickReplies();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+loadSettings(); loadSystem(); loadQuickReplies();`;
 
   return renderLayout({
     title: "Sozlamalar",

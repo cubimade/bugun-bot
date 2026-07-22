@@ -48,6 +48,36 @@ export async function getClaudeReply(messages, systemPrompt = SYSTEM_PROMPT, mod
   }
 }
 
+// Kunlik xulosa (dashboard "Bugungi xulosa" kartasi, Haiku — tejamkor).
+// Xato bo'lsa bo'sh satr qaytaradi — chaqiruvchi o'zi fallback quradi.
+export async function getDailySummary(digest) {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 220,
+      system:
+        "Sen Instagram chat-bot platformasi egasiga kunlik xulosa yozuvchi yordamchisan. " +
+        "Faqat o'zbek tilida (lotin), 2-3 gap, do'stona lekin ishchan ohang. " +
+        "Raqamlarni tabiiy gapga aylantir, ro'yxat yoki sarlavha yozma. " +
+        "Agar operator kutayotgan suhbatlar bo'lsa, buni alohida ta'kidla.",
+      messages: [
+        {
+          role: "user",
+          content:
+            `Bugungi statistika (JSON): ${JSON.stringify(digest)}. ` +
+            `Maydonlar: todayMessages — bugungi xabarlar, newContacts — yangi mijozlar, ` +
+            `needsHuman — operator kutayotgan suhbatlar, topAccount — eng faol akkaunt, ` +
+            `priceAsks — narx so'ragan mijozlar. Xulosa yoz.`,
+        },
+      ],
+    });
+    return extractText(response);
+  } catch (err) {
+    console.error("⚠️ Claude (kunlik xulosa) xatoligi:", err.message);
+    return "";
+  }
+}
+
 // Kommentga qisqa javob.
 export async function getCommentReply(
   commentText,

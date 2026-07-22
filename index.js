@@ -29,7 +29,7 @@ import {
   RATE_LIMIT_MAX,
   RATE_LIMIT_WINDOW_MS,
 } from "./config.js";
-import { getClaudeReply, getCommentReply } from "./claude.js";
+import { getClaudeReply, getCommentReply, getDailySummary } from "./claude.js";
 import {
   sendInstagramMessage,
   replyToComment,
@@ -61,6 +61,7 @@ import {
   deleteProject,
   getAllSettings,
   saveSettings,
+  getDailyDigest,
 } from "./db.js";
 import { APP_VERSION } from "./templates.js";
 import {
@@ -478,6 +479,40 @@ APP.get("/api/stats", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     res.json(await getStats());
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- Bugungi AI xulosa (Haiku, 1 soatlik kesh — tejamkor) ---
+const SUMMARY_TTL_MS = 60 * 60 * 1000;
+let SUMMARY_CACHE = { text: null, digest: null, at: 0 };
+
+function buildSummaryFallback(d) {
+  const parts = [`Bugun ${d.todayMessages} ta xabar keldi`];
+  if (d.newContacts) parts.push(`${d.newContacts} ta yangi mijoz qo'shildi`);
+  if (d.priceAsks) parts.push(`${d.priceAsks} ta mijoz narx so'radi`);
+  let text = parts.join(", ") + ".";
+  if (d.needsHuman) text += ` ${d.needsHuman} ta suhbat sizni kutmoqda — ko'rib chiqing.`;
+  if (d.topAccount) text += ` Eng faol akkaunt: ${d.topAccount}.`;
+  return text;
+}
+
+APP.get("/api/summary", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const now = Date.now();
+    if (SUMMARY_CACHE.text && now - SUMMARY_CACHE.at < SUMMARY_TTL_MS) {
+      return res.json({
+        text: SUMMARY_CACHE.text,
+        digest: SUMMARY_CACHE.digest,
+        cachedAt: new Date(SUMMARY_CACHE.at).toISOString(),
+      });
+    }
+    const digest = await getDailyDigest();
+    const text = (await getDailySummary(digest)) || buildSummaryFallback(digest);
+    SUMMARY_CACHE = { text, digest, at: now };
+    res.json({ text, digest, cachedAt: new Date(now).toISOString() });
   } catch (err) {
     next(err);
   }

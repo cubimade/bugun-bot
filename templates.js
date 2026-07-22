@@ -356,16 +356,67 @@ ${script}</script>
 // ============================================================
 export function renderDashboardHome() {
   const content = `
-  <div id="humanAlert"></div>
+  <style>
+    .bento { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .bento-big { grid-column: span 2; }
+    .summary-text { font-size: 15px; line-height: 1.65; min-height: 72px; }
+    .ai-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .ai-ok { background: rgba(52,211,153,.12); color: var(--success); }
+    .ai-warn { background: rgba(251,191,36,.12); color: var(--warning); }
+    .chart-box { position: relative; }
+    .chart-tip { position: absolute; pointer-events: none; background: rgba(18,20,28,.95); border: 1px solid var(--border-glow); border-radius: 10px; padding: 6px 11px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -115%); opacity: 0; transition: opacity .15s; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .chart-tip.show { opacity: 1; }
+    .chart-tip strong { color: #a5b4fc; }
+    @media (max-width: 1000px) { .bento-big { grid-column: span 4; } .bento-sm { grid-column: span 2; } }
+    @media (max-width: 560px) { .bento-sm { grid-column: span 4; } }
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr !important; } }
+  </style>
 
-  <div class="stat-grid" id="cards">${'<div class="card skeleton" style="height:86px"></div>'.repeat(4)}</div>
-
-  <div class="card" style="margin-top:18px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <h3>📈 Oxirgi 7 kun faolligi</h3>
-      <span class="small muted">xabarlar soni</span>
+  <div class="bento">
+    <div class="card glow bento-big" id="summaryCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+        <h3>✨ Bugungi xulosa</h3>
+        <span id="aiStatus"></span>
+      </div>
+      <div id="summaryText" class="summary-text">
+        <div class="skeleton" style="height:15px;margin-bottom:9px;width:95%"></div>
+        <div class="skeleton" style="height:15px;margin-bottom:9px;width:80%"></div>
+        <div class="skeleton" style="height:15px;width:60%"></div>
+      </div>
+      <div class="small muted" id="summaryMeta" style="margin-top:10px"></div>
     </div>
-    <div id="chart" class="skeleton" style="height:150px"></div>
+
+    <div class="card glow bento-big">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px">
+        <h3>📈 Xabarlar</h3>
+        <span class="small muted">oxirgi 7 kun</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+        <span class="stat-num" id="todayNum">0</span>
+        <span class="small muted">bugun</span>
+      </div>
+      <div class="chart-box">
+        <div id="chart" class="skeleton" style="height:130px"></div>
+        <div class="chart-tip" id="chartTip"></div>
+      </div>
+    </div>
+
+    <a href="/dashboard/inbox?filter=human" class="card hoverable bento-sm stat-card" id="humanCard">
+      <div class="stat-ic" style="background:rgba(251,191,36,.13);font-size:20px">🙋</div>
+      <div><div class="stat-num" id="humanNum">0</div><div class="stat-lbl">Odam kerak suhbatlar</div></div>
+    </a>
+    <div class="card hoverable bento-sm stat-card">
+      <div class="stat-ic" style="background:rgba(99,102,241,.14);font-size:20px">📱</div>
+      <div><div class="stat-num" id="projNum">0</div><div class="stat-lbl">Akkauntlar</div></div>
+    </div>
+    <div class="card hoverable bento-sm stat-card">
+      <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">👥</div>
+      <div><div class="stat-num" id="contactNum">0</div><div class="stat-lbl">Jami mijozlar</div></div>
+    </div>
+    <div class="card hoverable bento-sm stat-card">
+      <div class="stat-ic" style="background:rgba(34,211,238,.12);font-size:20px">💬</div>
+      <div><div class="stat-num" id="msgNum">0</div><div class="stat-lbl">Jami xabarlar</div></div>
+    </div>
   </div>
 
   <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-top:18px" class="two-col">
@@ -389,66 +440,116 @@ export function renderDashboardHome() {
         <div id="accounts"><div class="skeleton" style="height:44px"></div></div>
       </div>
     </div>
-  </div>
-  <style>@media (max-width: 900px) { .two-col { grid-template-columns: 1fr !important; } }</style>`;
+  </div>`;
 
   const script = `
-const CHART_DAYS = 7;
 const DAY_NAMES = ["Yak", "Du", "Se", "Chor", "Pay", "Ju", "Shan"];
+
+// B1: AI kunlik xulosa (serverda 1 soat kesh)
+async function loadSummary() {
+  try {
+    const { text, digest, cachedAt } = await api("/api/summary");
+    $("summaryText").textContent = text;
+    const warn = digest && digest.needsHuman > 0;
+    $("aiStatus").innerHTML = warn
+      ? '<span class="ai-badge ai-warn"><span class="dot dot-amber"></span>E\\'tibor kerak</span>'
+      : '<span class="ai-badge ai-ok"><span class="dot dot-green"></span>Hammasi ishlayapti</span>';
+    $("summaryMeta").textContent = "✨ AI xulosa · yangilangan: " + fmt(cachedAt);
+  } catch (e) {
+    $("summaryText").textContent = "Xulosa hozircha tayyor emas — birinchi xabarlar kelganda paydo bo'ladi.";
+    $("summaryMeta").textContent = "";
+  }
+}
 
 async function loadStats() {
   try {
     const s = await api("/api/stats");
-    $("cards").innerHTML =
-      statCard("📱", s.projects, "Akkauntlar", "rgba(99,102,241,.14)") +
-      statCard("👥", s.contacts, "Jami mijozlar", "rgba(139,92,246,.14)") +
-      statCard("💬", s.messages, "Jami xabarlar", "rgba(34,197,94,.12)") +
-      statCard("🕒", s.today ?? 0, "Bugungi xabarlar", "rgba(245,158,11,.12)");
-    runCountUps($("cards"));
+    countUp($("todayNum"), s.today ?? 0);
+    countUp($("humanNum"), s.needsHuman || 0);
+    countUp($("projNum"), s.projects);
+    countUp($("contactNum"), s.contacts);
+    countUp($("msgNum"), s.messages);
+    if (s.needsHuman) $("humanCard").style.borderColor = "rgba(251,191,36,.45)";
     renderChart(s.week || []);
-    renderHumanAlert(s.needsHuman || 0);
   } catch (e) {
-    $("cards").innerHTML = emptyState("📊", "Statistika yuklanmadi: " + e.message);
     $("chart").classList.remove("skeleton");
-    $("chart").innerHTML = emptyState("📈", "Grafik mavjud emas");
+    $("chart").innerHTML = emptyState("📈", "Statistika yuklanmadi: " + e.message);
   }
 }
-function statCard(emoji, num, label, bg) {
-  return \`<div class="card stat-card hoverable glow">
-    <div class="stat-ic" style="background:\${bg};font-size:20px">\${emoji}</div>
-    <div><div class="stat-num" data-count="\${num}">0</div><div class="stat-lbl">\${label}</div></div></div>\`;
-}
-function renderHumanAlert(n) {
-  if (!n) { $("humanAlert").innerHTML = ""; return; }
-  $("humanAlert").innerHTML = \`
-    <a href="/dashboard/inbox?filter=human" class="card hoverable" style="display:flex;align-items:center;gap:12px;margin-bottom:18px;border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.07)">
-      <span style="font-size:22px">🙋</span>
-      <span style="flex:1"><strong style="color:#fbbf24">\${n} ta suhbat sizni kutmoqda</strong><br>
-      <span class="small muted">Mijozlar jonli operator so'ragan — ko'rib chiqing</span></span>
-      <span class="badge b-amber">Ko'rish →</span>
-    </a>\`;
-}
+
+// B3: silliq gradient area-chart — sof SVG, kutubxonasiz
 function renderChart(week) {
   const el = $("chart");
   el.classList.remove("skeleton");
-  // Oxirgi 7 kunni to'ldiramiz (bo'sh kunlar 0)
   const map = Object.fromEntries(week.map((w) => [w.day, w.n]));
   const days = [];
-  for (let i = CHART_DAYS - 1; i >= 0; i--) {
+  for (let i = 6; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86400000);
     const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-    days.push({ key, label: DAY_NAMES[d.getDay()], n: map[key] || 0, isToday: i === 0 });
+    days.push({ key, label: DAY_NAMES[d.getDay()], n: map[key] || 0 });
   }
+  const W = 560, H = 106, PX = 14, TOP = 12, BOT = 8;
   const max = Math.max(1, ...days.map((d) => d.n));
-  el.innerHTML = \`<div style="display:flex;align-items:flex-end;gap:10px;height:150px">\` +
-    days.map((d) => \`
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end" title="\${d.key}: \${d.n} xabar">
-        <span class="small" style="color:\${d.n ? "#a5b4fc" : "var(--muted)"};font-weight:600">\${d.n || ""}</span>
-        <div style="width:100%;max-width:46px;height:\${Math.max(4, Math.round((d.n / max) * 100))}px;border-radius:8px 8px 3px 3px;
-          background:\${d.n ? "linear-gradient(180deg,#8b5cf6,#6366f1)" : "var(--panel2)"};
-          transition:height .5s ease;box-shadow:\${d.n ? "0 4px 12px rgba(99,102,241,.25)" : "none"}"></div>
-        <span class="small" style="color:\${d.isToday ? "var(--text)" : "var(--muted)"};font-weight:\${d.isToday ? "600" : "400"}">\${d.label}</span>
-      </div>\`).join("") + \`</div>\`;
+  const pts = days.map((d, i) => ({
+    x: PX + (i * (W - 2 * PX)) / (days.length - 1),
+    y: TOP + (1 - d.n / max) * (H - TOP - BOT),
+  }));
+  // Catmull-Rom → bezier (silliq chiziq)
+  let line = "M " + pts[0].x + " " + pts[0].y;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    line += " C " + c1x.toFixed(1) + " " + c1y.toFixed(1) + ", " + c2x.toFixed(1) + " " + c2y.toFixed(1) + ", " + p2.x.toFixed(1) + " " + p2.y.toFixed(1);
+  }
+  const area = line + " L " + pts[pts.length - 1].x + " " + (H - BOT) + " L " + pts[0].x + " " + (H - BOT) + " Z";
+  const last = pts[pts.length - 1];
+  el.innerHTML = \`
+  <svg viewBox="0 0 \${W} \${H}" width="100%" height="106" preserveAspectRatio="none" style="display:block;overflow:visible">
+    <defs>
+      <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#8b5cf6" stop-opacity=".30"/>
+        <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#6366f1"/><stop offset="60%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#22d3ee"/>
+      </linearGradient>
+    </defs>
+    <path d="\${area}" fill="url(#areaFill)"/>
+    <path d="\${line}" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <line id="guide" x1="0" x2="0" y1="\${TOP}" y2="\${H - BOT}" stroke="rgba(255,255,255,.14)" style="opacity:0"/>
+    <circle id="hoverDot" r="4" fill="#fff" stroke="#8b5cf6" stroke-width="2" style="opacity:0"/>
+    <circle cx="\${last.x}" cy="\${last.y}" r="4.5" fill="#22d3ee">
+      <animate attributeName="opacity" values="1;.45;1" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="\${last.x}" cy="\${last.y}" r="4.5" fill="none" stroke="#22d3ee" stroke-width="1.5" opacity=".6">
+      <animate attributeName="r" values="4.5;12" dur="1.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".6;0" dur="1.6s" repeatCount="indefinite"/>
+    </circle>
+    \${days.map((d, i) => \`<rect x="\${(pts[i].x - (W - 2 * PX) / 12).toFixed(1)}" y="0" width="\${((W - 2 * PX) / 6).toFixed(1)}" height="\${H}" fill="transparent" data-di="\${i}"/>\`).join("")}
+  </svg>
+  <div style="display:flex;justify-content:space-between;padding:4px 4px 0" class="small">
+    \${days.map((d, i) => \`<span style="color:\${i === 6 ? "var(--text)" : "var(--muted)"};font-weight:\${i === 6 ? "600" : "400"}">\${d.label}</span>\`).join("")}
+  </div>\`;
+  const svg = el.querySelector("svg");
+  const tip = $("chartTip");
+  svg.addEventListener("mousemove", (ev) => {
+    const di = ev.target.dataset ? ev.target.dataset.di : null;
+    if (di == null) return;
+    const i = Number(di);
+    const sx = el.getBoundingClientRect().width / W;
+    tip.innerHTML = "<strong>" + days[i].n + " xabar</strong> · " + days[i].label + " (" + days[i].key.slice(5) + ")";
+    tip.style.left = pts[i].x * sx + "px";
+    tip.style.top = pts[i].y + "px";
+    tip.classList.add("show");
+    const g = svg.querySelector("#guide"); g.setAttribute("x1", pts[i].x); g.setAttribute("x2", pts[i].x); g.style.opacity = 1;
+    const hd = svg.querySelector("#hoverDot"); hd.setAttribute("cx", pts[i].x); hd.setAttribute("cy", pts[i].y); hd.style.opacity = 1;
+  });
+  svg.addEventListener("mouseleave", () => {
+    tip.classList.remove("show");
+    svg.querySelector("#guide").style.opacity = 0;
+    svg.querySelector("#hoverDot").style.opacity = 0;
+  });
 }
 async function loadConversations() {
   try {
@@ -484,7 +585,7 @@ async function loadAccounts() {
       </div>\`).join("");
   } catch (e) { $("accounts").innerHTML = emptyState("📱", "Yuklanmadi"); }
 }
-loadStats(); loadConversations(); loadAccounts();`;
+loadSummary(); loadStats(); loadConversations(); loadAccounts();`;
 
   return renderLayout({
     title: "Boshqaruv",

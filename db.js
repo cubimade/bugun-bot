@@ -246,6 +246,41 @@ export async function getStats() {
 }
 
 // ------------------------------------------------------------
+//  Kunlik digest — AI xulosa uchun xom raqamlar (O'zbekiston vaqti)
+// ------------------------------------------------------------
+export async function getDailyDigest() {
+  const TODAY = `(created_at AT TIME ZONE 'Asia/Tashkent')::date = (now() AT TIME ZONE 'Asia/Tashkent')::date`;
+  const [todayMsgs, newContacts, needsHumanQ, topAccount, priceAsks] = await Promise.all([
+    pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE ${TODAY}`),
+    pool.query(
+      `SELECT COUNT(*)::int AS n FROM contacts
+        WHERE (first_seen AT TIME ZONE 'Asia/Tashkent')::date = (now() AT TIME ZONE 'Asia/Tashkent')::date`
+    ),
+    pool.query(`SELECT COUNT(*)::int AS n FROM contacts WHERE needs_human`),
+    pool.query(
+      `SELECT p.name, COUNT(*)::int AS n
+         FROM messages m
+         JOIN contacts c ON c.id = m.contact_id
+         JOIN projects p ON p.id = c.project_id
+        WHERE (m.created_at AT TIME ZONE 'Asia/Tashkent')::date = (now() AT TIME ZONE 'Asia/Tashkent')::date
+        GROUP BY p.name ORDER BY n DESC LIMIT 1`
+    ),
+    pool.query(
+      `SELECT COUNT(DISTINCT contact_id)::int AS n FROM messages
+        WHERE role = 'user' AND ${TODAY}
+          AND (text ILIKE '%narx%' OR text ILIKE '%qancha%' OR text ILIKE '%price%' OR text ILIKE '%skidka%' OR text ILIKE '%chegirma%')`
+    ),
+  ]);
+  return {
+    todayMessages: todayMsgs.rows[0].n,
+    newContacts: newContacts.rows[0].n,
+    needsHuman: needsHumanQ.rows[0].n,
+    topAccount: topAccount.rows[0]?.name || null,
+    priceAsks: priceAsks.rows[0].n,
+  };
+}
+
+// ------------------------------------------------------------
 //  Bilim bazasi (knowledge base) — har akkaunt uchun biznes ma'lumoti
 // ------------------------------------------------------------
 export async function getProjectKnowledge(projectId) {

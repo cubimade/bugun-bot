@@ -186,15 +186,18 @@ small, .small { font-size: 12px; }
 [data-theme="light"] .glass:hover, [data-theme="light"] .card.hoverable:hover { box-shadow: 0 14px 34px rgba(30,35,60,.14), inset 0 1px 0 var(--rim-light); }
 .card.glow::before { content: ""; position: absolute; top: 0; left: 14px; right: 14px; height: 1px; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(168,85,247,.65), rgba(34,211,238,.45), transparent); }
 
-/* Aylanuvchi GRADIENT CHEGARA — muhim kartalar (A3) */
-@property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-.glass-featured { background: var(--glass-bg-strong); }
+/* Muhim karta — oddiy glass fon + STATIK nozik 1px gradient chegara.
+   Faqat halqa chiziladi (mask), karta ichiga rang dog'i tushmaydi. */
+.glass-featured { background: var(--glass-bg); }
 .glass-featured::before {
-  content: ''; position: absolute; inset: -1px; border-radius: 19px; z-index: -1;
-  background: conic-gradient(from var(--angle), transparent 0%, var(--accent) 12%, var(--accent-2) 22%, transparent 34%);
-  animation: spin-border 6s linear infinite;
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(135deg, rgba(99,102,241,.55), rgba(168,85,247,.22) 45%, rgba(34,211,238,.35));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
 }
-@keyframes spin-border { to { --angle: 360deg; } }
 
 /* KURSORNI KUZATUVCHI GLOW (A5) */
 .glass-glow::after {
@@ -282,6 +285,19 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 .stat-ic { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .stat-num { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .stat-lbl { color: var(--text-secondary); font-size: 12px; }
+.stat-ctx { color: var(--text-3); font-size: 11px; margin-top: 2px; }
+
+/* 5-bosqich: vaqt filtri (segmented control) */
+.seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--input-bg); border: 1px solid var(--glass-border); }
+.seg button { border: none; background: transparent; color: var(--text-2); padding: 6px 14px; border-radius: 9px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 500; transition: color .18s ease, background .18s ease; white-space: nowrap; }
+.seg button:hover { color: var(--text-1); }
+.seg button.on { background: var(--gradient-brand); color: #fff; box-shadow: 0 2px 10px rgba(99,102,241,.3); }
+
+/* 5-bosqich: trend belgisi va sparkline */
+.trend { font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 2px; font-variant-numeric: tabular-nums; }
+.trend.up { color: var(--success); }
+.trend.down { color: var(--danger); }
+.spark { margin-top: 10px; height: 40px; }
 
 /* Stagger — kartalar birin-ketin kirib keladi (A6) */
 .stagger > * { animation: fadeIn .45s ease backwards; }
@@ -387,6 +403,49 @@ function emptyState(emoji, text, actionHtml) {
 function toggleSidebar(open) {
   $("sidebar").classList.toggle("open", open);
   $("overlay").classList.toggle("show", open);
+}
+// 5-bosqich: vaqt filtri — tanlov localStorage'da saqlanadi
+let PERIOD = "7d";
+try { PERIOD = localStorage.getItem("period") || "7d"; } catch (e) {}
+const PERIOD_LABELS = { today: "Bugun", "7d": "7 kun", "30d": "30 kun", all: "Hammasi" };
+function renderPeriodSeg(el, onChange) {
+  if (!el) return;
+  el.innerHTML = '<div class="seg">' + Object.keys(PERIOD_LABELS).map(function (k) {
+    return '<button class="' + (k === PERIOD ? "on" : "") + '" data-p="' + k + '">' + PERIOD_LABELS[k] + "</button>";
+  }).join("") + "</div>";
+  el.querySelectorAll("button").forEach(function (b) {
+    b.onclick = function () {
+      PERIOD = b.dataset.p;
+      try { localStorage.setItem("period", PERIOD); } catch (e) {}
+      renderPeriodSeg(el, onChange);
+      onChange(PERIOD);
+    };
+  });
+}
+// Trend belgisi: ↑ +12% (yashil) / ↓ -5% (qizil)
+function trendBadge(pct) {
+  if (pct == null) return "";
+  const up = pct >= 0;
+  return '<span class="trend ' + (up ? "up" : "down") + '" title="o\\'tgan davrga nisbatan">' +
+    (up ? "↑ +" : "↓ ") + pct + "%</span>";
+}
+// Sparkline — 7 kunlik mini-grafik (sof SVG, 40px, gradient)
+let SPARK_SEQ = 0;
+function sparkline(values, colorVar) {
+  const v = (values && values.length > 1) ? values : [0, 0];
+  const W = 120, H = 36;
+  const max = Math.max(1, Math.max.apply(null, v));
+  const pts = v.map(function (n, i) {
+    return (i * (W / (v.length - 1))).toFixed(1) + "," + (H - 3 - (n / max) * (H - 8)).toFixed(1);
+  }).join(" ");
+  const gid = "sg" + (++SPARK_SEQ);
+  const c = colorVar || "var(--accent)";
+  return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" height="40" preserveAspectRatio="none" style="display:block;overflow:visible">' +
+    '<defs><linearGradient id="' + gid + '" x1="0" y1="0" x2="0" y2="1">' +
+    '<stop offset="0%" style="stop-color:' + c + ';stop-opacity:.28"/>' +
+    '<stop offset="100%" style="stop-color:' + c + ';stop-opacity:0"/></linearGradient></defs>' +
+    '<polygon points="0,' + H + " " + pts + " " + W + "," + H + '" fill="url(#' + gid + ')"/>' +
+    '<polyline points="' + pts + '" fill="none" style="stroke:' + c + '" stroke-width="2" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>';
 }
 // Light/Dark theme almashtirgich (A0) — localStorage'da saqlanadi
 function updateThemeBtns() {
@@ -581,11 +640,11 @@ ${script}</script>
 export function renderDashboardHome() {
   const content = `
   <style>
-    /* Bento: 1 katta (xulosa) + 2 o'rta (grafik, odam-kerak) + 3 kichik */
-    .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
-    .bento-xl { grid-column: span 6; }
-    .bento-big { grid-column: span 3; }
-    .bento-sm { grid-column: span 2; }
+    /* Bento: 1 katta (xulosa) + 2 o'rta (grafik, donut) + 4 kichik (stat) */
+    .bento { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+    .bento-xl { grid-column: span 12; }
+    .bento-big { grid-column: span 6; }
+    .bento-sm { grid-column: span 3; }
     .summary-text { font-size: 15px; line-height: 1.65; min-height: 72px; }
     .ai-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
     .ai-ok { background: rgba(52,211,153,.12); color: var(--success); }
@@ -594,10 +653,14 @@ export function renderDashboardHome() {
     .chart-tip { position: absolute; pointer-events: none; background: var(--surface-2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border-glow); border-radius: 10px; padding: 6px 11px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -115%); opacity: 0; transition: opacity .15s; z-index: 5; box-shadow: var(--shadow-glass); }
     .chart-tip.show { opacity: 1; }
     .chart-tip strong { color: var(--accent-soft); }
-    @media (max-width: 1000px) { .bento-big { grid-column: span 6; } .bento-sm { grid-column: span 3; } }
-    @media (max-width: 560px) { .bento-sm { grid-column: span 6; } }
+    .donut-seg { transition: stroke-width .2s ease; cursor: pointer; }
+    .donut-seg:hover { stroke-width: 26; }
+    @media (max-width: 1000px) { .bento-big { grid-column: span 12; } .bento-sm { grid-column: span 6; } }
+    @media (max-width: 560px) { .bento-sm { grid-column: span 12; } }
     @media (max-width: 900px) { .two-col { grid-template-columns: 1fr !important; } }
   </style>
+
+  <div id="periodSeg" style="margin-bottom:16px"></div>
 
   <div class="bento stagger">
     <div class="card glass-featured glass-glow bento-xl" id="summaryCard">
@@ -616,11 +679,11 @@ export function renderDashboardHome() {
     <div class="card glow glass-glow bento-big">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px">
         <h3>📈 Xabarlar</h3>
-        <span class="small muted">oxirgi 7 kun</span>
+        <span class="small muted" id="chartSub">oxirgi 7 kun</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
         <span class="stat-num" id="todayNum">0</span>
-        <span class="small muted">bugun</span>
+        <span id="msgTrend"></span>
       </div>
       <div class="chart-box">
         <div id="chart" class="skeleton" style="height:130px"></div>
@@ -628,21 +691,56 @@ export function renderDashboardHome() {
       </div>
     </div>
 
-    <a href="/dashboard/inbox?filter=human" class="card hoverable glass-glow bento-big stat-card" id="humanCard">
-      <div class="stat-ic" style="background:rgba(251,191,36,.13);font-size:20px">🙋</div>
-      <div><div class="stat-num" id="humanNum">0</div><div class="stat-lbl">Odam kerak suhbatlar</div></div>
+    <div class="card glow glass-glow bento-big">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px">
+        <h3>🍩 Suhbatlar holati</h3>
+        <span class="small muted">davr bo'yicha</span>
+      </div>
+      <div id="donut" class="skeleton" style="height:170px"></div>
+    </div>
+
+    <a href="/dashboard/inbox?filter=human" class="card hoverable glass-glow bento-sm" id="humanCard">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div class="stat-ic" style="background:rgba(251,191,36,.13);font-size:20px">🙋</div>
+        <div style="flex:1;min-width:0">
+          <div class="stat-num" id="humanNum">0</div>
+          <div class="stat-lbl">Odam kerak</div>
+          <div class="stat-ctx" id="humanCtx"></div>
+        </div>
+      </div>
+      <div class="spark" id="humanSpark"></div>
     </a>
-    <div class="card hoverable glass-glow bento-sm stat-card">
-      <div class="stat-ic" style="background:rgba(99,102,241,.14);font-size:20px">📱</div>
-      <div><div class="stat-num" id="projNum">0</div><div class="stat-lbl">Akkauntlar</div></div>
+    <div class="card hoverable glass-glow bento-sm">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div class="stat-ic" style="background:rgba(99,102,241,.14);font-size:20px">📱</div>
+        <div style="flex:1;min-width:0">
+          <div class="stat-num" id="projNum">0</div>
+          <div class="stat-lbl">Akkauntlar</div>
+          <div class="stat-ctx" id="projCtx"></div>
+        </div>
+      </div>
     </div>
-    <div class="card hoverable glass-glow bento-sm stat-card">
-      <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">👥</div>
-      <div><div class="stat-num" id="contactNum">0</div><div class="stat-lbl">Jami mijozlar</div></div>
+    <div class="card hoverable glass-glow bento-sm">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">👥</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span class="stat-num" id="contactNum">0</span><span id="contactTrend"></span></div>
+          <div class="stat-lbl" id="contactLbl">Mijozlar</div>
+          <div class="stat-ctx" id="contactCtx"></div>
+        </div>
+      </div>
+      <div class="spark" id="contactSpark"></div>
     </div>
-    <div class="card hoverable glass-glow bento-sm stat-card">
-      <div class="stat-ic" style="background:rgba(34,211,238,.12);font-size:20px">💬</div>
-      <div><div class="stat-num" id="msgNum">0</div><div class="stat-lbl">Jami xabarlar</div></div>
+    <div class="card hoverable glass-glow bento-sm">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div class="stat-ic" style="background:rgba(34,211,238,.12);font-size:20px">💬</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span class="stat-num" id="msgNum">0</span><span id="msgTrend2"></span></div>
+          <div class="stat-lbl">Xabarlar</div>
+          <div class="stat-ctx" id="msgCtx"></div>
+        </div>
+      </div>
+      <div class="spark" id="msgSpark"></div>
     </div>
   </div>
 
@@ -688,32 +786,59 @@ async function loadSummary() {
   }
 }
 
+const PERIOD_SUB = { today: "bugun, soatlar bo'yicha", "7d": "oxirgi 7 kun", "30d": "oxirgi 30 kun", all: "oxirgi 30 kun" };
+
 async function loadStats() {
   try {
-    const s = await api("/api/stats");
-    countUp($("todayNum"), s.today ?? 0);
+    const s = await api("/api/stats?period=" + PERIOD);
+    $("chartSub").textContent = PERIOD_SUB[s.period] || "";
+    // Grafik kartasi: davrdagi xabarlar + trend
+    countUp($("todayNum"), s.messages ?? 0);
+    $("msgTrend").innerHTML = trendBadge(s.trends && s.trends.messages);
+    // Odam kerak
     countUp($("humanNum"), s.needsHuman || 0);
+    $("humanCtx").textContent = s.needsHuman ? "javob kutmoqda" : "hammasi javoblangan";
+    $("humanSpark").innerHTML = sparkline(s.sparks.human, "var(--warning)");
+    // Akkauntlar
     countUp($("projNum"), s.projects);
-    countUp($("contactNum"), s.contacts);
-    countUp($("msgNum"), s.messages);
+    $("projCtx").textContent = "ulangan akkaunt";
+    // Mijozlar (davrda faol; "hammasi"da jami)
+    countUp($("contactNum"), s.contacts ?? 0);
+    $("contactLbl").textContent = s.period === "all" ? "Jami mijozlar" : "Faol mijozlar";
+    $("contactTrend").innerHTML = trendBadge(s.trends && s.trends.contacts);
+    $("contactCtx").textContent = (s.contactsNew ?? 0) + " tasi yangi · jami " + (s.contactsTotal ?? 0);
+    $("contactSpark").innerHTML = sparkline(s.sparks.active, "var(--accent-2)");
+    // Xabarlar
+    countUp($("msgNum"), s.messages ?? 0);
+    $("msgTrend2").innerHTML = trendBadge(s.trends && s.trends.messages);
+    $("msgCtx").textContent = "bugun " + (s.today ?? 0) + " ta";
+    $("msgSpark").innerHTML = sparkline(s.sparks.msgs, "var(--accent-3)");
     if (s.needsHuman) $("humanCard").style.borderColor = "rgba(251,191,36,.45)";
-    renderChart(s.week || []);
+    renderChart(s.series || [], s.period);
   } catch (e) {
     $("chart").classList.remove("skeleton");
     $("chart").innerHTML = emptyState("📈", "Statistika yuklanmadi: " + e.message);
   }
 }
 
-// B3: silliq gradient area-chart — sof SVG, kutubxonasiz
-function renderChart(week) {
+// Silliq gradient area-chart — sof SVG; davrga qarab soatlik yoki kunlik
+function renderChart(series, period) {
   const el = $("chart");
   el.classList.remove("skeleton");
-  const map = Object.fromEntries(week.map((w) => [w.day, w.n]));
+  const map = Object.fromEntries(series.map((w) => [String(w.x), w.n]));
   const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 86400000);
-    const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-    days.push({ key, label: DAY_NAMES[d.getDay()], n: map[key] || 0 });
+  if (period === "today") {
+    for (let h = 0; h < 24; h++) {
+      days.push({ key: h + ":00", label: h % 4 === 0 ? String(h) : "", n: map[String(h)] || 0, tip: h + ":00" });
+    }
+  } else {
+    const nDays = period === "7d" ? 7 : 30;
+    for (let i = nDays - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000);
+      const key = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      const label = nDays === 7 ? DAY_NAMES[d.getDay()] : (i % 5 === 0 ? String(d.getDate()) : "");
+      days.push({ key, label, n: map[key] || 0, tip: nDays === 7 ? DAY_NAMES[d.getDay()] + " (" + key.slice(5) + ")" : key.slice(5) });
+    }
   }
   const W = 560, H = 106, PX = 14, TOP = 12, BOT = 8;
   const max = Math.max(1, ...days.map((d) => d.n));
@@ -753,10 +878,10 @@ function renderChart(week) {
       <animate attributeName="r" values="4.5;12" dur="1.6s" repeatCount="indefinite"/>
       <animate attributeName="opacity" values=".6;0" dur="1.6s" repeatCount="indefinite"/>
     </circle>
-    \${days.map((d, i) => \`<rect x="\${(pts[i].x - (W - 2 * PX) / 12).toFixed(1)}" y="0" width="\${((W - 2 * PX) / 6).toFixed(1)}" height="\${H}" fill="transparent" data-di="\${i}"/>\`).join("")}
+    \${days.map((d, i) => \`<rect x="\${(pts[i].x - ((W - 2 * PX) / (days.length - 1)) / 2).toFixed(1)}" y="0" width="\${((W - 2 * PX) / (days.length - 1)).toFixed(1)}" height="\${H}" fill="transparent" data-di="\${i}"/>\`).join("")}
   </svg>
   <div style="display:flex;justify-content:space-between;padding:4px 4px 0" class="small">
-    \${days.map((d, i) => \`<span style="color:\${i === 6 ? "var(--text)" : "var(--muted)"};font-weight:\${i === 6 ? "600" : "400"}">\${d.label}</span>\`).join("")}
+    \${days.map((d, i) => \`<span style="color:\${i === days.length - 1 ? "var(--text)" : "var(--muted)"};font-weight:\${i === days.length - 1 ? "600" : "400"}">\${d.label}</span>\`).join("")}
   </div>\`;
   const svg = el.querySelector("svg");
   const tip = $("chartTip");
@@ -765,7 +890,7 @@ function renderChart(week) {
     if (di == null) return;
     const i = Number(di);
     const sx = el.getBoundingClientRect().width / W;
-    tip.innerHTML = "<strong>" + days[i].n + " xabar</strong> · " + days[i].label + " (" + days[i].key.slice(5) + ")";
+    tip.innerHTML = "<strong>" + days[i].n + " xabar</strong> · " + days[i].tip;
     tip.style.left = pts[i].x * sx + "px";
     tip.style.top = pts[i].y + "px";
     tip.classList.add("show");
@@ -812,7 +937,53 @@ async function loadAccounts() {
       </div>\`).join("");
   } catch (e) { $("accounts").innerHTML = emptyState("📱", "Yuklanmadi"); }
 }
-loadSummary(); loadStats(); loadConversations(); loadAccounts();`;
+// C1: Donut — suhbatlar holati (sof SVG, kutubxonasiz)
+async function loadDonut() {
+  try {
+    const a = await api("/api/analytics?period=" + PERIOD);
+    renderDonut(a.donut);
+  } catch (e) {
+    $("donut").classList.remove("skeleton");
+    $("donut").innerHTML = emptyState("🍩", "Ma'lumot yig'ilmoqda...");
+  }
+}
+function renderDonut(d) {
+  const el = $("donut");
+  el.classList.remove("skeleton");
+  const items = [
+    { label: "Javob berilgan", n: d.answered || 0, c: "var(--accent)" },
+    { label: "Odam kerak", n: d.human || 0, c: "var(--warning)" },
+    { label: "Bot pauzada", n: d.paused || 0, c: "var(--accent-3)" },
+    { label: "Javobsiz", n: d.silent || 0, c: "var(--text-3)" },
+  ];
+  const total = items.reduce((s, x) => s + x.n, 0);
+  if (!total) { el.innerHTML = emptyState("🍩", "Ma'lumot yig'ilmoqda — bu davrda suhbat yo'q"); return; }
+  const R = 62, CX = 80, CY = 80, C2 = 2 * Math.PI * R;
+  let off = 0;
+  const segs = items.filter((x) => x.n).map((x) => {
+    const frac = x.n / total;
+    const dash = Math.max(frac * C2 - 2, 0.5);
+    const seg = '<circle cx="' + CX + '" cy="' + CY + '" r="' + R + '" fill="none" style="stroke:' + x.c + '" stroke-width="20" stroke-linecap="butt"' +
+      ' stroke-dasharray="' + dash.toFixed(1) + " " + (C2 - dash).toFixed(1) + '"' +
+      ' stroke-dashoffset="' + (-off * C2).toFixed(1) + '" transform="rotate(-90 ' + CX + " " + CY + ')" class="donut-seg">' +
+      "<title>" + x.label + ": " + x.n + "</title></circle>";
+    off += frac;
+    return seg;
+  }).join("");
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">' +
+    '<svg viewBox="0 0 160 160" width="150" height="150" style="flex-shrink:0">' + segs +
+    '<text x="80" y="78" text-anchor="middle" style="fill:var(--text-1);font-size:26px;font-weight:700">' + total + "</text>" +
+    '<text x="80" y="98" text-anchor="middle" style="fill:var(--text-3);font-size:11px">suhbat</text></svg>' +
+    '<div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:8px">' +
+    items.map((x) => '<div style="display:flex;align-items:center;gap:8px" class="small">' +
+      '<span class="dot" style="background:' + x.c + '"></span><span style="flex:1">' + x.label + "</span>" +
+      "<strong>" + x.n + '</strong><span class="muted" style="min-width:36px;text-align:right">' +
+      Math.round((x.n / total) * 100) + "%</span></div>").join("") +
+    "</div></div>";
+}
+
+renderPeriodSeg($("periodSeg"), () => { loadStats(); loadDonut(); });
+loadSummary(); loadStats(); loadDonut(); loadConversations(); loadAccounts();`;
 
   return renderLayout({
     title: "Boshqaruv",

@@ -618,6 +618,12 @@ APP.get("/api/whats-changed", protect, async (req, res, next) => {
       newContacts: s.contactsNew, unanswered: m.unanswered, needsHuman: s.needsHuman,
     };
     let text = await getWhatsChanged(comparison);
+    // Haiku ba'zan markdown sarlavha qo'shadi — oddiy matnga tozalaymiz
+    text = (text || "")
+      .replace(/\*\*/g, "")
+      .replace(/^#+\s*/gm, "")
+      .replace(/^bu hafta nima o'zgardi[:\s]*/i, "")
+      .trim();
     if (!text) {
       const d = s.trends.messages;
       text = `Bu hafta ${s.messages} ta xabar keldi` +

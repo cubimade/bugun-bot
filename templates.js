@@ -4,7 +4,7 @@
 //  Har sahifa umumiy layout'dan foydalanadi (sidebar + kontent).
 // ============================================================
 
-export const APP_VERSION = "4.1.0";
+export const APP_VERSION = "5.0.0";
 
 // HTML uchun xavfsiz matn (XSS oldini olish)
 function esc(s) {

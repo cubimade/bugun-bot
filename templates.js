@@ -4,7 +4,7 @@
 //  Har sahifa umumiy layout'dan foydalanadi (sidebar + kontent).
 // ============================================================
 
-export const APP_VERSION = "4.0.0";
+export const APP_VERSION = "4.1.0";
 
 // HTML uchun xavfsiz matn (XSS oldini olish)
 function esc(s) {
@@ -272,7 +272,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .empty { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
 .empty .emoji { font-size: 36px; display: block; margin-bottom: 10px; filter: saturate(.85); }
-.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.25); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: -4px; }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(128,132,150,.3); border-top-color: currentColor; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; vertical-align: -4px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulseDot { 0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,.5); } 50% { box-shadow: 0 0 0 7px rgba(34,211,238,0); } }
 

@@ -115,6 +115,37 @@ export async function getInsights(messagesText) {
   }
 }
 
+// 5-bosqich E4: "Bu hafta nima o'zgardi" — joriy va o'tgan davr raqamlarini
+// taqqoslab 2-3 gap xulosa (Haiku, kunlik kesh bilan chaqiriladi).
+export async function getWhatsChanged(comparison) {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 260,
+      system:
+        "Sen biznes-analitik yordamchisan. Instagram bot statistikasini o'tgan davr bilan " +
+        "taqqoslab xulosa yozasan. Faqat o'zbek tilida (lotin), 2-3 gap, aniq raqamlar bilan. " +
+        "O'sish/pasayish sabablarini taxmin qilma — faqat faktlar va bitta amaliy tavsiya. " +
+        "Ro'yxat yoki sarlavha yozma.",
+      messages: [
+        {
+          role: "user",
+          content:
+            `Taqqoslash (JSON): ${JSON.stringify(comparison)}. ` +
+            `Maydonlar: messages/messagesPrev — xabarlar (joriy/o'tgan 7 kun), ` +
+            `activeContacts/activeContactsPrev — faol mijozlar, newContacts — yangi mijozlar, ` +
+            `unanswered — bot javob berolmagan savollar, needsHuman — operator kutayotganlar. ` +
+            `"Bu hafta nima o'zgardi" xulosasini yoz.`,
+        },
+      ],
+    });
+    return extractText(response);
+  } catch (err) {
+    console.error("⚠️ Claude (haftalik taqqoslash) xatoligi:", err.message);
+    return "";
+  }
+}
+
 // D2: Mijoz kayfiyati (sentiment) — juda arzon Haiku chaqiruvi.
 // 'positive' | 'neutral' | 'negative' yoki "" (xatoda).
 export async function getSentiment(userTexts) {

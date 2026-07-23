@@ -1475,7 +1475,7 @@ ${DRAWER_JS}`;
   return renderLayout({
     title: "Kontaktlar",
     active: "contacts",
-    headerAction: `<a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
+    headerAction: `<button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
     content,
     script,
   });
@@ -2163,9 +2163,64 @@ export function renderInsightsPage() {
     .ins-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border-subtle); }
     .ins-item:last-child { border-bottom: none; }
     .ins-rank { width: 26px; height: 26px; border-radius: 8px; background: rgba(99,102,241,.14); color: var(--accent-soft); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    /* D: metrikalar bento */
+    .m-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+    .m-num { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.2; font-variant-numeric: tabular-nums; }
+    /* C2: heatmap */
+    .heat-scroll { overflow-x: auto; }
+    .heat-grid { display: grid; grid-template-columns: 40px repeat(24, minmax(16px, 1fr)); gap: 3px; min-width: 560px; }
+    .heat-cell { aspect-ratio: 1; border-radius: 4px; min-height: 15px; }
+    .heat-lbl { font-size: 10px; color: var(--text-3); display: flex; align-items: center; }
+    /* C3: akkauntlar bar */
+    .acc-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+    .two-col-ana { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+    @media (max-width: 900px) { .two-col-ana { grid-template-columns: 1fr; } }
   </style>
 
-  <div class="card glow" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
+  <div id="periodSeg" style="margin-bottom:16px"></div>
+
+  <div class="m-grid stagger" id="metricsGrid">
+    ${'<div class="card skeleton" style="height:120px"></div>'.repeat(6)}
+  </div>
+
+  <div class="card glow" style="margin-top:16px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <h3>🕒 Qaysi soatda ko'p yozishadi?</h3>
+      <span class="small muted">mijoz xabarlari, hafta kuni × soat</span>
+    </div>
+    <div id="heatmap"><div class="skeleton" style="height:150px"></div></div>
+    <div class="small muted" id="heatSummary" style="margin-top:10px"></div>
+  </div>
+
+  <div class="two-col-ana">
+    <div class="card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <h3>🔻 Konversiya voronkasi</h3>
+        <span class="small muted">mijoz yo'li</span>
+      </div>
+      <div id="funnel"><div class="skeleton" style="height:220px"></div></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <h3>📱 Akkauntlar taqqoslashi</h3>
+        <span class="small muted">eng faoldan pastga</span>
+      </div>
+      <div id="accBars"><div class="skeleton" style="height:220px"></div></div>
+    </div>
+  </div>
+
+  <div class="card glass-featured" style="margin-top:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <h3>✨ Bu hafta nima o'zgardi</h3>
+      <span class="small muted" id="changedMeta"></span>
+    </div>
+    <div id="changedText" style="font-size:15px;line-height:1.65">
+      <div class="skeleton" style="height:15px;margin-bottom:9px;width:90%"></div>
+      <div class="skeleton" style="height:15px;width:70%"></div>
+    </div>
+  </div>
+
+  <div class="card glow" style="display:flex;align-items:center;gap:14px;margin:16px 0;flex-wrap:wrap">
     <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">🧠</div>
     <div style="flex:1;min-width:220px">
       <strong>AI suhbatlar tahlili</strong>
@@ -2181,6 +2236,152 @@ export function renderInsightsPage() {
   </div>`;
 
   const script = `
+const DAY_FULL = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
+const DAY_SHORT = ["Yak", "Du", "Se", "Chor", "Pay", "Ju", "Shan"];
+
+// D: 6 metrika
+async function loadMetrics() {
+  try {
+    const m = await api("/api/metrics?period=" + PERIOD);
+    const wd = m.weekdays || [];
+    const topDay = wd.length ? wd.reduce((a, b) => (b.n > a.n ? b : a)) : null;
+    const cards = [
+      { e: "⚡", num: m.avgResponseSec != null ? m.avgResponseSec + " s" : "—",
+        lbl: "O'rtacha javob vaqti",
+        sub: m.avgResponseSec != null ? "bot shu tezlikda javob beradi (" + m.avgResponseSample + " javob)" : "hali javoblar yo'q" },
+      { e: "💬", num: m.avgConversationMsgs || "—", lbl: "O'rtacha suhbat",
+        sub: "bitta mijoz bilan o'rtacha xabar" },
+      { e: "📅", num: topDay ? DAY_SHORT[topDay.dow] : "—", lbl: "Eng faol kun",
+        sub: topDay ? DAY_FULL[topDay.dow] + " — " + topDay.n + " xabar" : "ma'lumot yig'ilmoqda" },
+      { e: "🤷", num: m.unanswered, lbl: "Javobsiz savollar",
+        sub: m.unanswered ? "bilim bazasini to'ldirish kerak" : "bot hammasiga javob berdi" },
+      { e: "🔁", num: m.repeatCustomers.pct + "%", lbl: "Takroriy mijozlar",
+        sub: m.repeatCustomers.count + " ta mijoz qaytib yozgan" },
+      { e: "🆕", num: m.newVsReturning.fresh + " / " + m.newVsReturning.returning, lbl: "Yangi / qaytgan",
+        sub: "davr ichida yangi va eski mijozlar" },
+    ];
+    $("metricsGrid").innerHTML = cards.map(function (c) {
+      return '<div class="card hoverable glass-glow">' +
+        '<div style="font-size:20px;margin-bottom:6px">' + c.e + "</div>" +
+        '<div class="m-num">' + c.num + "</div>" +
+        '<div class="stat-lbl" style="margin-top:2px">' + c.lbl + "</div>" +
+        '<div class="stat-ctx">' + c.sub + "</div></div>";
+    }).join("");
+  } catch (e) {
+    $("metricsGrid").innerHTML = '<div class="card" style="grid-column:1/-1">' + emptyState("📊", "Metrikalar yuklanmadi: " + e.message) + "</div>";
+  }
+}
+
+// C2-C4: diagrammalar
+async function loadAnalytics() {
+  try {
+    const a = await api("/api/analytics?period=" + PERIOD);
+    renderHeatmap(a.heatmap || []);
+    renderFunnel(a.funnel || {});
+    renderAccBars(a.accounts || []);
+  } catch (e) {
+    $("heatmap").innerHTML = emptyState("🕒", "Yuklanmadi: " + e.message);
+    $("funnel").innerHTML = emptyState("🔻", "Yuklanmadi");
+    $("accBars").innerHTML = emptyState("📱", "Yuklanmadi");
+  }
+}
+
+// C2: 7 kun × 24 soat heatmap
+function renderHeatmap(rows) {
+  const grid = {};
+  let max = 0;
+  rows.forEach(function (r) { grid[r.dow + ":" + r.hour] = r.n; if (r.n > max) max = r.n; });
+  if (!max) { $("heatmap").innerHTML = emptyState("🕒", "Ma'lumot yig'ilmoqda — mijoz xabarlari kelganda to'ladi"); $("heatSummary").textContent = ""; return; }
+  const dows = [1, 2, 3, 4, 5, 6, 0]; // Du...Yak
+  let html = '<div class="heat-scroll"><div class="heat-grid">';
+  html += '<div></div>';
+  for (let h = 0; h < 24; h++) html += '<div class="heat-lbl" style="justify-content:center">' + (h % 3 === 0 ? h : "") + "</div>";
+  dows.forEach(function (d) {
+    html += '<div class="heat-lbl">' + DAY_SHORT[d] + "</div>";
+    for (let h = 0; h < 24; h++) {
+      const n = grid[d + ":" + h] || 0;
+      const alpha = n ? (0.12 + 0.78 * (n / max)).toFixed(2) : 0;
+      html += '<div class="heat-cell" style="background:' +
+        (n ? "rgba(99,102,241," + alpha + ")" : "var(--input-bg)") + '" title="' +
+        DAY_FULL[d] + " " + h + ':00 — ' + n + ' xabar"></div>';
+    }
+  });
+  html += "</div></div>";
+  $("heatmap").innerHTML = html;
+  // Eng faol 2 soatlik oyna (kunlar yig'indisi bo'yicha)
+  const hourTotals = Array.from({ length: 24 }, function (_, h) {
+    return dows.reduce(function (s, d) { return s + (grid[d + ":" + h] || 0); }, 0);
+  });
+  let best = 0, bestSum = -1;
+  for (let h = 0; h < 23; h++) {
+    const s = hourTotals[h] + hourTotals[h + 1];
+    if (s > bestSum) { bestSum = s; best = h; }
+  }
+  $("heatSummary").innerHTML = "💡 Eng faol vaqt: <strong style='color:var(--text-1)'>" + best + ":00–" + (best + 2) + ":00</strong> — shu paytda onlayn bo'lish eng foydali";
+}
+
+// C4: konversiya voronkasi (SVG trapetsiyalar)
+function renderFunnel(f) {
+  const stages = [
+    { lbl: "Yozgan", n: f.wrote || 0, c: "var(--accent)" },
+    { lbl: "Suhbatlashgan (2+ xabar)", n: f.engaged || 0, c: "var(--accent-2)" },
+    { lbl: "Qiziqqan (narx/xizmat)", n: f.interested || 0, c: "var(--accent-3)" },
+    { lbl: "Aloqaga chiqqan", n: f.contacted || 0, c: "var(--success)" },
+  ];
+  if (!stages[0].n) { $("funnel").innerHTML = emptyState("🔻", "Ma'lumot yig'ilmoqda — bu davrda mijoz yo'q"); return; }
+  const W = 400, SH = 54, GAP = 8, max = stages[0].n;
+  const widths = stages.map(function (s) { return Math.max(0.14, s.n / max) * W; });
+  let svg = '<svg viewBox="0 0 ' + W + " " + (stages.length * (SH + GAP)) + '" width="100%" style="display:block">';
+  stages.forEach(function (s, i) {
+    const y = i * (SH + GAP);
+    const wTop = widths[i];
+    const wBot = i < stages.length - 1 ? widths[i + 1] : widths[i] * 0.72;
+    const x1 = (W - wTop) / 2, x2 = (W + wTop) / 2;
+    const x3 = (W + wBot) / 2, x4 = (W - wBot) / 2;
+    const pct = i === 0 ? 100 : (stages[i - 1].n ? Math.round((s.n / stages[i - 1].n) * 100) : 0);
+    svg += '<path d="M' + x1.toFixed(1) + " " + y + " L" + x2.toFixed(1) + " " + y +
+      " L" + x3.toFixed(1) + " " + (y + SH) + " L" + x4.toFixed(1) + " " + (y + SH) +
+      ' Z" style="fill:' + s.c + '" opacity="' + (0.92 - i * 0.07) + '">' +
+      "<title>" + s.lbl + ": " + s.n + " (" + pct + "%)</title></path>" +
+      '<text x="' + W / 2 + '" y="' + (y + SH / 2 - 4) + '" text-anchor="middle" style="fill:#fff;font-size:13px;font-weight:700">' + s.n + (i > 0 ? " · " + pct + "%" : "") + "</text>" +
+      '<text x="' + W / 2 + '" y="' + (y + SH / 2 + 13) + '" text-anchor="middle" style="fill:rgba(255,255,255,.85);font-size:10.5px">' + s.lbl + "</text>";
+  });
+  svg += "</svg>";
+  $("funnel").innerHTML = svg;
+}
+
+// C3: akkauntlar taqqoslashi — gorizontal gradient barlar (SVG)
+function renderAccBars(accounts) {
+  const list = accounts.filter(function (a) { return a.messages || a.contacts; });
+  if (!list.length) { $("accBars").innerHTML = emptyState("📱", "Ma'lumot yig'ilmoqda — bu davrda faollik yo'q"); return; }
+  const max = Math.max.apply(null, list.map(function (a) { return a.messages; }));
+  const total = list.reduce(function (s, a) { return s + a.messages; }, 0);
+  $("accBars").innerHTML = list.map(function (a) {
+    const w = max ? Math.max(2, Math.round((a.messages / max) * 100)) : 2;
+    const pct = total ? Math.round((a.messages / total) * 100) : 0;
+    return '<div class="acc-row">' +
+      '<span class="small" style="width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(a.name) + '">' + esc(a.name) + "</span>" +
+      '<svg viewBox="0 0 100 14" preserveAspectRatio="none" style="flex:1;height:14px;display:block">' +
+      '<defs><linearGradient id="ab' + a.id + '" x1="0" y1="0" x2="1" y2="0">' +
+      '<stop offset="0%" style="stop-color:var(--accent)"/><stop offset="100%" style="stop-color:var(--accent-2)"/></linearGradient></defs>' +
+      '<rect x="0" y="0" width="100" height="14" rx="7" style="fill:var(--input-bg)"/>' +
+      '<rect x="0" y="0" width="' + w + '" height="14" rx="7" fill="url(#ab' + a.id + ')"/></svg>' +
+      '<span class="small" style="flex-shrink:0;min-width:86px;text-align:right"><strong>' + a.messages + "</strong> xabar · " + pct + "%</span></div>" +
+      '<div class="small muted" style="margin:-4px 0 4px 120px">' + a.contacts + " mijoz</div>";
+  }).join("");
+}
+
+// E4: Bu hafta nima o'zgardi
+async function loadChanged() {
+  try {
+    const { text, cachedAt } = await api("/api/whats-changed");
+    $("changedText").textContent = text;
+    $("changedMeta").textContent = "✨ AI taqqoslash · " + fmt(cachedAt);
+  } catch (e) {
+    $("changedText").textContent = "Taqqoslash hozircha tayyor emas — ma'lumot yig'ilganda paydo bo'ladi.";
+  }
+}
+
 async function loadInsights(force) {
   if (force) {
     $("insBody").innerHTML = '<div class="ins-grid">' + '<div class="card skeleton" style="height:220px"></div>'.repeat(3) + "</div>";
@@ -2240,12 +2441,13 @@ async function loadInsights(force) {
     $("insMeta").textContent = "";
   }
 }
-loadInsights(false);`;
+renderPeriodSeg($("periodSeg"), () => { loadMetrics(); loadAnalytics(); });
+loadMetrics(); loadAnalytics(); loadChanged(); loadInsights(false);`;
 
   return renderLayout({
     title: "Tahlil",
     active: "insights",
-    headerAction: `<button class="btn" onclick="loadInsights(true)">🔄 Yangilash</button>`,
+    headerAction: `<button class="btn" onclick="location.href='/api/export/report.csv?period='+PERIOD">⬇ Hisobot</button> <button class="btn" onclick="loadInsights(true)">🔄 Yangilash</button>`,
     content,
     script,
   });

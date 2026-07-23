@@ -746,6 +746,7 @@ export async function getStatsForPeriod(period) {
       contacts: p === "all" ? null : pct(r.contacts_active, r.contacts_active_prev),
       newContacts: p === "all" ? null : pct(newContacts.rows[0].cur, newContacts.rows[0].prev),
     },
+    prevRaw: { messages: r.messages_prev, contactsActive: r.contacts_active_prev },
     series: series.rows,
     sparks: {
       msgs: sparks.rows.map((x) => x.msgs),

@@ -35,6 +35,7 @@ import {
   getDailySummary,
   getInsights,
   getSentiment,
+  getWhatsChanged,
 } from "./claude.js";
 import {
   sendInstagramMessage,
@@ -591,6 +592,40 @@ APP.get("/api/metrics", protect, async (req, res, next) => {
   try {
     const period = normalizePeriod(req.query.period);
     res.json(await cachedAnalytics("metrics:" + period, () => getMetrics(period)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- E4: "Bu hafta nima o'zgardi" (Haiku, kunlik kesh) ---
+const CHANGED_TTL_MS = 24 * 60 * 60 * 1000;
+let CHANGED_CACHE = { text: null, at: 0 };
+
+APP.get("/api/whats-changed", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const now = Date.now();
+    if (CHANGED_CACHE.text && now - CHANGED_CACHE.at < CHANGED_TTL_MS) {
+      return res.json({ text: CHANGED_CACHE.text, cachedAt: new Date(CHANGED_CACHE.at).toISOString() });
+    }
+    const [s, m] = await Promise.all([
+      getStatsForPeriod("7d"),
+      cachedAnalytics("metrics:7d", () => getMetrics("7d")),
+    ]);
+    const comparison = {
+      messages: s.messages, messagesPrev: s.prevRaw.messages,
+      activeContacts: s.contactsActive, activeContactsPrev: s.prevRaw.contactsActive,
+      newContacts: s.contactsNew, unanswered: m.unanswered, needsHuman: s.needsHuman,
+    };
+    let text = await getWhatsChanged(comparison);
+    if (!text) {
+      const d = s.trends.messages;
+      text = `Bu hafta ${s.messages} ta xabar keldi` +
+        (d != null ? ` (o'tgan haftaga nisbatan ${d >= 0 ? "+" : ""}${d}%)` : "") +
+        `, ${s.contactsActive} mijoz faol bo'ldi, ${s.contactsNew} tasi yangi.`;
+    }
+    CHANGED_CACHE = { text, at: now };
+    res.json({ text, cachedAt: new Date(now).toISOString() });
   } catch (err) {
     next(err);
   }

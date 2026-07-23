@@ -833,7 +833,7 @@ loadSummary(); loadStats(); loadConversations(); loadAccounts();`;
 export function renderInboxPage() {
   const content = `
   <style>${DRAWER_CSS}
-    .inbox-wrap { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 170px); min-height: 460px; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--bg-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+    .inbox-wrap { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 170px); min-height: 460px; border: 1px solid var(--glass-border); border-radius: 18px; overflow: hidden; background: var(--glass-bg); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); }
     .conv-list { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
     .conv-tools { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 9px; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; }

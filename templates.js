@@ -581,8 +581,11 @@ ${script}</script>
 export function renderDashboardHome() {
   const content = `
   <style>
-    .bento { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-    .bento-big { grid-column: span 2; }
+    /* Bento: 1 katta (xulosa) + 2 o'rta (grafik, odam-kerak) + 3 kichik */
+    .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+    .bento-xl { grid-column: span 6; }
+    .bento-big { grid-column: span 3; }
+    .bento-sm { grid-column: span 2; }
     .summary-text { font-size: 15px; line-height: 1.65; min-height: 72px; }
     .ai-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
     .ai-ok { background: rgba(52,211,153,.12); color: var(--success); }
@@ -591,13 +594,13 @@ export function renderDashboardHome() {
     .chart-tip { position: absolute; pointer-events: none; background: var(--surface-2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border-glow); border-radius: 10px; padding: 6px 11px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -115%); opacity: 0; transition: opacity .15s; z-index: 5; box-shadow: var(--shadow-glass); }
     .chart-tip.show { opacity: 1; }
     .chart-tip strong { color: var(--accent-soft); }
-    @media (max-width: 1000px) { .bento-big { grid-column: span 4; } .bento-sm { grid-column: span 2; } }
-    @media (max-width: 560px) { .bento-sm { grid-column: span 4; } }
+    @media (max-width: 1000px) { .bento-big { grid-column: span 6; } .bento-sm { grid-column: span 3; } }
+    @media (max-width: 560px) { .bento-sm { grid-column: span 6; } }
     @media (max-width: 900px) { .two-col { grid-template-columns: 1fr !important; } }
   </style>
 
   <div class="bento stagger">
-    <div class="card glass-featured glass-glow bento-big" id="summaryCard">
+    <div class="card glass-featured glass-glow bento-xl" id="summaryCard">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <h3>✨ Bugungi xulosa</h3>
         <span id="aiStatus"></span>
@@ -625,7 +628,7 @@ export function renderDashboardHome() {
       </div>
     </div>
 
-    <a href="/dashboard/inbox?filter=human" class="card hoverable glass-glow bento-sm stat-card" id="humanCard">
+    <a href="/dashboard/inbox?filter=human" class="card hoverable glass-glow bento-big stat-card" id="humanCard">
       <div class="stat-ic" style="background:rgba(251,191,36,.13);font-size:20px">🙋</div>
       <div><div class="stat-num" id="humanNum">0</div><div class="stat-lbl">Odam kerak suhbatlar</div></div>
     </a>

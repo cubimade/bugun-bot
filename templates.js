@@ -1702,7 +1702,7 @@ async function loadAccounts() {
       return;
     }
     $("cards").innerHTML = projects.map((p) => \`
-      <div class="card hoverable">
+      <div class="card hoverable glass-glow">
         <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">
           <div class="stat-ic" style="background:linear-gradient(135deg,#f43f5e,#8b5cf6);font-size:19px">📸</div>
           <div style="min-width:0;flex:1">
@@ -1991,7 +1991,7 @@ export function renderInsightsPage() {
     .ins-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
     .ins-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border-subtle); }
     .ins-item:last-child { border-bottom: none; }
-    .ins-rank { width: 26px; height: 26px; border-radius: 8px; background: rgba(99,102,241,.14); color: #a5b4fc; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .ins-rank { width: 26px; height: 26px; border-radius: 8px; background: rgba(99,102,241,.14); color: var(--accent-soft); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
   </style>
 
   <div class="card glow" style="display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap">
@@ -2028,7 +2028,7 @@ async function loadInsights(force) {
     const kg = insights.kb_gaps || [];
     $("insBody").innerHTML = \`
     <div class="ins-grid">
-      <div class="card hoverable">
+      <div class="card hoverable glass-glow">
         <h3 style="margin-bottom:6px">❓ Eng ko'p so'ralgan savollar</h3>
         <p class="small muted" style="margin-bottom:8px">Mijozlar nimani so'rayapti</p>
         \${tq.length ? tq.map((q, i) => \`
@@ -2039,7 +2039,7 @@ async function loadInsights(force) {
           </div>\`).join("") : emptyState("❓", "Aniq takrorlanuvchi savollar topilmadi")}
       </div>
 
-      <div class="card hoverable">
+      <div class="card hoverable glass-glow">
         <h3 style="margin-bottom:6px">💰 Sotuvga tayyor mijozlar</h3>
         <p class="small muted" style="margin-bottom:8px">Narx so'raganlar va qiziqqanlar — tezroq bog'laning!</p>
         \${sr.length ? sr.map((c) => \`
@@ -2053,7 +2053,7 @@ async function loadInsights(force) {
           </div>\`).join("") : emptyState("💰", "Hozircha sotuvga tayyor mijoz aniqlanmadi")}
       </div>
 
-      <div class="card hoverable">
+      <div class="card hoverable glass-glow">
         <h3 style="margin-bottom:6px">🧩 Bilim bazasi kamchiliklari</h3>
         <p class="small muted" style="margin-bottom:8px">Bot yaxshi javob berishi uchun nima qo'shish kerak</p>
         \${kg.length ? kg.map((g) => \`

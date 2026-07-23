@@ -61,34 +61,75 @@ const NAV_ITEMS = [
 //  Umumiy CSS — dizayn tizimi (ranglar, komponentlar, layout)
 // ------------------------------------------------------------
 const BASE_CSS = `
-:root {
-  /* --- Dizayn tizimi v2 (Premium 2026) --- */
+/* ===== VIZUAL TIZIM v3 — Liquid Glass + Light/Dark (ROADMAP-4 v2) ===== */
+[data-theme="dark"] {
   --bg-base: #0a0b10;
+  --bg-gradient: radial-gradient(80% 60% at 15% 0%, rgba(99,102,241,.16) 0%, transparent 55%),
+                 radial-gradient(60% 50% at 90% 15%, rgba(217,70,239,.12) 0%, transparent 55%),
+                 radial-gradient(50% 45% at 55% 100%, rgba(34,211,238,.09) 0%, transparent 60%);
+  --glass-bg: rgba(255,255,255,0.045);
+  --glass-bg-strong: rgba(255,255,255,0.08);
+  --glass-border: rgba(255,255,255,0.10);
+  --rim-light: rgba(255,255,255,0.28);        /* yuqori chetdagi hairline yorug'lik */
+  --text-1: #f5f6f8;  --text-2: #a3aec2;  --text-3: #6b7488;
+  --accent: #6366f1;  --accent-2: #a855f7;  --accent-3: #22d3ee;
+  --shadow-glass: 0 8px 32px rgba(0,0,0,0.35);
   --bg-surface: #12141c;
-  --bg-panel: rgba(255,255,255,0.03);
-  --bg-panel-hover: rgba(255,255,255,0.06);
-  --border-subtle: rgba(255,255,255,0.08);
-  --border-glow: rgba(99,102,241,0.35);
-  --accent: #6366f1;
-  --accent-2: #8b5cf6;
-  --accent-3: #22d3ee;
-  --gradient-brand: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #d946ef 100%);
-  --gradient-aurora: radial-gradient(60% 50% at 20% 10%, rgba(99,102,241,.14) 0%, transparent 60%),
-                     radial-gradient(50% 40% at 85% 20%, rgba(217,70,239,.10) 0%, transparent 60%),
-                     radial-gradient(40% 40% at 60% 90%, rgba(34,211,238,.08) 0%, transparent 60%);
+  --surface-1: rgba(18,20,28,.72);   /* sidebar/topbar */
+  --surface-2: rgba(18,20,28,.92);   /* modal/toast */
+  --surface-3: rgba(14,15,22,.97);   /* drawer/mobil sidebar */
+  --hover-bg: rgba(255,255,255,.07);
+  --input-bg: rgba(255,255,255,.04);
+  --row-hover: rgba(255,255,255,.03);
+  --scroll-thumb: rgba(255,255,255,.12);
+  --accent-soft: #a5b4fc;
   --success: #34d399; --warning: #fbbf24; --danger: #f87171;
-  --text-primary: #f4f5f7; --text-secondary: #9ca3b8; --text-muted: #6b7280;
-  /* v1 nom aliaslari — sahifalar ichida ishlatiladi */
-  --bg: var(--bg-base); --panel: var(--bg-panel); --panel2: rgba(255,255,255,0.05);
+  --overlay-bg: rgba(4,5,10,.6);
+  --fallback-bg: rgba(18,20,28,.96);
+}
+[data-theme="light"] {
+  --bg-base: #f4f5fa;
+  --bg-gradient: radial-gradient(80% 60% at 15% 0%, rgba(99,102,241,.10) 0%, transparent 55%),
+                 radial-gradient(60% 50% at 90% 15%, rgba(217,70,239,.07) 0%, transparent 55%);
+  --glass-bg: rgba(255,255,255,0.55);
+  --glass-bg-strong: rgba(255,255,255,0.75);
+  --glass-border: rgba(15,17,26,0.08);
+  --rim-light: rgba(255,255,255,0.9);
+  --text-1: #12141c;  --text-2: #4b5468;  --text-3: #8a91a3;
+  --accent: #5b5ef0;  --accent-2: #9333ea;  --accent-3: #0891b2;
+  --shadow-glass: 0 8px 28px rgba(30,35,60,0.10);
+  --bg-surface: #ffffff;
+  --surface-1: rgba(255,255,255,.78);
+  --surface-2: rgba(255,255,255,.92);
+  --surface-3: rgba(255,255,255,.97);
+  --hover-bg: rgba(15,17,26,.05);
+  --input-bg: rgba(255,255,255,.6);
+  --row-hover: rgba(15,17,26,.03);
+  --scroll-thumb: rgba(15,17,26,.18);
+  --accent-soft: #4f46e5;
+  --success: #059669; --warning: #b45309; --danger: #dc2626;
+  --overlay-bg: rgba(30,35,60,.35);
+  --fallback-bg: rgba(255,255,255,.94);
+}
+:root {
+  --gradient-brand: linear-gradient(135deg, var(--accent), var(--accent-2) 60%, #ec4899);
+  /* eski nom aliaslari — barcha sahifalar shu orqali theme'ga ergashadi */
+  --bg-panel: var(--glass-bg); --bg-panel-hover: var(--hover-bg);
+  --border-subtle: var(--glass-border); --border-glow: rgba(99,102,241,.4);
+  --text-primary: var(--text-1); --text-secondary: var(--text-2); --text-muted: var(--text-3);
+  --gradient-aurora: var(--bg-gradient);
+  --bg: var(--bg-base); --panel: var(--glass-bg); --panel2: var(--glass-bg-strong);
   --accent2: var(--accent-2); --warn: var(--warning);
-  --text: var(--text-primary); --muted: var(--text-secondary); --border: var(--border-subtle);
+  --text: var(--text-1); --muted: var(--text-2); --border: var(--glass-border);
   --grad: var(--gradient-brand);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
-body { background: var(--bg-base); background-image: var(--gradient-aurora); background-attachment: fixed; background-size: 160% 160%; color: var(--text-primary); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1.55; animation: aurora 30s ease-in-out infinite alternate; }
-@keyframes aurora { from { background-position: 0% 0%; } to { background-position: 100% 100%; } }
-@media (prefers-reduced-motion: reduce) { body { animation: none; } * { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+body { background: var(--bg-base); color: var(--text-1); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1.55; transition: background .3s ease, color .3s ease; }
+/* Jonli AURORA fon — fixed qatlam, sekin harakat (A2) */
+body::before { content: ""; position: fixed; inset: -8%; z-index: -1; background: var(--bg-gradient); animation: aurora 24s ease-in-out infinite; will-change: transform; pointer-events: none; }
+@keyframes aurora { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(-2%,2%) scale(1.05); } 100% { transform: translate(0,0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { body::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; }
 h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
@@ -98,13 +139,12 @@ small, .small { font-size: 12px; }
 .muted { color: var(--text-secondary); }
 .ic { width: 19px; height: 19px; flex-shrink: 0; }
 ::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,.10); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.18); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-track { background: transparent; }
-::selection { background: rgba(99,102,241,.35); }
+::selection { background: rgba(99,102,241,.3); }
 
 /* ---------- Layout ---------- */
-.sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; background: rgba(18,20,28,.72); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-right: 1px solid var(--border-subtle); display: flex; flex-direction: column; z-index: 50; transition: transform .25s ease; }
+.sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; background: var(--surface-1); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; z-index: 50; transition: transform .25s ease, background .3s ease; }
 .logo { padding: 22px 20px 18px; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
 .logo .grad-text, .grad-text { background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .nav { flex: 1; padding: 6px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
@@ -112,9 +152,11 @@ small, .small { font-size: 12px; }
 .nav a:hover { background: var(--bg-panel-hover); color: var(--text-primary); }
 .nav a.active { background: rgba(99,102,241,.10); color: var(--text-primary); }
 .nav a.active::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--gradient-brand); }
-.nav a.active .ic { color: #a5b4fc; }
+.nav a.active .ic { color: var(--accent-soft); }
 .nav a .nav-count { margin-left: auto; }
-.sidebar-foot { padding: 14px 20px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; display: flex; align-items: center; justify-content: space-between; }
+.sidebar-foot { padding: 14px 20px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.theme-btn { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 999px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; transition: border-color .2s ease, transform .2s ease, background .2s ease; }
+.theme-btn:hover { border-color: var(--border-glow); transform: rotate(15deg) scale(1.08); background: var(--hover-bg); }
 .main { margin-left: 240px; min-height: 100vh; }
 .content { max-width: 1160px; margin: 0 auto; padding: 26px 28px 56px; animation: pageIn .3s ease; }
 @keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -122,34 +164,71 @@ small, .small { font-size: 12px; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
 
 /* Mobil top-bar */
-.topbar { display: none; position: sticky; top: 0; z-index: 40; background: rgba(10,11,16,.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--border-subtle); padding: 12px 16px; align-items: center; gap: 12px; }
+.topbar { display: none; position: sticky; top: 0; z-index: 40; background: var(--surface-1); backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%); border-bottom: 1px solid var(--glass-border); padding: 12px 16px; align-items: center; gap: 12px; }
 .hamburger { background: none; border: none; color: var(--text-primary); cursor: pointer; padding: 4px; display: flex; }
 .hamburger .ic { width: 24px; height: 24px; }
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 45; opacity: 0; pointer-events: none; transition: opacity .25s; }
 .overlay.show { opacity: 1; pointer-events: auto; }
 
-/* ---------- Komponentlar (glassmorphism) ---------- */
-.card { position: relative; background: var(--bg-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease; }
-.card.hoverable:hover { transform: translateY(-2px); border-color: var(--border-glow); background: var(--bg-panel-hover); box-shadow: 0 10px 30px rgba(0,0,0,.35), 0 0 0 1px rgba(99,102,241,.08); }
-.card.glow::before { content: ""; position: absolute; top: 0; left: 14px; right: 14px; height: 1px; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(139,92,246,.65), rgba(34,211,238,.45), transparent); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 16px; border-radius: 10px; border: 1px solid var(--border-subtle); background: rgba(255,255,255,.04); color: var(--text-primary); font-weight: 500; cursor: pointer; transition: border-color .18s ease, filter .18s ease, background .18s ease, transform .18s ease; white-space: nowrap; }
-.btn:hover { border-color: var(--border-glow); background: var(--bg-panel-hover); transform: scale(1.02); }
+/* ---------- LIQUID GLASS komponentlar (A1 retsepti) ---------- */
+.glass, .card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); /* hairline rim-light! */
+  position: relative;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .25s ease, background .3s ease;
+}
+.card { padding: 20px; }
+.glass:hover, .card.hoverable:hover { transform: translateY(-2px); border-color: rgba(99,102,241,.4); box-shadow: 0 14px 40px rgba(0,0,0,.28), inset 0 1px 0 var(--rim-light); }
+[data-theme="light"] .glass:hover, [data-theme="light"] .card.hoverable:hover { box-shadow: 0 14px 34px rgba(30,35,60,.14), inset 0 1px 0 var(--rim-light); }
+.card.glow::before { content: ""; position: absolute; top: 0; left: 14px; right: 14px; height: 1px; border-radius: 999px; background: linear-gradient(90deg, transparent, rgba(168,85,247,.65), rgba(34,211,238,.45), transparent); }
+
+/* Aylanuvchi GRADIENT CHEGARA — muhim kartalar (A3) */
+@property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+.glass-featured { background: var(--glass-bg-strong); }
+.glass-featured::before {
+  content: ''; position: absolute; inset: -1px; border-radius: 19px; z-index: -1;
+  background: conic-gradient(from var(--angle), transparent 0%, var(--accent) 12%, var(--accent-2) 22%, transparent 34%);
+  animation: spin-border 6s linear infinite;
+}
+@keyframes spin-border { to { --angle: 360deg; } }
+
+/* KURSORNI KUZATUVCHI GLOW (A5) */
+.glass-glow::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; transition: opacity .3s;
+  background: radial-gradient(220px circle at var(--mx) var(--my), rgba(99,102,241,.15), transparent 60%);
+  pointer-events: none;
+}
+.glass-glow:hover::after { opacity: 1; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 16px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--input-bg); color: var(--text-1); font-weight: 500; cursor: pointer; transition: border-color .18s ease, filter .18s ease, background .18s ease, transform .18s ease; white-space: nowrap; }
+.btn:hover { border-color: var(--border-glow); background: var(--hover-bg); transform: scale(1.02); }
 .btn:active { transform: scale(0.98); }
 .btn .ic { width: 16px; height: 16px; }
-.btn-primary { background: var(--gradient-brand); border: none; color: #fff; box-shadow: 0 4px 16px rgba(99,102,241,.35); }
-.btn-primary:hover { filter: brightness(1.1); }
+/* YORUG'LIK NURI — specular sweep (A4) */
+.btn-primary { background: var(--gradient-brand); border: none; color: #fff; box-shadow: 0 4px 16px rgba(99,102,241,.35); position: relative; overflow: hidden; }
+.btn-primary::after {
+  content: ''; position: absolute; top: 0; left: -80%; width: 60%; height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.35), transparent);
+  transform: skewX(-20deg); transition: left .5s ease;
+}
+.btn-primary:hover::after { left: 130%; }
+.btn-primary:hover { filter: brightness(1.08); }
 .btn-danger { background: rgba(248,113,113,.10); border-color: rgba(248,113,113,.35); color: var(--danger); }
 .btn-danger:hover { border-color: var(--danger); background: rgba(248,113,113,.18); }
 .btn-sm { padding: 6px 11px; font-size: 13px; border-radius: 8px; }
 .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
-.input { width: 100%; background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 9px 12px; color: var(--text-primary); font: inherit; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
-.input:focus { outline: none; border-color: var(--accent); background: rgba(255,255,255,.05); box-shadow: 0 0 0 3px rgba(99,102,241,.16); }
+.input { width: 100%; background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 10px; padding: 9px 12px; color: var(--text-1); font: inherit; transition: border-color .18s ease, box-shadow .18s ease, background .18s ease; }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.18); }
 .input::placeholder { color: var(--text-muted); }
 select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
 select.input option { background: var(--bg-surface); color: var(--text-primary); }
 label.lbl { display: block; font-size: 13px; font-weight: 500; color: var(--text-secondary); margin: 0 0 6px; }
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 1.6; }
-.b-indigo { background: rgba(99,102,241,.15); color: #a5b4fc; }
+.b-indigo { background: rgba(99,102,241,.15); color: var(--accent-soft); }
 .b-green { background: rgba(52,211,153,.14); color: var(--success); }
 .b-amber { background: rgba(251,191,36,.14); color: var(--warning); }
 .b-red { background: rgba(248,113,113,.14); color: var(--danger); }
@@ -163,18 +242,18 @@ label.lbl { display: block; font-size: 13px; font-weight: 500; color: var(--text
 .dot-gray { background: #475569; }
 
 /* Jadval */
-.table-wrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--bg-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 18px; background: var(--glass-bg); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); }
 table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
-.tbl th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--border-subtle); background: rgba(255,255,255,.02); }
-.tbl td { padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.tbl th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--glass-border); background: var(--input-bg); }
+.tbl td { padding: 12px 16px; border-bottom: 1px solid var(--glass-border); vertical-align: middle; }
 .tbl tr:last-child td { border-bottom: none; }
 .tbl tbody tr { transition: background .15s; }
-.tbl tbody tr:hover { background: rgba(255,255,255,.03); }
+.tbl tbody tr:hover { background: var(--row-hover); }
 
-/* Modal */
-.modal-back { position: fixed; inset: 0; background: rgba(4,5,10,.66); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 16px; }
+/* Modal — liquid glass */
+.modal-back { position: fixed; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 16px; }
 .modal-back.show { display: flex; }
-.modal { background: rgba(18,20,28,.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); border-radius: 16px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; animation: fadeIn .22s ease; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.modal { background: var(--surface-2); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-border); border-radius: 18px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; animation: fadeIn .22s ease; box-shadow: 0 24px 60px rgba(0,0,0,.35), inset 0 1px 0 var(--rim-light); }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border-subtle); }
 .modal-head h3 { font-size: 16px; }
 .modal-x { background: none; border: none; color: var(--text-secondary); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 8px; transition: color .18s ease, background .18s ease; }
@@ -183,13 +262,13 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 
 /* Toast — o'ng yuqoridan kirib, 3s dan keyin chiqadi */
 #toasts { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
-.toast { background: rgba(18,20,28,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border-subtle); border-left: 3px solid var(--success); border-radius: 12px; padding: 11px 16px; box-shadow: 0 12px 32px rgba(0,0,0,.45); font-size: 13px; animation: toastIn .3s cubic-bezier(.21,1.02,.73,1); max-width: 320px; }
+.toast { background: var(--surface-2); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); border: 1px solid var(--glass-border); border-left: 3px solid var(--success); border-radius: 12px; padding: 11px 16px; box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); font-size: 13px; animation: toastIn .3s cubic-bezier(.21,1.02,.73,1); max-width: 320px; }
 .toast.err { border-left-color: var(--danger); }
 @keyframes toastIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes slideIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 
-/* Skeleton va bo'sh holat */
-.skeleton { background: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.09) 50%, rgba(255,255,255,.04) 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 10px; }
+/* Skeleton va bo'sh holat — glass-shimmer */
+.skeleton { background: linear-gradient(90deg, var(--input-bg) 25%, var(--hover-bg) 50%, var(--input-bg) 75%); background-size: 200% 100%; animation: shimmer 1.3s infinite; border-radius: 10px; }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .empty { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
 .empty .emoji { font-size: 36px; display: block; margin-bottom: 10px; filter: saturate(.85); }
@@ -204,9 +283,25 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 .stat-num { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .stat-lbl { color: var(--text-secondary); font-size: 12px; }
 
+/* Stagger — kartalar birin-ketin kirib keladi (A6) */
+.stagger > * { animation: fadeIn .45s ease backwards; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 60ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 180ms; }
+.stagger > *:nth-child(5) { animation-delay: 240ms; }
+.stagger > *:nth-child(6) { animation-delay: 300ms; }
+.stagger > *:nth-child(7) { animation-delay: 360ms; }
+.stagger > *:nth-child(8) { animation-delay: 420ms; }
+
+/* Fallback — backdrop-filter qo'llamaydigan qurilmalar (A7) */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass, .card, .sidebar, .topbar, .modal, .toast, .table-wrap, .drawer { background: var(--fallback-bg); }
+}
+
 /* ---------- Mobil ---------- */
 @media (max-width: 767px) {
-  .sidebar { transform: translateX(-100%); background: rgba(14,15,22,.97); }
+  .sidebar { transform: translateX(-100%); background: var(--surface-3); }
   .sidebar.open { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.6); }
   .main { margin-left: 0; }
   .topbar { display: flex; }
@@ -293,19 +388,42 @@ function toggleSidebar(open) {
   $("sidebar").classList.toggle("open", open);
   $("overlay").classList.toggle("show", open);
 }
+// Light/Dark theme almashtirgich (A0) — localStorage'da saqlanadi
+function updateThemeBtns() {
+  const t = document.documentElement.getAttribute("data-theme");
+  document.querySelectorAll(".theme-btn").forEach((b) => {
+    b.textContent = t === "dark" ? "\\u2600\\uFE0F" : "\\uD83C\\uDF19";
+    b.title = t === "dark" ? "Yorug' rejim" : "Tungi rejim";
+  });
+}
+function toggleTheme() {
+  const t = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", t);
+  try { localStorage.setItem("theme", t); } catch (e) {}
+  updateThemeBtns();
+}
+updateThemeBtns();
+// Kursorni kuzatuvchi glow (A5) — delegation, dinamik kartalarda ham ishlaydi
+document.addEventListener("mousemove", (e) => {
+  const card = e.target.closest && e.target.closest(".glass-glow");
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  card.style.setProperty("--mx", (e.clientX - r.left) + "px");
+  card.style.setProperty("--my", (e.clientY - r.top) + "px");
+});
 `;
 
 // ------------------------------------------------------------
 //  KONTAKT PROFILI (drawer) — mini-CRM, inbox va kontaktlarda ishlatiladi
 // ------------------------------------------------------------
 const DRAWER_CSS = `
-  .drawer-back { position: fixed; inset: 0; background: rgba(4,5,10,.5); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 90; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .drawer-back { position: fixed; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 90; opacity: 0; pointer-events: none; transition: opacity .25s; }
   .drawer-back.show { opacity: 1; pointer-events: auto; }
-  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100vw; background: rgba(18,20,28,.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-left: 1px solid var(--border-subtle); z-index: 95; transform: translateX(100%); transition: transform .28s cubic-bezier(.22,1,.36,1); display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.45); }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100vw; background: var(--surface-3); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border-left: 1px solid var(--glass-border); z-index: 95; transform: translateX(100%); transition: transform .28s cubic-bezier(.22,1,.36,1); display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.3); }
   .drawer.show { transform: none; }
-  .drawer-head { padding: 18px 20px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 12px; }
+  .drawer-head { padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 12px; }
   .drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
-  .drawer-stat { background: rgba(255,255,255,.04); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 10px 12px; }
+  .drawer-stat { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 12px; }
   @media (max-width: 560px) { .drawer { width: 100vw; } }
 `;
 
@@ -402,11 +520,12 @@ export function renderLayout({ title, active, headerAction = "", content, script
   ).join("");
 
   return `<!DOCTYPE html>
-<html lang="uz">
+<html lang="uz" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${esc(title)} — Bugun Bot</title>
+  <script>(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.setAttribute("data-theme",t)})()</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -418,7 +537,10 @@ export function renderLayout({ title, active, headerAction = "", content, script
     <nav class="nav">${nav}</nav>
     <div class="sidebar-foot">
       <span>v${APP_VERSION}</span>
-      <a href="/" class="muted" title="Bosh sahifa">${ICONS.logout}</a>
+      <span style="display:flex;align-items:center;gap:8px">
+        <button class="theme-btn" onclick="toggleTheme()" aria-label="Rejimni almashtirish"></button>
+        <a href="/" class="muted" title="Bosh sahifa">${ICONS.logout}</a>
+      </span>
     </div>
   </aside>
   <div class="overlay" id="overlay" onclick="toggleSidebar(false)"></div>
@@ -426,7 +548,8 @@ export function renderLayout({ title, active, headerAction = "", content, script
   <div class="main">
     <div class="topbar">
       <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Menyu">${I('<path d="M3 6h18M3 12h18M3 18h18"/>')}</button>
-      <strong>${esc(title)}</strong>
+      <strong style="flex:1">${esc(title)}</strong>
+      <button class="theme-btn" onclick="toggleTheme()" aria-label="Rejimni almashtirish"></button>
     </div>
     <div class="content">
       <div class="page-head">
@@ -465,16 +588,16 @@ export function renderDashboardHome() {
     .ai-ok { background: rgba(52,211,153,.12); color: var(--success); }
     .ai-warn { background: rgba(251,191,36,.12); color: var(--warning); }
     .chart-box { position: relative; }
-    .chart-tip { position: absolute; pointer-events: none; background: rgba(18,20,28,.95); border: 1px solid var(--border-glow); border-radius: 10px; padding: 6px 11px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -115%); opacity: 0; transition: opacity .15s; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .chart-tip { position: absolute; pointer-events: none; background: var(--surface-2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border-glow); border-radius: 10px; padding: 6px 11px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -115%); opacity: 0; transition: opacity .15s; z-index: 5; box-shadow: var(--shadow-glass); }
     .chart-tip.show { opacity: 1; }
-    .chart-tip strong { color: #a5b4fc; }
+    .chart-tip strong { color: var(--accent-soft); }
     @media (max-width: 1000px) { .bento-big { grid-column: span 4; } .bento-sm { grid-column: span 2; } }
     @media (max-width: 560px) { .bento-sm { grid-column: span 4; } }
     @media (max-width: 900px) { .two-col { grid-template-columns: 1fr !important; } }
   </style>
 
-  <div class="bento">
-    <div class="card glow bento-big" id="summaryCard">
+  <div class="bento stagger">
+    <div class="card glass-featured glass-glow bento-big" id="summaryCard">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
         <h3>✨ Bugungi xulosa</h3>
         <span id="aiStatus"></span>
@@ -487,7 +610,7 @@ export function renderDashboardHome() {
       <div class="small muted" id="summaryMeta" style="margin-top:10px"></div>
     </div>
 
-    <div class="card glow bento-big">
+    <div class="card glow glass-glow bento-big">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px">
         <h3>📈 Xabarlar</h3>
         <span class="small muted">oxirgi 7 kun</span>
@@ -502,19 +625,19 @@ export function renderDashboardHome() {
       </div>
     </div>
 
-    <a href="/dashboard/inbox?filter=human" class="card hoverable bento-sm stat-card" id="humanCard">
+    <a href="/dashboard/inbox?filter=human" class="card hoverable glass-glow bento-sm stat-card" id="humanCard">
       <div class="stat-ic" style="background:rgba(251,191,36,.13);font-size:20px">🙋</div>
       <div><div class="stat-num" id="humanNum">0</div><div class="stat-lbl">Odam kerak suhbatlar</div></div>
     </a>
-    <div class="card hoverable bento-sm stat-card">
+    <div class="card hoverable glass-glow bento-sm stat-card">
       <div class="stat-ic" style="background:rgba(99,102,241,.14);font-size:20px">📱</div>
       <div><div class="stat-num" id="projNum">0</div><div class="stat-lbl">Akkauntlar</div></div>
     </div>
-    <div class="card hoverable bento-sm stat-card">
+    <div class="card hoverable glass-glow bento-sm stat-card">
       <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">👥</div>
       <div><div class="stat-num" id="contactNum">0</div><div class="stat-lbl">Jami mijozlar</div></div>
     </div>
-    <div class="card hoverable bento-sm stat-card">
+    <div class="card hoverable glass-glow bento-sm stat-card">
       <div class="stat-ic" style="background:rgba(34,211,238,.12);font-size:20px">💬</div>
       <div><div class="stat-num" id="msgNum">0</div><div class="stat-lbl">Jami xabarlar</div></div>
     </div>
@@ -524,7 +647,7 @@ export function renderDashboardHome() {
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <h3>💬 Oxirgi suhbatlar</h3>
-        <a href="/dashboard/inbox" class="small" style="color:#a5b4fc">Hammasi →</a>
+        <a href="/dashboard/inbox" class="small" style="color:var(--accent-soft)">Hammasi →</a>
       </div>
       <div id="conversations">${'<div class="skeleton" style="height:52px;margin-bottom:8px"></div>'.repeat(4)}</div>
     </div>
@@ -618,7 +741,7 @@ function renderChart(week) {
     </defs>
     <path d="\${area}" fill="url(#areaFill)"/>
     <path d="\${line}" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
-    <line id="guide" x1="0" x2="0" y1="\${TOP}" y2="\${H - BOT}" stroke="rgba(255,255,255,.14)" style="opacity:0"/>
+    <line id="guide" x1="0" x2="0" y1="\${TOP}" y2="\${H - BOT}" style="opacity:0;stroke:var(--glass-border)"/>
     <circle id="hoverDot" r="4" fill="#fff" stroke="#8b5cf6" stroke-width="2" style="opacity:0"/>
     <circle cx="\${last.x}" cy="\${last.y}" r="4.5" fill="#22d3ee">
       <animate attributeName="opacity" values="1;.45;1" dur="1.6s" repeatCount="indefinite"/>
@@ -720,22 +843,22 @@ export function renderInboxPage() {
     .conv-item.sel { background: rgba(99,102,241,.12); border-left-color: var(--accent); }
     .conv-item.human { border-left-color: var(--warn); }
     .conv-item.human.sel { border-left-color: var(--accent); }
-    .chat-pane { display: flex; flex-direction: column; min-width: 0; background: rgba(10,11,16,.55); }
-    .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,.02); display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+    .chat-pane { display: flex; flex-direction: column; min-width: 0; background: var(--glass-bg); }
+    .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--row-hover); display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
     .chat-msgs { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 4px; }
     .bubble-row { display: flex; margin-bottom: 6px; animation: bubbleIn .22s ease; }
     @keyframes bubbleIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
     .bubble { max-width: 74%; padding: 9px 13px; border-radius: 16px; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
     .bubble .t { font-size: 10px; opacity: .6; margin-top: 3px; text-align: right; }
     .from-user { justify-content: flex-start; }
-    .from-user .bubble { background: rgba(255,255,255,.06); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border-subtle); border-bottom-left-radius: 5px; }
+    .from-user .bubble { background: var(--glass-bg-strong); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 0 var(--rim-light); border-bottom-left-radius: 5px; }
     .from-bot { justify-content: flex-end; }
-    .from-bot .bubble { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border-bottom-right-radius: 5px; box-shadow: 0 4px 14px rgba(99,102,241,.25); }
-    .from-bot .bubble.from-op { background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.45); color: var(--text-primary); box-shadow: none; }
+    .from-bot .bubble { background: var(--gradient-brand); color: #fff; border-bottom-right-radius: 5px; box-shadow: 0 4px 14px rgba(99,102,241,.25); }
+    .from-bot .bubble.from-op { background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.45); color: var(--text-1); box-shadow: none; }
     .op-tag { font-size: 10px; color: var(--accent-3); font-weight: 700; letter-spacing: .3px; margin-bottom: 3px; text-transform: uppercase; }
     .bubble-row.fresh .bubble { animation: freshGlow 1.8s ease; }
     @keyframes freshGlow { 0% { box-shadow: 0 0 0 3px rgba(34,211,238,.45); } 100% { box-shadow: 0 0 0 3px rgba(34,211,238,0); } }
-    .composer { padding: 12px; border-top: 1px solid var(--border); background: rgba(255,255,255,.02); display: flex; gap: 9px; align-items: flex-end; }
+    .composer { padding: 12px; border-top: 1px solid var(--border); background: var(--row-hover); display: flex; gap: 9px; align-items: flex-end; }
     .composer textarea { resize: none; max-height: 120px; min-height: 42px; }
     .back-btn { display: none; }
     @media (max-width: 900px) {
@@ -792,7 +915,7 @@ async function loadData() {
 // C2: Tezkor javoblar — bir bosishda tayyor matn
 function openQuickReplies() {
   if (!SAVED_REPLIES.length) {
-    openModal("⚡ Tezkor javoblar", '<p class="muted" style="line-height:1.7">Hali tezkor javob yo\\'q.<br><a href="/dashboard/settings" style="color:#a5b4fc">Sozlamalar</a> sahifasida "Tezkor javoblar" bo\\'limidan qo\\'shing.</p>');
+    openModal("⚡ Tezkor javoblar", '<p class="muted" style="line-height:1.7">Hali tezkor javob yo\\'q.<br><a href="/dashboard/settings" style="color:var(--accent-soft)">Sozlamalar</a> sahifasida "Tezkor javoblar" bo\\'limidan qo\\'shing.</p>');
     return;
   }
   openModal("⚡ Tezkor javoblar", SAVED_REPLIES.map((r) => \`
@@ -1605,7 +1728,7 @@ function addAccountModal() {
     <div class="card" style="padding:12px;background:rgba(99,102,241,.07);border-color:rgba(99,102,241,.35);margin-bottom:14px">
       <strong class="small">📖 Token qanday olinadi?</strong>
       <ol class="small muted" style="margin:6px 0 0 18px;line-height:1.8">
-        <li><a href="https://developers.facebook.com" target="_blank" style="color:#a5b4fc">developers.facebook.com</a> — ilovangizni oching</li>
+        <li><a href="https://developers.facebook.com" target="_blank" style="color:var(--accent-soft)">developers.facebook.com</a> — ilovangizni oching</li>
         <li>Instagram → API setup with Instagram login</li>
         <li>Akkauntni ulang va <strong>Access token</strong> generatsiya qiling</li>
         <li>Shu sahifadagi <strong>Instagram account ID</strong> ni ham nusxalang</li>

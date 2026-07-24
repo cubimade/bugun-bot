@@ -345,3 +345,19 @@ document.addEventListener("click", (e) => {
   if (drop && btn && !btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove("show");
 });
 if ($("notifBtn")) { refreshNotifs(); setInterval(refreshNotifs, 30000); }
+
+// ===== 12.1: joriy foydalanuvchi va rolga qarab nav =====
+window.ME = null;
+(async () => {
+  if (!document.querySelector(".nav")) return;
+  try {
+    const r = await api("/api/me");
+    window.ME = r.user;
+    if (r.user.role === "operator") {
+      document.querySelectorAll(".nav a").forEach((a) => {
+        const k = a.dataset.nav;
+        if (k && !["inbox", "contacts"].includes(k)) a.style.display = "none";
+      });
+    }
+  } catch (e) { /* legacy rejim — hammasi ko'rinadi */ }
+})();

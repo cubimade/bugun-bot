@@ -28,7 +28,7 @@ export function renderLayout({ title, active, headerAction = "", content, script
       <span>v${APP_VERSION}</span>
       <span style="display:flex;align-items:center;gap:8px">
         <button class="theme-btn" onclick="toggleTheme()" aria-label="Rejimni almashtirish"></button>
-        <a href="/" class="muted" title="Bosh sahifa">${ICONS.logout}</a>
+        <a href="/logout" class="muted" title="Chiqish (logout)">${ICONS.logout}</a>
       </span>
     </div>
   </aside>

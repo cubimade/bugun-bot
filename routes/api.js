@@ -64,6 +64,7 @@ import pipelineRouter from "./api-pipeline.js";
 import mediaRouter from "./api-media.js";
 import salesRouter from "./api-sales.js";
 import analytics2Router from "./api-analytics2.js";
+import usersRouter from "./api-users.js";
 
 const router = express.Router();
 
@@ -78,6 +79,7 @@ router.use(pipelineRouter);
 router.use(mediaRouter);
 router.use(salesRouter);
 router.use(analytics2Router);
+router.use(usersRouter);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -119,8 +121,13 @@ router.get("/api/contacts", protect, async (req, res, next) => {
     // B2: pagination — limit + offset, jami soni bilan ("Ko'proq yuklash" uchun)
     const limit = Math.min(Number(req.query.limit) || 50, 300);
     const offset = Math.max(Number(req.query.offset) || 0, 0);
+    // 12.1: operator faqat o'ziga biriktirilgan akkauntlarni ko'radi
+    const scope =
+      req.user?.role === "operator" && (req.user.project_ids || []).length
+        ? req.user.project_ids
+        : null;
     const [contacts, total] = await Promise.all([
-      listContacts(limit, offset),
+      listContacts(limit, offset, scope),
       countContacts(),
     ]);
     res.json({ contacts, total, limit, offset });
@@ -228,6 +235,14 @@ router.get("/api/conversation/:contactId", protect, async (req, res, next) => {
     const contactId = Number(req.params.contactId);
     const contact = await getContact(contactId);
     if (!contact) return res.status(404).json({ error: "Mijoz topilmadi" });
+    // 12.1: operator ko'lami — faqat biriktirilgan akkaunt mijozlari
+    if (
+      req.user?.role === "operator" &&
+      (req.user.project_ids || []).length &&
+      !req.user.project_ids.includes(contact.project_id)
+    ) {
+      return res.status(403).json({ error: "Bu suhbat sizga ochiq emas" });
+    }
     const messages = await getContactMessages(contactId);
     await markContactRead(contactId); // suhbat ochildi — o'qildi deb belgilaymiz
     res.json({ contact, messages });

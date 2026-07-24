@@ -38,11 +38,12 @@ export async function markContactRead(contactId) {
 // ------------------------------------------------------------
 //  Suhbatlar (dashboard uchun) — mijozlar ro'yxati
 // ------------------------------------------------------------
-export async function listContacts(limit = 50, offset = 0) {
+// projectIds (12.1): operator faqat biriktirilgan akkauntlarni ko'radi
+export async function listContacts(limit = 50, offset = 0, projectIds = null) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
             c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
-            c.language, c.segment,
+            c.language, c.segment, c.assigned_user_id,
             c.archived,
             p.name AS project_name, p.platform,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
@@ -52,9 +53,10 @@ export async function listContacts(limit = 50, offset = 0) {
                       AND m.source = 'story_reply') AS has_story
        FROM contacts c
        JOIN projects p ON p.id = c.project_id
+      WHERE ($3::int[] IS NULL OR c.project_id = ANY($3))
       ORDER BY c.last_seen DESC
       LIMIT $1 OFFSET $2`,
-    [limit, offset]
+    [limit, offset, projectIds]
   );
   return rows;
 }

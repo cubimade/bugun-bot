@@ -172,6 +172,25 @@ export function renderSettingsPage() {
       </div>
     </div>
 
+    <div class="card" id="usersCard" style="display:none">
+      <h3 style="margin-bottom:4px">👥 Jamoa (foydalanuvchilar)</h3>
+      <p class="small muted" style="margin-bottom:14px">Jamoa a'zolari email + parol bilan kiradi. <strong>Owner</strong> — hamma narsa; <strong>Admin</strong> — foydalanuvchilardan tashqari hammasi; <strong>Operator</strong> — faqat Inbox va Kontaktlar (tanlangan akkauntlar bo'yicha). Asosiy parol (DASHBOARD_PASSWORD) bilan kirish har doim ishlaydi.</p>
+      <div id="usersList"><div class="skeleton" style="height:44px"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 130px auto;gap:8px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px" class="us-cols">
+        <input class="input" id="nuEmail" type="email" placeholder="email@misol.uz">
+        <input class="input" id="nuName" maxlength="100" placeholder="Ism">
+        <select class="input" id="nuRole">
+          <option value="operator">Operator</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button class="btn btn-primary" onclick="addUser(this)">${ICONS.plus}</button>
+      </div>
+      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+        <button class="btn btn-sm" onclick="loadAudit()">📜 Audit log (kim nima o'zgartirdi)</button>
+        <div id="auditList" style="margin-top:10px"></div>
+      </div>
+    </div>
+
     <div class="card">
       <h3 style="margin-bottom:4px">📬 Haftalik hisobot (Telegram)</h3>
       <p class="small muted" style="margin-bottom:14px">Har dushanba ~09:00 da asosiy ko'rsatkichlar (xabarlar, yangi mijozlar, daromad, segmentlar + AI xulosa) Telegram'ingizga boradi. Telegram bot ulangan bo'lishi kerak. Chat ID'ni bilish uchun Telegram'da <strong>@userinfobot</strong> ga yozing.</p>
@@ -199,7 +218,7 @@ export function renderSettingsPage() {
     .slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: .25s; }
     .switch input:checked + .slider { background: var(--grad); border-color: transparent; }
     .switch input:checked + .slider:before { transform: translateX(20px); background: #fff; }
-    @media (max-width: 600px) { .ai-cols { grid-template-columns: 1fr !important; } .tr-cols { grid-template-columns: 1fr !important; } .gb-cols { grid-template-columns: 1fr !important; } }
+    @media (max-width: 600px) { .ai-cols { grid-template-columns: 1fr !important; } .tr-cols { grid-template-columns: 1fr !important; } .gb-cols { grid-template-columns: 1fr !important; } .us-cols { grid-template-columns: 1fr !important; } }
   </style>`;
 
   const script = `
@@ -487,6 +506,121 @@ async function deleteQuickReply(id) {
     loadQuickReplies();
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
+// ===== 12.1: foydalanuvchilar boshqaruvi (faqat owner ko'radi) =====
+let USERS = [], US_PROJECTS = [];
+async function initUsers() {
+  try {
+    const me = await api("/api/me");
+    if (me.user.role !== "owner") return;
+    $("usersCard").style.display = "";
+    const p = await api("/api/projects");
+    US_PROJECTS = (p.projects || []);
+    loadUsers();
+  } catch (e) { /* legacy — usersCard owner uchun ochiladi */ }
+}
+async function loadUsers() {
+  try {
+    const { users } = await api("/api/users");
+    USERS = users || [];
+    renderUsers();
+  } catch (e) { $("usersList").innerHTML = '<span class="small muted">Yuklanmadi: ' + esc(e.message) + "</span>"; }
+}
+function renderUsers() {
+  if (!USERS.length) { $("usersList").innerHTML = '<span class="small muted">Hali jamoa a\\'zosi yo\\'q — pastda qo\\'shing</span>'; return; }
+  const ROLE_LBL = { owner: "👑 Owner", admin: "🛠 Admin", operator: "🎧 Operator" };
+  $("usersList").innerHTML = USERS.map(function (u) {
+    const projs = (u.project_ids || []).map(function (pid) {
+      const p = US_PROJECTS.find(function (x) { return x.id === pid; });
+      return p ? p.name : "#" + pid;
+    });
+    return '<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;' + (u.is_active ? "" : "opacity:.5") + '">' +
+      '<span class="small" style="flex:1;min-width:0"><strong>' + esc(u.name || u.email) + "</strong>" +
+        ' <span class="muted">' + esc(u.email) + "</span><br>" +
+        '<span class="badge ' + (u.role === "owner" ? "b-green" : u.role === "admin" ? "b-indigo" : "b-gray") + '">' + ROLE_LBL[u.role] + "</span>" +
+        (u.role === "operator" ? ' <span class="muted small">' + (projs.length ? "akkauntlar: " + esc(projs.join(", ")) : "barcha akkauntlar") + "</span>" : "") +
+        (u.last_login ? ' <span class="muted small">· oxirgi kirish: ' + timeAgo(u.last_login) + "</span>" : "") + "</span>" +
+      (u.role !== "owner" ? '<button class="btn btn-sm" onclick="editUserProjects(' + u.id + ')" title="Akkauntlarni biriktirish">📱</button>' : "") +
+      '<button class="btn btn-sm" onclick="resetUserPassword(' + u.id + ')" title="Parolni yangilash">🔑</button>' +
+      (u.role !== "owner" ? '<button class="btn btn-sm" onclick="toggleUser(' + u.id + "," + !u.is_active + ')">' + (u.is_active ? "⏸" : "▶️") + "</button>" +
+        '<button class="btn btn-sm" onclick="delUser(' + u.id + ')">🗑</button>' : "") +
+    "</div>";
+  }).join("");
+}
+async function addUser(btn) {
+  const email = $("nuEmail").value.trim();
+  if (!email) return toast("Email kiriting", false);
+  btn.disabled = true;
+  try {
+    const r = await postJson("/api/users", { email, name: $("nuName").value.trim(), role: $("nuRole").value });
+    openModal("✅ Foydalanuvchi qo'shildi", '<p style="line-height:1.8">Vaqtinchalik parol (bir marta ko\\'rsatiladi, nusxalab yuboring):</p>' +
+      '<div class="card" style="padding:14px;text-align:center;font-size:18px;font-weight:700;letter-spacing:1px;margin:10px 0">' + esc(r.tempPassword) + "</div>" +
+      '<p class="small muted">Kirish: ' + location.origin + "/login — email: " + esc(email) + "</p>" +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');
+    $("nuEmail").value = ""; $("nuName").value = "";
+    loadUsers();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+function editUserProjects(id) {
+  const u = USERS.find(function (x) { return x.id === id; });
+  const cur = u.project_ids || [];
+  openModal("📱 Akkauntlar — " + esc(u.name || u.email), '<p class="small muted" style="margin-bottom:10px">Operator faqat belgilangan akkauntlarning suhbatlarini ko\\'radi. Hech biri belgilanmasa — hammasini ko\\'radi.</p>' +
+    US_PROJECTS.map(function (p) {
+      return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" class="small">' +
+        '<input type="checkbox" class="upChk" value="' + p.id + '"' + (cur.includes(p.id) ? " checked" : "") + "> " + esc(p.name) + "</label>";
+    }).join("") +
+    '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">' +
+      '<button class="btn" onclick="closeModal()">Bekor</button>' +
+      '<button class="btn btn-primary" onclick="saveUserProjects(' + id + ')">Saqlash</button></div>');
+}
+async function saveUserProjects(id) {
+  const ids = Array.from(document.querySelectorAll(".upChk:checked")).map(function (c) { return Number(c.value); });
+  try {
+    await postJson("/api/users/" + id, { project_ids: ids });
+    closeModal(); toast("Saqlandi ✓");
+    loadUsers();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function resetUserPassword(id) {
+  try {
+    const r = await postJson("/api/users/" + id, { reset_password: true });
+    openModal("🔑 Yangi parol", '<div class="card" style="padding:14px;text-align:center;font-size:18px;font-weight:700;letter-spacing:1px;margin:10px 0">' + esc(r.tempPassword) + "</div>" +
+      '<p class="small muted">Bir marta ko\\'rsatiladi — nusxalab yuboring.</p>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function toggleUser(id, val) {
+  try {
+    await postJson("/api/users/" + id, { is_active: val });
+    loadUsers();
+    toast(val ? "Faollashtirildi ▶️" : "To'xtatildi ⏸");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function delUser(id) {
+  const u = USERS.find(function (x) { return x.id === id; });
+  openModal("Foydalanuvchini o'chirish", '<p style="margin-bottom:16px"><strong>' + esc(u ? (u.name || u.email) : "") + '</strong> o\\'chirilsinmi?</p>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal()">Bekor</button>' +
+    '<button class="btn btn-danger" onclick="doDelUser(' + id + ')">Ha, o\\'chirish</button></div>');
+}
+async function doDelUser(id) {
+  try {
+    await api("/api/users/" + id, { method: "DELETE" });
+    closeModal(); toast("O'chirildi");
+    loadUsers();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function loadAudit() {
+  $("auditList").innerHTML = skeletonRows(3, 30);
+  try {
+    const { log } = await api("/api/audit-log");
+    $("auditList").innerHTML = log.length ? log.map(function (l) {
+      return '<div class="small" style="padding:5px 0;border-bottom:1px solid var(--border)">' +
+        '<span class="muted">' + fmt(l.created_at) + "</span> · <strong>" + esc(l.user_label || "system") + "</strong> · " +
+        esc(l.action) + (l.details ? ' <span class="muted">(' + esc(l.details) + ")</span>" : "") + "</div>";
+    }).join("") : '<span class="small muted">Hali yozuv yo\\'q</span>';
+  } catch (e) { $("auditList").innerHTML = '<span class="small muted">Yuklanmadi: ' + esc(e.message) + "</span>"; }
+}
+initUsers();
 loadSettings(); loadSystem(); loadQuickReplies();`;
 
   return renderLayout({

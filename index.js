@@ -29,6 +29,7 @@ import { rateLimit } from "./middleware/rate-limit.js";
 import { APP_VERSION } from "./templates.js";
 import webhookRouter from "./routes/webhook.js";
 import webhookTelegramRouter from "./routes/webhook-telegram.js";
+import authRouter from "./routes/auth.js";
 import apiRouter from "./routes/api.js";
 import { startBroadcastScheduler } from "./routes/api-broadcast.js";
 import { startBackupScheduler } from "./services/backup.js";
@@ -56,6 +57,7 @@ APP.use("/webhook", rateLimit({ max: 300, name: "webhook" }));
 APP.use("/api", rateLimit({ max: 120, name: "api" }));
 APP.use(webhookRouter);
 APP.use(webhookTelegramRouter);
+APP.use(authRouter); // 12.1: /login, /api/login, /api/logout, /api/me
 APP.use(apiRouter);
 APP.use(dashboardRouter);
 APP.use(publicRouter);

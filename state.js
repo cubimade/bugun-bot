@@ -11,6 +11,7 @@ import {
   listAccountsWithTokens,
   getAllSettings,
   seedDefaultTagRules,
+  ensureOwnerUser,
 } from "./db.js";
 
 export const state = {
@@ -109,6 +110,16 @@ export async function setupDatabase() {
       await seedDefaultTagRules();
     } catch (err) {
       console.error("⚠️ Standart teg qoidalarini qo'shishda xatolik:", err.message);
+    }
+  }
+
+  // 12.1: birinchi owner — mavjud DASHBOARD_PASSWORD bilan (migratsiya).
+  // Eski parol bilan kirish BUZILMAYDI: Basic Auth ham, login formasi ham ishlaydi.
+  if (state.DB_READY && process.env.DASHBOARD_PASSWORD) {
+    try {
+      await ensureOwnerUser("elbeshmurodov@gmail.com", process.env.DASHBOARD_PASSWORD);
+    } catch (err) {
+      console.error("⚠️ Owner yaratishda xatolik:", err.message);
     }
   }
 }

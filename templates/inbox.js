@@ -198,6 +198,65 @@ async function sendPayment() {
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 
+// 12.2: Operatorga biriktirish
+async function openAssign() {
+  try {
+    const { users } = await api("/api/users/list-brief");
+    if (!users.length) return toast("Jamoa a'zosi yo'q — Sozlamalarda qo'shing", false);
+    openModal("👤 Suhbatni biriktirish", '<div style="display:grid;gap:8px">' +
+      '<button class="btn" style="justify-content:flex-start" onclick="doAssign(null)">⬜ Biriktirmaslik</button>' +
+      users.map(function (u) {
+        return '<button class="btn" style="justify-content:flex-start;' + (CURRENT.assigned_user_id === u.id ? "border-color:var(--accent)" : "") + '" onclick="doAssign(' + u.id + ')">' +
+          "👤 " + esc(u.name) + ' <span class="small muted">(' + u.role + ")</span></button>";
+      }).join("") + "</div>");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function doAssign(userId) {
+  try {
+    await postJson("/api/contacts/" + SELECTED + "/assign", { user_id: userId });
+    CURRENT.assigned_user_id = userId;
+    const local = CONTACTS.find(function (c) { return c.id === SELECTED; });
+    if (local) local.assigned_user_id = userId;
+    closeModal();
+    toast(userId ? "Biriktirildi ✓" : "Biriktirish olib tashlandi");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+// 12.2: Ichki izohlar — faqat jamoa ko'radi (sariq fon)
+async function openInternalNotes() {
+  openModal("📝 Ichki izohlar — " + (CURRENT.name || CURRENT.ig_user_id),
+    '<p class="small muted" style="margin-bottom:10px">Faqat jamoa ko\\'radi — mijozga yuborilmaydi.</p>' +
+    '<div id="inotesList" style="max-height:40vh;overflow-y:auto;margin-bottom:12px">' + skeletonRows(2, 40) + "</div>" +
+    '<div style="display:flex;gap:8px"><textarea class="input" id="inoteText" rows="2" maxlength="1000" placeholder="Izoh yozing..."></textarea>' +
+    '<button class="btn btn-primary" onclick="addInote()">➕</button></div>');
+  loadInotes();
+}
+async function loadInotes() {
+  try {
+    const { notes } = await api("/api/internal-notes/" + SELECTED);
+    $("inotesList").innerHTML = notes.length ? notes.map(function (n) {
+      return '<div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);border-radius:10px;padding:9px 12px;margin-bottom:8px">' +
+        '<div class="small" style="white-space:pre-wrap">' + esc(n.text) + "</div>" +
+        '<div class="small muted" style="margin-top:4px;display:flex;gap:8px"><span>' + esc(n.user_name || "—") + "</span><span>" + fmt(n.created_at) + "</span>" +
+        '<span style="flex:1"></span><button onclick="delInote(' + n.id + ')" style="background:none;border:none;color:var(--muted);cursor:pointer">🗑</button></div></div>';
+    }).join("") : '<span class="small muted">Hali izoh yo\\'q</span>';
+  } catch (e) { $("inotesList").innerHTML = '<span class="small muted">Yuklanmadi: ' + esc(e.message) + "</span>"; }
+}
+async function addInote() {
+  const text = $("inoteText").value.trim();
+  if (!text) return;
+  try {
+    await postJson("/api/internal-notes/" + SELECTED, { text });
+    $("inoteText").value = "";
+    loadInotes();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function delInote(id) {
+  try {
+    await api("/api/internal-notes/note/" + id, { method: "DELETE" });
+    loadInotes();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+
 // C1: Bot pauza (operator rejimi)
 async function togglePause() {
   try {
@@ -226,6 +285,8 @@ function renderFilters() {
     { k: "story", label: "📸 Story javoblari" },
     { k: "ig", label: "📷 Instagram" },
     { k: "tg", label: "✈️ Telegram" },
+    { k: "mine", label: "👤 Menga biriktirilgan" },
+    { k: "unassigned", label: "⬜ Biriktirilmagan" },
     { k: "archived", label: "🗄 Arxiv" },
     ...ALL_TAGS.map((t) => ({ k: "tag:" + t, label: "🏷 " + t })),
   ];
@@ -244,6 +305,8 @@ function matchesFilter(c) {
   if (FILTER === "story") return c.has_story;
   if (FILTER === "ig") return c.platform !== "telegram";
   if (FILTER === "tg") return c.platform === "telegram";
+  if (FILTER === "mine") return window.ME && c.assigned_user_id === window.ME.id;
+  if (FILTER === "unassigned") return !c.assigned_user_id;
   if (FILTER.startsWith("tag:")) return (c.tags || []).includes(FILTER.slice(4));
   return true;
 }
@@ -321,6 +384,8 @@ function renderChatHead() {
     <button class="btn btn-sm" onclick="togglePause()" title="\${c.bot_paused ? "Bot bu suhbatda yana javob beradi" : "Bot bu suhbatda javob bermaydi — siz gaplashasiz"}">\${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
     <button class="btn btn-sm" onclick="openProfile(SELECTED)">👤 Profil</button>
     <button class="btn btn-sm" onclick="openTagEditor()" title="Teg qo'shish">🏷</button>
+    <button class="btn btn-sm" onclick="openAssign()" title="Operatorga biriktirish">👤➕</button>
+    <button class="btn btn-sm" onclick="openInternalNotes()" title="Ichki izohlar (mijoz ko'rmaydi)" style="background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)">📝</button>
     <button class="btn btn-sm" onclick="toggleArchive()" title="\${c.archived ? "Arxivdan chiqarish" : "Inbox'dan yashirish (o'chirilmaydi)"}">\${c.archived ? "📤 Chiqarish" : "🗄 Arxivlash"}</button>
     \${c.needs_human ? '<button class="btn btn-sm" onclick="resolveHuman()" title="Hal qilindi deb belgilash">✓ Hal qilindi</button>' : ""}\`;
 }

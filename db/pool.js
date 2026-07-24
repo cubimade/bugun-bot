@@ -224,6 +224,76 @@ export async function initDb() {
     -- 10.6: AI mijoz profili
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile JSONB;
 
+    -- 12.1: Foydalanuvchilar va rollar
+    CREATE TABLE IF NOT EXISTS users (
+      id            SERIAL PRIMARY KEY,
+      email         TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      name          TEXT,
+      role          TEXT NOT NULL DEFAULT 'operator' CHECK (role IN ('owner','admin','operator')),
+      is_active     BOOLEAN NOT NULL DEFAULT true,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+      last_login    TIMESTAMPTZ
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      sid        TEXT PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+    -- Operator qaysi akkauntlarni ko'radi (bo'sh = hammasi)
+    CREATE TABLE IF NOT EXISTS user_projects (
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, project_id)
+    );
+
+    -- 12.2: Suhbat biriktirish va ichki izohlar
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS assigned_user_id INTEGER;
+
+    CREATE TABLE IF NOT EXISTS internal_notes (
+      id         SERIAL PRIMARY KEY,
+      contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+      user_id    INTEGER,
+      user_name  TEXT,
+      text       TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_internal_notes_contact ON internal_notes(contact_id);
+
+    -- 12.4: Chiquvchi webhook va API kalitlar
+    CREATE TABLE IF NOT EXISTS webhooks (
+      id         SERIAL PRIMARY KEY,
+      project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      url        TEXT NOT NULL,
+      events     JSONB NOT NULL DEFAULT '[]',
+      is_active  BOOLEAN NOT NULL DEFAULT true,
+      secret     TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id         SERIAL PRIMARY KEY,
+      name       TEXT NOT NULL,
+      key_hash   TEXT NOT NULL,
+      key_hint   TEXT,
+      is_active  BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      last_used  TIMESTAMPTZ
+    );
+
+    -- 12.5: Audit log
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id         SERIAL PRIMARY KEY,
+      user_label TEXT,
+      action     TEXT NOT NULL,
+      details    TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- 11.2: Segmentatsiya (vip/faol/uxlagan/sovuq), 11.5: A/B variant
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS segment TEXT;
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS ab_variant TEXT;

@@ -20,6 +20,10 @@ const SETTING_KEYS = [
   "greeting_message",
   "reply_length",
   "story_reply_greeting", // 7.3
+  "followup_enabled", // 7.5
+  "followup_wait_hours",
+  "followup_max",
+  "followup_text",
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -38,6 +42,10 @@ router.get("/api/settings", protect, async (req, res, next) => {
         greeting_message: state.SETTINGS.greeting_message ?? "",
         reply_length: state.SETTINGS.reply_length ?? "orta",
         story_reply_greeting: state.SETTINGS.story_reply_greeting ?? "",
+        followup_enabled: state.SETTINGS.followup_enabled ?? "false",
+        followup_wait_hours: state.SETTINGS.followup_wait_hours ?? "12",
+        followup_max: state.SETTINGS.followup_max ?? "1",
+        followup_text: state.SETTINGS.followup_text ?? "",
       },
     });
   } catch (err) {

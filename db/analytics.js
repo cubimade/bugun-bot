@@ -347,7 +347,7 @@ export async function getMetrics(period) {
   const p = normalizePeriod(period);
   const M = periodCond(p, "m.created_at");
 
-  const [respTime, convLen, weekdays, unanswered, repeats, newVsOld, ratings] = await Promise.all([
+  const [respTime, convLen, weekdays, unanswered, repeats, newVsOld, ratings, followup] = await Promise.all([
     // 1. O'rtacha javob vaqti: user → keyingi assistant orasidagi sekundlar (10 daqiqagacha)
     pool.query(
       `WITH juft AS (
@@ -410,6 +410,17 @@ export async function getMetrics(period) {
          FROM messages m
         WHERE m.role = 'assistant' AND ${M}`
     ),
+    // 8 (7.5). Follow-up natijalari: yuborilgan / javob olgan (konversiya)
+    pool.query(
+      `SELECT COUNT(*)::int AS sent,
+              COUNT(*) FILTER (WHERE EXISTS (
+                SELECT 1 FROM messages u
+                 WHERE u.contact_id = m.contact_id AND u.role = 'user'
+                   AND u.created_at > m.created_at
+              ))::int AS replied
+         FROM messages m
+        WHERE m.source = 'followup' AND m.role = 'assistant' AND ${M}`
+    ),
   ]);
 
   const rt = respTime.rows[0];
@@ -429,6 +440,10 @@ export async function getMetrics(period) {
       const { pos, neg } = ratings.rows[0];
       const rated = pos + neg;
       return { pos, neg, rated, pct: rated ? Math.round((pos / rated) * 100) : null };
+    })(),
+    followup: (() => {
+      const { sent, replied } = followup.rows[0];
+      return { sent, replied, pct: sent ? Math.round((replied / sent) * 100) : null };
     })(),
   };
 }

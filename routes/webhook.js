@@ -36,6 +36,7 @@ import {
   getActiveKeywordRules,
   matchKeywordRule,
   incrementKeywordHit,
+  resetFollowupCount,
 } from "../db.js";
 import { sendInstagramImage } from "../instagram.js";
 import { state, ACCOUNTS_MAP, resolveAccount, workHoursOverrides } from "../state.js";
@@ -196,6 +197,8 @@ async function handleDirectMessage(event, projectId, token) {
       const contact = await getOrCreateContact(projectId, senderId);
       contactId = contact.id;
       await saveMessage(contactId, "user", userText, false, msgSource);
+      // 7.5: mijoz javob berdi — follow-up hisoblagichi nolga
+      resetFollowupCount(contactId).catch(() => {});
 
       // C1: Bot pauza (operator rejimi) tekshiruvi
       if (contact.bot_paused) {

@@ -60,6 +60,37 @@ export function renderSettingsPage() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px">⏰ Follow-up (eslatma)</h3>
+      <p class="small muted" style="margin-bottom:14px">Mijoz yozdi, bot javob berdi, mijoz jim qoldi — belgilangan vaqtdan keyin bot bir marta eslatadi. Instagram qoidasi: faqat mijozning oxirgi xabaridan 24 soat ichida yuboriladi.</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <label class="switch"><input type="checkbox" id="fuEnabled" onchange="$('fuFields').style.opacity=this.checked?'1':'.45'"><span class="slider"></span></label>
+        <div><strong class="small">Follow-up yoqilgan</strong>
+        <div class="small muted">O'chirilsa hech qanday eslatma yuborilmaydi</div></div>
+      </div>
+      <div id="fuFields">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div><label class="lbl">Kutish vaqti</label>
+            <select class="input" id="fuWait">
+              <option value="4">4 soat</option>
+              <option value="12">12 soat (tavsiya)</option>
+              <option value="23">23 soat</option>
+              <option value="48">48 soat (24h qoidasi tufayli kam ishlaydi)</option>
+              <option value="72">3 kun (24h qoidasi tufayli kam ishlaydi)</option>
+            </select></div>
+          <div><label class="lbl">Maksimal urinishlar</label>
+            <select class="input" id="fuMax">
+              <option value="1">1 marta (tavsiya)</option>
+              <option value="2">2 marta</option>
+              <option value="3">3 marta</option>
+            </select></div>
+        </div>
+        <label class="lbl">Eslatma matni ({ism} va {akkaunt} ishlaydi)</label>
+        <textarea class="input" id="fuText" rows="2" maxlength="500" placeholder="{ism}, savolingiz qoldimi? 😊 Yordam kerak bo'lsa, bemalol yozing!" style="margin-bottom:14px"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveFollowupSettings(this)">${ICONS.check} Saqlash</button>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px">⚡ Tezkor javoblar</h3>
       <p class="small muted" style="margin-bottom:14px">Inbox'da bir bosishda qo'yiladigan tayyor javoblar (masalan "Narxlar haqida", "Aloqa ma'lumoti").</p>
       <div id="qrList"><div class="skeleton" style="height:44px"></div></div>
@@ -99,6 +130,11 @@ async function loadSettings() {
     $("greetMsg").value = s.greeting_message || "";
     $("storyGreet").value = s.story_reply_greeting || "";
     $("replyLen").value = s.reply_length || "orta";
+    $("fuEnabled").checked = s.followup_enabled === "true";
+    $("fuFields").style.opacity = $("fuEnabled").checked ? "1" : ".45";
+    $("fuWait").value = s.followup_wait_hours || "12";
+    $("fuMax").value = s.followup_max || "1";
+    $("fuText").value = s.followup_text || "";
   } catch (e) { toast("Sozlamalar yuklanmadi: " + e.message, false); }
 }
 async function saveBotSettings(btn) {
@@ -113,6 +149,19 @@ async function saveBotSettings(btn) {
       story_reply_greeting: $("storyGreet").value.trim(),
     });
     toast("Bot sozlamalari saqlandi ✓");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+async function saveFollowupSettings(btn) {
+  btn.disabled = true;
+  try {
+    await postJson("/api/settings", {
+      followup_enabled: String($("fuEnabled").checked),
+      followup_wait_hours: $("fuWait").value,
+      followup_max: $("fuMax").value,
+      followup_text: $("fuText").value.trim(),
+    });
+    toast("Follow-up sozlamalari saqlandi ✓");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }

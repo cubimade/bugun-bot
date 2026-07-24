@@ -74,6 +74,56 @@ export function matchKeywordRule(rules, text) {
 }
 
 // ------------------------------------------------------------
+//  7.5: FOLLOW-UP — jim qolgan mijozlarni topish
+//  Shartlar: oxirgi xabar botdan, kutish vaqti o'tgan, limit tugamagan,
+//  pauzada/arxivda emas, mijozning OXIRGI XABARI 24 SOAT ICHIDA
+//  (Instagram 24-soat qoidasi — bundan tashqarida yuborish TAQIQ).
+// ------------------------------------------------------------
+export async function findFollowupCandidates({ waitHours, maxCount, limit = 30 }) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.ig_user_id, c.name,
+            p.name AS project_name, p.ig_account_id, p.access_token,
+            last.created_at AS last_at, lastu.created_at AS last_user_at
+       FROM contacts c
+       JOIN projects p ON p.id = c.project_id
+       JOIN LATERAL (
+         SELECT role, created_at FROM messages
+          WHERE contact_id = c.id ORDER BY created_at DESC LIMIT 1
+       ) last ON last.role = 'assistant'
+       JOIN LATERAL (
+         SELECT created_at FROM messages
+          WHERE contact_id = c.id AND role = 'user'
+          ORDER BY created_at DESC LIMIT 1
+       ) lastu ON true
+      WHERE NOT c.archived
+        AND NOT c.bot_paused
+        AND NOT c.followup_paused
+        AND c.followup_sent_count < $1
+        AND last.created_at < now() - make_interval(hours => $2)
+        AND lastu.created_at >= now() - interval '23 hours'
+      ORDER BY last.created_at ASC
+      LIMIT $3`,
+    [maxCount, waitHours, limit]
+  );
+  return rows;
+}
+
+export async function markFollowupSent(contactId) {
+  await pool.query(
+    `UPDATE contacts SET followup_sent_count = followup_sent_count + 1 WHERE id = $1`,
+    [contactId]
+  );
+}
+
+// Mijoz javob berdi — hisoblagich nolga (keyingi jimlikda yana ishlaydi)
+export async function resetFollowupCount(contactId) {
+  await pool.query(
+    `UPDATE contacts SET followup_sent_count = 0 WHERE id = $1 AND followup_sent_count > 0`,
+    [contactId]
+  );
+}
+
+// ------------------------------------------------------------
 //  7.8: AVTO-TEGLASH QOIDALARI
 // ------------------------------------------------------------
 export async function listTagRules() {

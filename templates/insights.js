@@ -124,6 +124,11 @@ async function loadMetrics() {
       cards.push({ e: "⭐", num: m.ratings.pct + "%", lbl: "Ijobiy baholangan",
         sub: "👍 " + m.ratings.pos + " · 👎 " + m.ratings.neg + " (inbox'da baholanadi)" });
     }
+    // 7.5: follow-up yuborilgan bo'lsa — konversiya kartasi
+    if (m.followup && m.followup.sent > 0) {
+      cards.push({ e: "⏰", num: m.followup.pct + "%", lbl: "Follow-up konversiyasi",
+        sub: m.followup.sent + " ta eslatma → " + m.followup.replied + " tasi javob berdi" });
+    }
     $("metricsGrid").innerHTML = cards.map(function (c) {
       return '<div class="card hoverable glass-glow">' +
         '<div style="font-size:20px;margin-bottom:6px">' + c.e + "</div>" +

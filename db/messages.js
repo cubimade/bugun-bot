@@ -12,8 +12,14 @@ export async function saveMessage(contactId, role, text, isOperator = false, sou
     [contactId, role, text, isOperator, source]
   );
   // Mijoz xabari — o'qilmagan hisoblagichni oshiramiz (inbox belgisi uchun)
+  // last_message_at (7.5) har ikkala rolda yangilanadi
   if (role === "user") {
-    await pool.query(`UPDATE contacts SET unread = unread + 1 WHERE id = $1`, [
+    await pool.query(
+      `UPDATE contacts SET unread = unread + 1, last_message_at = now() WHERE id = $1`,
+      [contactId]
+    );
+  } else {
+    await pool.query(`UPDATE contacts SET last_message_at = now() WHERE id = $1`, [
       contactId,
     ]);
   }

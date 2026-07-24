@@ -104,6 +104,11 @@ export async function initDb() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- 7.5: Follow-up avtomatizatsiya
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS last_message_at TIMESTAMPTZ;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS followup_sent_count INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS followup_paused BOOLEAN NOT NULL DEFAULT false;
+
     -- 7.8: Avtomatik teglash qoidalari (so'z → teg)
     CREATE TABLE IF NOT EXISTS tag_rules (
       id          SERIAL PRIMARY KEY,

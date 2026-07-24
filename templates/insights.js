@@ -112,6 +112,11 @@ async function loadMetrics() {
       { e: "🆕", num: m.newVsReturning.fresh + " / " + m.newVsReturning.returning, lbl: "Yangi / qaytgan",
         sub: "davr ichida yangi va eski mijozlar" },
     ];
+    // D5: baholangan javoblar bo'lsa — sifat kartasi
+    if (m.ratings && m.ratings.rated > 0) {
+      cards.push({ e: "⭐", num: m.ratings.pct + "%", lbl: "Ijobiy baholangan",
+        sub: "👍 " + m.ratings.pos + " · 👎 " + m.ratings.neg + " (inbox'da baholanadi)" });
+    }
     $("metricsGrid").innerHTML = cards.map(function (c) {
       return '<div class="card hoverable glass-glow">' +
         '<div style="font-size:20px;margin-bottom:6px">' + c.e + "</div>" +

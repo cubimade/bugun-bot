@@ -128,7 +128,10 @@ function openQuickReplies() {
 function useQuickReply(id) {
   const r = SAVED_REPLIES.find((x) => x.id === id);
   if (!r) return;
-  $("replyText").value = r.text;
+  // D3: shablon o'zgaruvchilari — joriy suhbat qiymatlari bilan
+  $("replyText").value = r.text
+    .replaceAll("{ism}", (CURRENT?.name || "").trim() || "do'st")
+    .replaceAll("{akkaunt}", CURRENT?.project_name || "");
   closeModal();
   $("replyText").focus();
   $("replyText").dispatchEvent(new Event("input"));
@@ -159,6 +162,7 @@ function renderFilters() {
     { k: "human", label: "🙋 Odam kerak" },
     { k: "negative", label: "😟 Salbiy" },
     { k: "paused", label: "🔕 Pauzada" },
+    { k: "archived", label: "🗄 Arxiv" },
     ...ALL_TAGS.map((t) => ({ k: "tag:" + t, label: "🏷 " + t })),
   ];
   $("filters").innerHTML = chips.map((c) =>
@@ -167,6 +171,9 @@ function renderFilters() {
 }
 function setFilter(k) { FILTER = k; renderFilters(); renderList(); }
 function matchesFilter(c) {
+  // D4: arxivlanganlar faqat "Arxiv" filtrida ko'rinadi
+  if (FILTER === "archived") return c.archived;
+  if (c.archived) return false;
   if (FILTER === "human") return c.needs_human;
   if (FILTER === "negative") return c.sentiment === "negative";
   if (FILTER === "paused") return c.bot_paused;
@@ -243,22 +250,54 @@ function renderChatHead() {
     <button class="btn btn-sm" onclick="togglePause()" title="\${c.bot_paused ? "Bot bu suhbatda yana javob beradi" : "Bot bu suhbatda javob bermaydi — siz gaplashasiz"}">\${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
     <button class="btn btn-sm" onclick="openProfile(SELECTED)">👤 Profil</button>
     <button class="btn btn-sm" onclick="openTagEditor()" title="Teg qo'shish">🏷</button>
+    <button class="btn btn-sm" onclick="toggleArchive()" title="\${c.archived ? "Arxivdan chiqarish" : "Inbox'dan yashirish (o'chirilmaydi)"}">\${c.archived ? "📤 Chiqarish" : "🗄 Arxivlash"}</button>
     \${c.needs_human ? '<button class="btn btn-sm" onclick="resolveHuman()" title="Hal qilindi deb belgilash">✓ Hal qilindi</button>' : ""}\`;
 }
+// D4: suhbatni arxivlash — inbox'dan yashiriladi, lekin o'chmaydi
+async function toggleArchive() {
+  try {
+    const v = !CURRENT.archived;
+    await postJson("/api/contacts/" + SELECTED + "/archive", { value: v });
+    CURRENT.archived = v;
+    const local = CONTACTS.find((c) => c.id === SELECTED);
+    if (local) local.archived = v;
+    renderChatHead(); renderList();
+    toast(v ? "Suhbat arxivlandi 🗄" : "Arxivdan chiqarildi 📤");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
 let MSG_COUNT = 0;
+let LAST_MSGS = [];
 function renderMessages(messages, highlightNew) {
+  LAST_MSGS = messages;
   if (!messages.length) { $("chatMsgs").innerHTML = emptyState("💬", "Xabarlar yo'q"); MSG_COUNT = 0; return; }
   const prevCount = MSG_COUNT;
   $("chatMsgs").innerHTML = messages.map((m, i) => {
     const op = m.role === "assistant" && m.is_operator;
     const fresh = highlightNew && i >= prevCount;
+    // D5: bot javobi ostida 👍/👎 (operator javobida emas)
+    const rate = m.role === "assistant" && !op && m.id ? \`
+      <div class="rate-row">
+        <button class="rate-btn\${m.rating === 1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === 1 ? 0 : 1})" title="Yaxshi javob">👍</button>
+        <button class="rate-btn\${m.rating === -1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === -1 ? 0 : -1})" title="Yomon javob">👎</button>
+      </div>\` : "";
     return \`
     <div class="bubble-row \${m.role === "assistant" ? "from-bot" : "from-user"}\${fresh ? " fresh" : ""}">
-      <div class="bubble\${op ? " from-op" : ""}">\${op ? '<div class="op-tag">👤 Operator</div>' : ""}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div></div>
+      <div class="bubble\${op ? " from-op" : ""}">\${op ? '<div class="op-tag">👤 Operator</div>' : ""}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div>\${rate}</div>
     </div>\`;
   }).join("");
   MSG_COUNT = messages.length;
   $("chatMsgs").scrollTop = $("chatMsgs").scrollHeight;
+}
+// D5: bahoni saqlash va lokal yangilash (scroll saqlanadi)
+async function rateMsg(id, value) {
+  try {
+    await postJson("/api/messages/" + id + "/rate", { value });
+    const m = LAST_MSGS.find((x) => x.id === id);
+    if (m) m.rating = value === 0 ? null : value;
+    const keep = $("chatMsgs").scrollTop;
+    renderMessages(LAST_MSGS);
+    $("chatMsgs").scrollTop = keep;
+  } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 function closeChat() {
   $("inboxWrap").classList.remove("chat-open");

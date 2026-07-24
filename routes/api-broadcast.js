@@ -26,6 +26,13 @@ const router = express.Router();
 const BROADCAST_JOBS = new Map();
 let BROADCAST_SEQ = 1;
 
+// D3: Shablon o'zgaruvchilari — {ism} va {akkaunt} haqiqiy qiymatga almashadi
+function applyVars(message, recipient, accountName) {
+  return message
+    .replaceAll("{ism}", (recipient.name || "").trim() || "do'st")
+    .replaceAll("{akkaunt}", accountName || "");
+}
+
 // Qabul qiluvchilar sonini oldindan ko'rish
 router.get("/api/broadcast/recipients", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -92,10 +99,11 @@ router.post("/api/broadcast", protect, async (req, res, next) => {
     (async () => {
       for (const r of recipients) {
         try {
-          const result = await sendInstagramMessage(r.ig_user_id, message, token);
+          const text = applyVars(message, r, project.name);
+          const result = await sendInstagramMessage(r.ig_user_id, text, token);
           if (result.ok) {
             job.sent++;
-            await saveMessage(r.id, "assistant", message);
+            await saveMessage(r.id, "assistant", text);
           } else {
             job.failed++;
           }
@@ -181,10 +189,11 @@ export function startBroadcastScheduler() {
           let failed = 0;
           for (const r of recipients) {
             try {
-              const result = await sendInstagramMessage(r.ig_user_id, b.message, token);
+              const text = applyVars(b.message, r, project?.name);
+              const result = await sendInstagramMessage(r.ig_user_id, text, token);
               if (result.ok) {
                 sent++;
-                await saveMessage(r.id, "assistant", b.message);
+                await saveMessage(r.id, "assistant", text);
               } else {
                 failed++;
               }

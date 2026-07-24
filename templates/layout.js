@@ -37,6 +37,15 @@ export function renderLayout({ title, active, headerAction = "", content, script
     <div class="topbar">
       <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Menyu">${I('<path d="M3 6h18M3 12h18M3 18h18"/>')}</button>
       <strong style="flex:1">${esc(title)}</strong>
+      <div class="topsearch" id="topSearch">
+        <input class="input" id="globalSearch" placeholder="🔍 Qidirish... ( / )" autocomplete="off"
+          oninput="onGlobalSearch()" onfocus="onGlobalSearch()">
+        <div class="topsearch-drop" id="searchDrop"></div>
+      </div>
+      <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()" aria-label="Bildirishnomalar" title="Odam kerak suhbatlar">
+        🔔<span class="notif-count" id="notifCount" style="display:none"></span>
+      </button>
+      <div class="notif-drop" id="notifDrop"></div>
       <button class="theme-btn" onclick="toggleTheme()" aria-label="Rejimni almashtirish"></button>
     </div>
     <div class="content">

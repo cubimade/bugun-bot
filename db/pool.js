@@ -84,6 +84,10 @@ export async function initDb() {
     -- Operator javobini ajratish uchun (inbox'da alohida rangda)
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_operator BOOLEAN NOT NULL DEFAULT false;
 
+    -- 6-bosqich (D4/D5): suhbat arxivi va bot javobini baholash
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS rating SMALLINT; -- 1=👍, -1=👎, NULL=baholanmagan
+
     -- Tezkor javoblar (saved replies)
     CREATE TABLE IF NOT EXISTS saved_replies (
       id          SERIAL PRIMARY KEY,

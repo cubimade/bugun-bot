@@ -26,7 +26,8 @@ export function renderBroadcastPage() {
         <option value="">Hammasi (24 soat ichida yozganlar)</option>
       </select>
       <label class="lbl">Xabar matni</label>
-      <textarea class="input" id="message" rows="5" maxlength="900" placeholder="Salom! Sizga maxsus taklifimiz bor..." oninput="updatePreview()"></textarea>
+      <textarea class="input" id="message" rows="5" maxlength="900" placeholder="Salom {ism}! Sizga maxsus taklifimiz bor..." oninput="updatePreview()"></textarea>
+      <div class="small muted" style="margin-top:4px">O'zgaruvchilar: <code>{ism}</code> — mijoz ismi, <code>{akkaunt}</code> — akkaunt nomi (yuborishda haqiqiy qiymatga almashadi)</div>
       <div class="small muted" style="text-align:right;margin:4px 0 14px"><span id="charCount">0</span>/900</div>
       <label class="lbl">Qachon yuborilsin?</label>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">

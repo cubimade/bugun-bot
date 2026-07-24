@@ -329,7 +329,7 @@ export async function getMetrics(period) {
   const p = normalizePeriod(period);
   const M = periodCond(p, "m.created_at");
 
-  const [respTime, convLen, weekdays, unanswered, repeats, newVsOld] = await Promise.all([
+  const [respTime, convLen, weekdays, unanswered, repeats, newVsOld, ratings] = await Promise.all([
     // 1. O'rtacha javob vaqti: user → keyingi assistant orasidagi sekundlar (10 daqiqagacha)
     pool.query(
       `WITH juft AS (
@@ -385,6 +385,13 @@ export async function getMetrics(period) {
               COUNT(*)::int AS total
          FROM contacts c JOIN faol ON faol.id = c.id`
     ),
+    // 7 (D5). Bot javoblari bahosi: 👍/👎 nisbat
+    pool.query(
+      `SELECT COUNT(*) FILTER (WHERE m.rating = 1)::int AS pos,
+              COUNT(*) FILTER (WHERE m.rating = -1)::int AS neg
+         FROM messages m
+        WHERE m.role = 'assistant' AND ${M}`
+    ),
   ]);
 
   const rt = respTime.rows[0];
@@ -400,6 +407,11 @@ export async function getMetrics(period) {
     repeatCustomers: { count: rp.repeat, total: rp.total,
       pct: rp.total ? Math.round((rp.repeat / rp.total) * 100) : 0 },
     newVsReturning: { fresh: nv.fresh, returning: nv.total - nv.fresh, total: nv.total },
+    ratings: (() => {
+      const { pos, neg } = ratings.rows[0];
+      const rated = pos + neg;
+      return { pos, neg, rated, pct: rated ? Math.round((pos / rated) * 100) : null };
+    })(),
   };
 }
 

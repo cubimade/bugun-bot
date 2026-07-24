@@ -273,3 +273,41 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
   .drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
   .drawer-stat { background: var(--input-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 10px 12px; }
   @media (max-width: 560px) { .drawer { width: 100vw; } }
+
+/* ===== D1/D2: Topbar qidiruv va bildirishnomalar ===== */
+.topsearch { position: relative; width: min(320px, 34vw); }
+.topsearch .input { padding: 8px 12px; font-size: 13px; }
+.topsearch-drop, .notif-drop {
+  position: absolute; top: calc(100% + 6px); right: 0; left: auto; width: 340px; max-width: 92vw;
+  background: var(--surface-2); backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border); border-radius: 14px;
+  box-shadow: var(--shadow-glass); z-index: 80; display: none;
+  max-height: 60vh; overflow-y: auto; padding: 6px;
+}
+.topsearch-drop { left: 0; right: auto; width: 100%; min-width: 260px; }
+.topsearch-drop.show, .notif-drop.show { display: block; }
+.ts-item { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 10px; color: var(--text-1); }
+.ts-item:hover { background: var(--hover-bg); }
+.ts-ico { flex-shrink: 0; }
+.ts-body { display: flex; flex-direction: column; min-width: 0; }
+.ts-body strong { font-size: 13.5px; }
+.ts-body .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notif-btn {
+  position: relative; background: var(--input-bg); border: 1px solid var(--glass-border);
+  border-radius: 10px; padding: 7px 10px; cursor: pointer; font-size: 15px; line-height: 1;
+}
+.notif-btn:hover { background: var(--hover-bg); }
+.notif-count {
+  position: absolute; top: -5px; right: -5px; background: var(--danger); color: #fff;
+  font-size: 10px; font-weight: 700; border-radius: 999px; padding: 2px 5px; min-width: 16px; text-align: center;
+}
+.topbar { position: relative; }
+.topbar .notif-drop { top: calc(100% - 6px); right: 12px; }
+@media (max-width: 700px) { .topsearch { display: none; } }
+
+/* ===== D5: Bot javobini baholash (👍/👎) ===== */
+.rate-row { display: flex; gap: 4px; justify-content: flex-end; margin-top: 3px; }
+.rate-btn { background: none; border: none; cursor: pointer; font-size: 12px; opacity: .45; padding: 1px 3px; border-radius: 6px; }
+.rate-btn:hover { opacity: 1; background: var(--hover-bg); }
+.rate-btn.on { opacity: 1; transform: scale(1.15); }

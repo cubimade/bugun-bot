@@ -40,12 +40,20 @@ export async function getConversationHistory(contactId, limit = 20) {
 
 export async function getContactMessages(contactId) {
   const { rows } = await pool.query(
-    `SELECT role, text, created_at, is_operator
+    `SELECT id, role, text, created_at, is_operator, rating
        FROM messages WHERE contact_id = $1
       ORDER BY created_at ASC`,
     [contactId]
   );
   return rows;
+}
+
+// D5: Bot javobini baholash — 1 (👍), -1 (👎), 0 → NULL (bekor qilish)
+export async function rateMessage(messageId, value) {
+  await pool.query(
+    `UPDATE messages SET rating = $2 WHERE id = $1 AND role = 'assistant'`,
+    [messageId, value === 0 ? null : value]
+  );
 }
 
 // ------------------------------------------------------------
@@ -72,7 +80,7 @@ export async function getRecentUserMessages(limit = 250) {
 // mijozlarga xabar yuborish mumkin. Teg berilsa — shu teg bo'yicha.
 export async function listBroadcastRecipients(projectId, tag = null) {
   const { rows } = await pool.query(
-    `SELECT c.id, c.ig_user_id
+    `SELECT c.id, c.ig_user_id, c.name
        FROM contacts c
       WHERE c.project_id = $1
         AND ($2::text IS NULL OR $2 = ANY(c.tags))

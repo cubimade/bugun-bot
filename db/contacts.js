@@ -42,6 +42,7 @@ export async function listContacts(limit = 50, offset = 0) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
             c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
+            c.archived,
             p.name AS project_name,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
@@ -61,6 +62,51 @@ export async function countContacts() {
   return rows[0].n;
 }
 
+// D1: Global qidiruv — kontakt (ism/ID) va xabar matni bo'yicha
+export async function searchAll(q, limit = 8) {
+  const like = "%" + q + "%";
+  const [contacts, messages] = await Promise.all([
+    pool.query(
+      `SELECT c.id, c.name, c.ig_user_id, c.last_seen, p.name AS project_name
+         FROM contacts c JOIN projects p ON p.id = c.project_id
+        WHERE c.name ILIKE $1 OR c.ig_user_id ILIKE $1
+        ORDER BY c.last_seen DESC LIMIT $2`,
+      [like, limit]
+    ),
+    pool.query(
+      `SELECT DISTINCT ON (m.contact_id)
+              m.contact_id, m.text, m.created_at, c.name, c.ig_user_id
+         FROM messages m JOIN contacts c ON c.id = m.contact_id
+        WHERE m.text ILIKE $1
+        ORDER BY m.contact_id, m.created_at DESC
+        LIMIT $2`,
+      [like, limit]
+    ),
+  ]);
+  return { contacts: contacts.rows, messages: messages.rows };
+}
+
+// D2: Bildirishnomalar — "odam kerak" suhbatlar ro'yxati
+export async function listNeedsHuman(limit = 20) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.name, c.ig_user_id, c.last_seen, p.name AS project_name
+       FROM contacts c JOIN projects p ON p.id = c.project_id
+      WHERE c.needs_human AND NOT c.archived
+      ORDER BY c.last_seen DESC
+      LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+// D4: Suhbatni arxivlash / arxivdan chiqarish
+export async function setContactArchived(contactId, value) {
+  await pool.query(`UPDATE contacts SET archived = $2 WHERE id = $1`, [
+    contactId,
+    value,
+  ]);
+}
+
 // Mijozni "jonli operator kerak" deb belgilash (yoki bekor qilish)
 export async function setNeedsHuman(contactId, value) {
   await pool.query(`UPDATE contacts SET needs_human = $2 WHERE id = $1`, [
@@ -73,7 +119,7 @@ export async function getContact(contactId) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.needs_human, c.tags,
             c.unread, c.first_seen, c.last_seen, c.bot_paused, c.paused_until,
-            c.note, c.sentiment, p.name AS project_name,
+            c.note, c.sentiment, c.archived, p.name AS project_name,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count
        FROM contacts c JOIN projects p ON p.id = c.project_id
       WHERE c.id = $1`,

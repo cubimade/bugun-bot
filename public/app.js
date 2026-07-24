@@ -214,3 +214,87 @@ function closeProfile() {
   $("drawerBack").classList.remove("show");
   $("drawer").classList.remove("show");
 }
+
+// ===== D1: Global qidiruv (topbar) =====
+let SEARCH_TIMER = null;
+function onGlobalSearch() {
+  clearTimeout(SEARCH_TIMER);
+  const q = ($("globalSearch")?.value || "").trim();
+  const drop = $("searchDrop");
+  if (!drop) return;
+  if (q.length < 2) { drop.classList.remove("show"); return; }
+  SEARCH_TIMER = setTimeout(async () => {
+    try {
+      const r = await api("/api/search?q=" + encodeURIComponent(q));
+      const rows = [];
+      (r.contacts || []).forEach((c) => {
+        rows.push('<a class="ts-item" href="/dashboard/inbox?contact=' + c.id + '">' +
+          '<span class="ts-ico">👤</span><span class="ts-body"><strong>' + esc(c.name || c.ig_user_id) + "</strong>" +
+          '<span class="small muted">' + esc(c.project_name || "") + " · ID: " + esc(c.ig_user_id) + "</span></span></a>");
+      });
+      (r.messages || []).forEach((m) => {
+        const t = String(m.text || "");
+        rows.push('<a class="ts-item" href="/dashboard/inbox?contact=' + m.contact_id + '">' +
+          '<span class="ts-ico">💬</span><span class="ts-body"><strong>' + esc(m.name || m.ig_user_id) + "</strong>" +
+          '<span class="small muted">' + esc(t.length > 70 ? t.slice(0, 70) + "…" : t) + "</span></span></a>");
+      });
+      drop.innerHTML = rows.length ? rows.join("") :
+        '<div class="ts-item muted" style="cursor:default">Hech narsa topilmadi</div>';
+      drop.classList.add("show");
+    } catch (e) { /* jim */ }
+  }, 300);
+}
+document.addEventListener("click", (e) => {
+  const box = $("topSearch");
+  if (box && !box.contains(e.target)) $("searchDrop")?.classList.remove("show");
+});
+// E2: "/" — qidiruvga fokus (matn maydonida emasligida)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
+    e.preventDefault();
+    $("globalSearch")?.focus();
+  }
+});
+
+// ===== D2: Bildirishnomalar (🔔 — "odam kerak" suhbatlar) =====
+let NOTIF_LAST_COUNT = null;
+async function refreshNotifs() {
+  const btn = $("notifBtn");
+  if (!btn) return;
+  try {
+    const r = await api("/api/notifications");
+    const cnt = $("notifCount");
+    if (r.count > 0) {
+      cnt.textContent = r.count > 9 ? "9+" : r.count;
+      cnt.style.display = "";
+    } else cnt.style.display = "none";
+    // Brauzer bildirishnomasi — soni oshganda (ruxsat berilgan bo'lsa)
+    if (NOTIF_LAST_COUNT != null && r.count > NOTIF_LAST_COUNT &&
+        typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("Bugun Bot", { body: "🙋 Yangi suhbat operator kutmoqda (" + r.count + " ta)" });
+    }
+    NOTIF_LAST_COUNT = r.count;
+    window.NOTIF_ITEMS = r.items || [];
+  } catch (e) { /* jim */ }
+}
+function toggleNotifs() {
+  const drop = $("notifDrop");
+  if (!drop) return;
+  if (drop.classList.contains("show")) { drop.classList.remove("show"); return; }
+  // Birinchi ochilishda brauzer ruxsatini so'raymiz (ixtiyoriy)
+  if (typeof Notification !== "undefined" && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+  const items = window.NOTIF_ITEMS || [];
+  drop.innerHTML = items.length
+    ? items.map((c) => '<a class="ts-item" href="/dashboard/inbox?contact=' + c.id + '">' +
+        '<span class="ts-ico">🙋</span><span class="ts-body"><strong>' + esc(c.name || c.ig_user_id) + "</strong>" +
+        '<span class="small muted">' + esc(c.project_name || "") + " · " + timeAgo(c.last_seen) + "</span></span></a>").join("")
+    : '<div class="ts-item muted" style="cursor:default">🎉 Hammasi hal qilingan — kutayotgan suhbat yo\'q</div>';
+  drop.classList.add("show");
+}
+document.addEventListener("click", (e) => {
+  const btn = $("notifBtn"), drop = $("notifDrop");
+  if (drop && btn && !btn.contains(e.target) && !drop.contains(e.target)) drop.classList.remove("show");
+});
+if ($("notifBtn")) { refreshNotifs(); setInterval(refreshNotifs, 30000); }

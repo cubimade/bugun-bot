@@ -24,6 +24,10 @@ import {
   deleteProject,
   listContacts,
   countContacts,
+  searchAll,
+  listNeedsHuman,
+  setContactArchived,
+  rateMessage,
   getContact,
   getContactMessages,
   markContactRead,
@@ -105,6 +109,58 @@ router.get("/api/contacts", protect, async (req, res, next) => {
 // Oxirgi xatolar (muammolarni tez topish uchun)
 router.get("/api/errors", protect, (req, res) => {
   res.json({ errors: getRecentErrors() });
+});
+
+// --- D1: Global qidiruv — kontakt ismi/ID va xabar matni bo'yicha ---
+router.get("/api/search", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const q = String(req.query.q || "").trim().slice(0, 100);
+    if (q.length < 2) return res.json({ contacts: [], messages: [] });
+    res.json(await searchAll(q));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- D2: Bildirishnomalar — yangi "odam kerak" suhbatlar ---
+router.get("/api/notifications", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const items = await listNeedsHuman(20);
+    res.json({ count: items.length, items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- D4: Suhbatni arxivlash / chiqarish ---
+router.post("/api/contacts/:id/archive", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.params.id);
+    const value = Boolean(req.body?.value);
+    await setContactArchived(contactId, value);
+    res.json({ ok: true, value });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- D5: Bot javobini baholash (👍/👎) ---
+router.post("/api/messages/:id/rate", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const messageId = Number(req.params.id);
+    const value = Number(req.body?.value);
+    if (![1, -1, 0].includes(value)) {
+      return res.status(400).json({ error: "value 1, -1 yoki 0 bo'lishi kerak" });
+    }
+    await rateMessage(messageId, value);
+    res.json({ ok: true, value });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get("/api/conversation/:contactId", protect, async (req, res, next) => {

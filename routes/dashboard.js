@@ -19,6 +19,8 @@ import {
   renderFlowEditorPage,
   renderPipelinePage,
   renderMediaPage,
+  renderBookingsPage,
+  renderSalesPage,
 } from "../templates.js";
 
 const router = express.Router();
@@ -35,6 +37,8 @@ router.get("/dashboard/flows/:id", protect, (req, res) => {
 });
 router.get("/dashboard/pipeline", protect, (req, res) => res.send(renderPipelinePage()));
 router.get("/dashboard/media", protect, (req, res) => res.send(renderMediaPage()));
+router.get("/dashboard/bookings", protect, (req, res) => res.send(renderBookingsPage()));
+router.get("/dashboard/sales", protect, (req, res) => res.send(renderSalesPage()));
 router.get("/dashboard/broadcast", protect, (req, res) => res.send(renderBroadcastPage()));
 router.get("/dashboard/knowledge", protect, (req, res) => res.send(renderKnowledgePage()));
 router.get("/dashboard/keywords", protect, (req, res) => res.send(renderKeywordsPage()));

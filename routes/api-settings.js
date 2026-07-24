@@ -36,6 +36,13 @@ const SETTING_KEYS = [
   "lead_magnet_keyword",
   "lead_magnet_text",
   "lead_magnet_media",
+  "pay_click", // 10.3
+  "pay_payme",
+  "pay_uzum",
+  "calc_enabled", // 10.2
+  "calc_base_price",
+  "referral_bonus_enabled", // 10.5
+  "referral_bonus_percent",
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -67,6 +74,13 @@ router.get("/api/settings", protect, async (req, res, next) => {
         lead_magnet_keyword: state.SETTINGS.lead_magnet_keyword ?? "",
         lead_magnet_text: state.SETTINGS.lead_magnet_text ?? "",
         lead_magnet_media: state.SETTINGS.lead_magnet_media ?? "",
+        pay_click: state.SETTINGS.pay_click ?? "",
+        pay_payme: state.SETTINGS.pay_payme ?? "",
+        pay_uzum: state.SETTINGS.pay_uzum ?? "",
+        calc_enabled: state.SETTINGS.calc_enabled ?? "false",
+        calc_base_price: state.SETTINGS.calc_base_price ?? "0",
+        referral_bonus_enabled: state.SETTINGS.referral_bonus_enabled ?? "false",
+        referral_bonus_percent: state.SETTINGS.referral_bonus_percent ?? "10",
         greeting_buttons_enabled: state.SETTINGS.greeting_buttons_enabled ?? "false",
         greeting_buttons_text: state.SETTINGS.greeting_buttons_text ?? "",
         greeting_buttons: state.SETTINGS.greeting_buttons ?? "[]",

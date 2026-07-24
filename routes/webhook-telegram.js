@@ -87,6 +87,12 @@ router.post("/webhook/telegram/:projectId", async (req, res) => {
       name: fullName(m.from),
     };
 
+    // /start [REFkod] — birinchi ochilish: salomga aylantiramiz (referral kodi saqlanadi)
+    if (text.startsWith("/start")) {
+      const rest = text.slice(6).trim();
+      text = rest ? `Salom! ${rest}` : "Salom!";
+    }
+
     if (text) {
       await processIncomingText({ ...base, text });
       return;

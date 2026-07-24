@@ -16,3 +16,5 @@ export { renderInsightsPage } from "./templates/insights.js";
 export { renderFlowsPage, renderFlowEditorPage } from "./templates/flows.js";
 export { renderPipelinePage } from "./templates/pipeline.js";
 export { renderMediaPage } from "./templates/media.js";
+export { renderBookingsPage } from "./templates/bookings.js";
+export { renderSalesPage } from "./templates/sales.js";

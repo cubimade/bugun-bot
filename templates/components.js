@@ -41,6 +41,8 @@ export const ICONS = {
   flow: I('<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M5 8.5v2a3 3 0 0 0 3 3h1.5"/><path d="M19 8.5v2a3 3 0 0 1-3 3h-1.5"/><path d="M12 13.5v2"/>'),
   pipeline: I('<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="5" height="7" rx="1.5"/>'),
   media: I('<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/>'),
+  calendar: I('<rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
+  card: I('<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/><path d="M6 15h4"/>'),
 };
 
 // ------------------------------------------------------------
@@ -53,6 +55,8 @@ export const NAV_ITEMS = [
   { key: "insights", label: "Tahlil", href: "/dashboard/insights", icon: "insights" },
   { key: "flows", label: "Oqimlar", href: "/dashboard/flows", icon: "flow" },
   { key: "pipeline", label: "Voronka", href: "/dashboard/pipeline", icon: "pipeline" },
+  { key: "bookings", label: "Bronlar", href: "/dashboard/bookings", icon: "calendar" },
+  { key: "sales", label: "Sotuv", href: "/dashboard/sales", icon: "card" },
   { key: "broadcast", label: "Broadcast", href: "/dashboard/broadcast", icon: "broadcast" },
   { key: "knowledge", label: "Bilim bazasi", href: "/dashboard/knowledge", icon: "knowledge" },
   { key: "media", label: "Media", href: "/dashboard/media", icon: "media" },

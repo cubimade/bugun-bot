@@ -34,6 +34,7 @@ import { startBroadcastScheduler } from "./routes/api-broadcast.js";
 import { startBackupScheduler } from "./services/backup.js";
 import { startFollowupScheduler } from "./services/followup.js";
 import { startFlowScheduler } from "./services/flow-engine.js";
+import { startBookingScheduler } from "./services/booking.js";
 import dashboardRouter from "./routes/dashboard.js";
 import publicRouter from "./routes/public.js";
 
@@ -109,4 +110,5 @@ APP.listen(PORT, async () => {
   startBackupScheduler(); // F1: kunlik JSON zaxira (oxirgi 7 kun)
   startFollowupScheduler(); // 7.5: jim qolgan mijozga eslatma (soatlik)
   startFlowScheduler(); // 8.2: flow kutish (delay) davomlari (har daqiqa)
+  startBookingScheduler(); // 10.1: bron eslatmalari (soatlik)
 });

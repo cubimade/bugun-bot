@@ -14,3 +14,4 @@ export * from "./analytics.js";
 export * from "./automation.js";
 export * from "./flows.js";
 export * from "./media.js";
+export * from "./sales.js";

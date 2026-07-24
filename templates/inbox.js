@@ -71,6 +71,7 @@ export function renderInboxPage() {
       <div class="composer" id="composer" style="display:none">
         <button class="btn" onclick="openQuickReplies()" title="Tezkor javoblar" style="padding:9px 12px">⚡</button>
         <button class="btn" onclick="openMediaPicker()" title="Media yuborish" style="padding:9px 12px">📎</button>
+        <button class="btn" onclick="openPaymentModal()" title="To'lov havolasi yuborish" style="padding:9px 12px">💳</button>
         <textarea class="input" id="replyText" rows="1" placeholder="Qo'lda javob yozish... (bot o'rniga siz)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendReply()">${ICONS.send} Yuborish</button>
@@ -163,6 +164,35 @@ async function sendMedia(mediaId) {
     toast("Yuborilmoqda...");
     await postJson("/api/reply-media", { contactId: SELECTED, mediaId });
     toast("Media yuborildi ✓");
+    const { contact, messages } = await api("/api/conversation/" + SELECTED);
+    CURRENT = contact; renderChatHead(); renderMessages(messages);
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+
+// 10.3: To'lov havolasi yuborish (operator)
+function openPaymentModal() {
+  if (!SELECTED) return toast("Avval suhbatni tanlang", false);
+  openModal("💳 To'lov havolasi", '' +
+    '<label class="lbl">Summa (so\\'m, ixtiyoriy)</label>' +
+    '<input class="input" id="payAmount" type="number" min="0" placeholder="500000" style="margin-bottom:10px">' +
+    '<label class="lbl">Usul</label>' +
+    '<select class="input" id="payMethod" style="margin-bottom:14px">' +
+      '<option value="click">Click</option><option value="payme">Payme</option><option value="uzum">Uzum</option>' +
+    "</select>" +
+    '<p class="small muted" style="margin-bottom:12px">Havolalar <a href="/dashboard/sales" style="color:var(--accent-soft)">Sotuv</a> sahifasida sozlanadi. Mijoz to\\'lagach, o\\'sha yerda "To\\'landi" deb belgilang — kontakt avtomatik "Sotildi" bosqichiga o\\'tadi.</p>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+      '<button class="btn" onclick="closeModal()">Bekor</button>' +
+      '<button class="btn btn-primary" onclick="sendPayment()">Yuborish</button></div>');
+}
+async function sendPayment() {
+  try {
+    await postJson("/api/payments", {
+      contactId: SELECTED,
+      amount: $("payAmount").value || null,
+      method: $("payMethod").value,
+    });
+    closeModal();
+    toast("To'lov havolasi yuborildi ✓");
     const { contact, messages } = await api("/api/conversation/" + SELECTED);
     CURRENT = contact; renderChatHead(); renderMessages(messages);
   } catch (e) { toast("Xatolik: " + e.message, false); }

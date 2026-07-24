@@ -236,7 +236,7 @@ const TYPE_META = {
   action: { emoji: "⚡", label: "Amal" },
   delay: { emoji: "⏱", label: "Kutish" },
 };
-const ACTION_LABELS = { add_tag: "Teg qo'shish", remove_tag: "Tegni olib tashlash", handoff: "Operatorga uzatish", pause_bot: "Botni pauza qilish", set_stage: "Voronka bosqichi" };
+const ACTION_LABELS = { add_tag: "Teg qo'shish", remove_tag: "Tegni olib tashlash", handoff: "Operatorga uzatish", pause_bot: "Botni pauza qilish", set_stage: "Voronka bosqichi", give_promo: "Chegirma kodi berish" };
 
 function ports(n) {
   if (n.type === "buttons") return (n.config.buttons || []).map(String);
@@ -413,8 +413,8 @@ function panelForm(n) {
           return '<option value="' + k + '"' + (c.action === k ? " selected" : "") + ">" + ACTION_LABELS[k] + "</option>";
         }).join("") +
       "</select>" +
-      ((c.action === "add_tag" || c.action === "remove_tag" || c.action === "set_stage")
-        ? '<label class="lbl" style="margin-top:10px">' + (c.action === "set_stage" ? "Bosqich (new/interested/negotiation/won/lost)" : "Teg nomi") + "</label>" +
+      ((c.action === "add_tag" || c.action === "remove_tag" || c.action === "set_stage" || c.action === "give_promo")
+        ? '<label class="lbl" style="margin-top:10px">' + (c.action === "set_stage" ? "Bosqich (new/interested/negotiation/won/lost)" : c.action === "give_promo" ? "Chegirma foizi (masalan: 10)" : "Teg nomi") + "</label>" +
           '<input class="input" maxlength="50" value="' + esc(c.value || "") + '" oninput="cfg(\\'value\\', this.value)">'
         : "");
   }

@@ -153,6 +153,77 @@ export async function initDb() {
     -- 9.5: broadcast'ga rasm biriktirish
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS media_url TEXT;
 
+    -- 10.1: Bron / navbat tizimi
+    CREATE TABLE IF NOT EXISTS booking_settings (
+      project_id        INTEGER PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+      is_active         BOOLEAN NOT NULL DEFAULT false,
+      work_days         JSONB NOT NULL DEFAULT '[1,2,3,4,5,6]',
+      work_start        INTEGER NOT NULL DEFAULT 9,
+      work_end          INTEGER NOT NULL DEFAULT 18,
+      slot_duration_min INTEGER NOT NULL DEFAULT 60,
+      break_between_min INTEGER NOT NULL DEFAULT 0,
+      max_days_ahead    INTEGER NOT NULL DEFAULT 7
+    );
+
+    CREATE TABLE IF NOT EXISTS bookings (
+      id           SERIAL PRIMARY KEY,
+      project_id   INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      contact_id   INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+      service_name TEXT,
+      starts_at    TIMESTAMPTZ NOT NULL,
+      duration_min INTEGER NOT NULL DEFAULT 60,
+      status       TEXT NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending','confirmed','cancelled','done')),
+      note         TEXT,
+      reminded     BOOLEAN NOT NULL DEFAULT false,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_bookings_starts ON bookings(starts_at);
+    CREATE INDEX IF NOT EXISTS idx_bookings_contact ON bookings(contact_id);
+
+    -- 10.3: To'lovlar (faqat havola va holat — karta ma'lumoti SAQLANMAYDI)
+    CREATE TABLE IF NOT EXISTS payments (
+      id          SERIAL PRIMARY KEY,
+      project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      contact_id  INTEGER REFERENCES contacts(id) ON DELETE CASCADE,
+      amount      NUMERIC,
+      method      TEXT,
+      status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','failed')),
+      link        TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      paid_at     TIMESTAMPTZ
+    );
+
+    -- 10.4: Chegirma (promo) kodlari
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      id               SERIAL PRIMARY KEY,
+      project_id       INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      code             TEXT NOT NULL UNIQUE,
+      discount_percent INTEGER,
+      discount_amount  NUMERIC,
+      max_uses         INTEGER NOT NULL DEFAULT 1,
+      used_count       INTEGER NOT NULL DEFAULT 0,
+      valid_until      TIMESTAMPTZ,
+      is_active        BOOLEAN NOT NULL DEFAULT true,
+      created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- 10.5: Referral
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS referral_code TEXT UNIQUE;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS referred_by INTEGER;
+
+    -- 10.2: Narx kalkulyatori qoidalari
+    CREATE TABLE IF NOT EXISTS price_rules (
+      id         SERIAL PRIMARY KEY,
+      project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      question   TEXT NOT NULL,
+      options    JSONB NOT NULL DEFAULT '[]',
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+
+    -- 10.6: AI mijoz profili
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile JSONB;
+
     -- 9.5: Media kutubxona — fayllar database'da (redeploy'da yo'qolmaydi)
     CREATE TABLE IF NOT EXISTS media_library (
       id           SERIAL PRIMARY KEY,

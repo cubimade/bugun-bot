@@ -34,6 +34,7 @@ import { setContactLanguage } from "../db.js";
 import { sttAvailable, transcribeAudio } from "./stt.js";
 import { getTelegramFileUrl } from "./telegram.js";
 import { listPortfolioMedia, addContactTags } from "../db.js";
+import { handleSalesPayload, handleSalesIntents } from "./sales-bot.js";
 
 // 9.5: "ishlaringizni ko'rsating" so'rovini aniqlash
 const PORTFOLIO_WORDS = [
@@ -145,10 +146,15 @@ export async function processIncomingText(msg) {
     token,
   };
 
-  // 8.1/8.2: Tugma bosildi (quick reply / callback)
+  // 10-bosqich: sotuv konteksti (bron/kalkulyator/to'lov/referral)
+  const salesCtx = { contactId, senderId, projectId, platform, token, send };
+
+  // 8.1/8.2/10.x: Tugma bosildi (quick reply / callback)
   if (msg.quickPayload) {
     if (msg.quickPayload.startsWith("fbtn:")) {
       if (await handleFlowInput(flowCtx, userText, msg.quickPayload)) return;
+    } else if (await handleSalesPayload(salesCtx, msg.quickPayload)) {
+      return;
     } else if (await handleQuickReplyPayload(send, senderId, contactId, msg.quickPayload)) {
       return;
     }
@@ -209,6 +215,9 @@ export async function processIncomingText(msg) {
   if (msg.isStoryReply && (await tryStartFlow("story", flowCtx, userText))) return;
   if (await tryStartFlow("keyword", flowCtx, userText)) return;
   if (isNewContact && (await tryStartFlow("new_contact", flowCtx, userText))) return;
+
+  // 10-bosqich: sotuv intentlari — bron, kalkulyator, to'lov, promo, referral
+  if (await handleSalesIntents(salesCtx, userText)) return;
 
   // 9.5: Portfolio so'raldi — belgilangan rasmlarni avtomatik yuboramiz
   if (state.DB_READY && projectId && asksPortfolio(userText)) {

@@ -17,6 +17,7 @@ import {
   removeContactTag,
   getContact,
   setContactStage,
+  insertPromoCode,
   getFlowNode,
   getOutgoingEdges,
   getStartNode,
@@ -148,6 +149,14 @@ async function executeFrom(stateId, nodeId, ctx) {
         } else if (cfg.action === "set_stage" && val) {
           // 8.5: voronka bosqichini o'zgartirish
           await setContactStage(ctx.contactId, val);
+        } else if (cfg.action === "give_promo") {
+          // 10.4: avtomatik chegirma kodi yaratib yuborish (value = %)
+          const pct = Math.min(Math.max(parseInt(val, 10) || 10, 1), 90);
+          const code = "FLOW" + Math.random().toString(36).slice(2, 7).toUpperCase();
+          await insertPromoCode({ projectId: ctx.projectId, code, discountPercent: pct, maxUses: 1 });
+          const promoText = `🎁 Sizga maxsus ${pct}% chegirma kodi: ${code}\nBuyurtma berishda shu kodni ayting!`;
+          const pr = await sendText(ctx, promoText);
+          if (pr.ok) await saveBotMessage(ctx, promoText);
         }
         current = edges[0]?.to_node_id || null;
       } else if (node.type === "delay") {

@@ -58,6 +58,12 @@ const TEMPLATE = [
   "FAQ (ko'p so'raladigan savollar):",
   "S: (Savol)?",
   "J: (Javob)",
+  "",
+  "E'TIROZLARGA JAVOBLAR:",
+  "- \\"Qimmat\\" desa: (Narxni qiymat bilan asoslang: nima kiradi, natija nima, nima uchun arziydi)",
+  "- \\"O'ylab ko'raman\\" desa: (Yumshoq turtki: qaror uchun qanday ma'lumot kerakligini so'rang, muddatli taklif eslating)",
+  "- \\"Keyin bog'lanaman\\" desa: (Follow-up taklif: qachon yozsam qulay? Ertaga eslatib qo'yaymi?)",
+  "- \\"Boshqa joyda arzon\\" desa: (Farqni tushuntiring: sifat, kafolat, tajriba, qo'shimcha xizmatlar)",
 ].join("\\n");
 
 let PROJECTS = [];

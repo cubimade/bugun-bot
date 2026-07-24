@@ -18,6 +18,7 @@ import {
   OFF_HOURS_MESSAGE,
   RATE_LIMIT_MAX,
   RATE_LIMIT_WINDOW_MS,
+  SALES_MODE_PROMPT,
 } from "../config.js";
 import { getClaudeReply, getCommentReply, getSentiment } from "../claude.js";
 import {
@@ -367,6 +368,10 @@ async function handleDirectMessage(event, projectId, token) {
   if (handoff) {
     systemPrompt +=
       "\n\nEslatma: mijoz jonli operator/menejer so'radi. Samimiy ayt: tez orada menejer bog'lanadi.";
+  }
+  // 8.6: Sotuv rejimi — ehtiyoj → yechim → e'tiroz → harakatga chaqiruv
+  if (state.SETTINGS.sales_mode === "true") {
+    systemPrompt += SALES_MODE_PROMPT;
   }
 
   // 4) Model tanlash: oddiy → Haiku, murakkab → Sonnet

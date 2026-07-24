@@ -77,6 +77,11 @@ export function renderSettingsPage() {
         <option value="orta">O'rtacha (2-4 gap) — tavsiya</option>
         <option value="batafsil">Batafsil (4-6 gap)</option>
       </select>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <label class="switch"><input type="checkbox" id="salesMode"><span class="slider"></span></label>
+        <div><strong class="small">💼 Sotuv rejimi</strong>
+        <div class="small muted">Bot shunchaki javob bermaydi: ehtiyojni aniqlaydi, yechim taklif qiladi, e'tirozlarga javob beradi va harakatga chaqiradi. Bilim bazasidagi "E'tirozlarga javoblar" bo'limidan foydalanadi.</div></div>
+      </div>
       <button class="btn btn-primary" onclick="saveAiSettings(this)">${ICONS.check} Saqlash</button>
     </div>
 
@@ -164,6 +169,7 @@ async function loadSettings() {
     $("mediaImg").value = s.media_image_reply || "";
     $("mediaAud").value = s.media_audio_reply || "";
     $("replyLen").value = s.reply_length || "orta";
+    $("salesMode").checked = s.sales_mode === "true";
     $("fuEnabled").checked = s.followup_enabled === "true";
     $("fuFields").style.opacity = $("fuEnabled").checked ? "1" : ".45";
     $("fuWait").value = s.followup_wait_hours || "12";
@@ -248,7 +254,7 @@ async function saveFollowupSettings(btn) {
 async function saveAiSettings(btn) {
   btn.disabled = true;
   try {
-    await postJson("/api/settings", { reply_length: $("replyLen").value });
+    await postJson("/api/settings", { reply_length: $("replyLen").value, sales_mode: String($("salesMode").checked) });
     toast("AI sozlamalari saqlandi ✓");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;

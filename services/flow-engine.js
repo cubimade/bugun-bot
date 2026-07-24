@@ -101,7 +101,9 @@ async function executeFrom(stateId, nodeId, ctx) {
         const btns = edges
           .filter((e) => (e.condition_label || "").trim())
           .map((e) => ({ title: e.condition_label, payload: `fbtn:${e.id}` }));
-        const r = await sendOf(ctx).buttons(ctx.igUserId, text, btns);
+        // 9.2: URL tugmalar (Telegram'da inline, IG'da matn havola)
+        const urlBtns = Array.isArray(cfg.url_buttons) ? cfg.url_buttons : [];
+        const r = await sendOf(ctx).buttons(ctx.igUserId, text, btns, urlBtns);
         if (!r.ok) throw new Error(r.error || "Tugmalar yuborilmadi");
         await saveBotMessage(ctx, text + " " + btns.map((b) => `[${b.title}]`).join(" "));
         // Javob kutamiz — holat shu node'da qoladi
@@ -115,6 +117,16 @@ async function executeFrom(stateId, nodeId, ctx) {
         } else if (cfg.kind === "contains") {
           const last = String(ctx.lastText || "").toLowerCase();
           result = last.includes(String(cfg.value || "").trim().toLowerCase());
+        } else if (cfg.kind === "subscribed") {
+          // 9.2: Telegram kanalga obuna tekshirish (bot kanalda admin bo'lishi kerak)
+          if (ctx.platform === "telegram") {
+            const { isChannelMember } = await import("./telegram.js");
+            const r = await isChannelMember(String(cfg.value || "").trim(), ctx.igUserId, ctx.token);
+            result = Boolean(r.ok && r.member);
+            if (!r.ok) console.warn(`⚠️ Obuna tekshirib bo'lmadi (${cfg.value}):`, r.error);
+          } else {
+            result = false; // Instagram'da obuna tekshirish yo'q
+          }
         }
         const wanted = result ? "ha" : "yo'q";
         const edge =
@@ -331,7 +343,8 @@ export async function simulateFlow(flowId) {
       steps.push({ type: "info", text: titles.length ? `→ Simulyatsiya: "${titles[0]}" tugmasi tanlandi` : "→ Tugma yo'q — flow shu yerda kutib qoladi" });
       current = edges[0]?.to_node_id || null;
     } else if (node.type === "condition") {
-      steps.push({ type: "condition", text: `Shart: ${cfg.kind === "has_tag" ? "teg bor" : "xabarda so'z bor"} — "${cfg.value || ""}" → simulyatsiyada HA yo'li` });
+      const kindLabel = cfg.kind === "has_tag" ? "teg bor" : cfg.kind === "subscribed" ? "kanalga obuna (TG)" : "xabarda so'z bor";
+      steps.push({ type: "condition", text: `Shart: ${kindLabel} — "${cfg.value || ""}" → simulyatsiyada HA yo'li` });
       const edge = edges.find((e) => (e.condition_label || "").toLowerCase() === "ha") || edges[0];
       current = edge?.to_node_id || null;
     } else if (node.type === "action") {

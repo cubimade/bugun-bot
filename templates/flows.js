@@ -247,7 +247,7 @@ function summary(n) {
   const c = n.config || {};
   if (n.type === "message") return c.text ? esc(c.text) : '<i class="muted">matn kiriting…</i>';
   if (n.type === "buttons") return (c.text ? esc(c.text) : '<i class="muted">savol matni…</i>');
-  if (n.type === "condition") return (c.kind === "has_tag" ? "Teg bor: " : "Xabarda so'z bor: ") + "<strong>" + esc(c.value || "?") + "</strong>";
+  if (n.type === "condition") return (c.kind === "has_tag" ? "Teg bor: " : c.kind === "subscribed" ? "Kanalga obuna (TG): " : "Xabarda so'z bor: ") + "<strong>" + esc(c.value || "?") + "</strong>";
   if (n.type === "action") return (ACTION_LABELS[c.action] || "amal tanlang…") + (c.value ? ": <strong>" + esc(c.value) + "</strong>" : "");
   if (n.type === "delay") {
     const warn = c.unit === "soat" && Number(c.amount) > 24;
@@ -385,21 +385,25 @@ function panelForm(n) {
         '<input class="input" maxlength="20" value="' + esc(b) + '" oninput="renameBtn(' + i + ', this.value)">' +
         '<button class="btn btn-sm" onclick="delBtn(' + i + ')">🗑</button></div>';
     }).join("");
+    const urlRaw = (c.url_buttons || []).map(function (u) { return u.title + " | " + u.url; }).join("\\n");
     return '<label class="lbl">Savol matni</label>' +
       '<textarea class="input" rows="3" maxlength="900" oninput="cfg(\\'text\\', this.value)">' + esc(c.text || "") + "</textarea>" +
       '<label class="lbl" style="margin-top:10px">Tugmalar (2-5 ta, maks 20 belgi)</label>' + btns +
       '<button class="btn btn-sm" onclick="addBtn()">➕ Tugma</button>' +
-      '<p class="small muted" style="margin-top:8px">Har tugmadan alohida chiziq torting — bosilganda o\\'sha yo\\'l davom etadi.</p>';
+      '<label class="lbl" style="margin-top:12px">🔗 URL tugmalar (ixtiyoriy, har qatorda: Sarlavha | https://...)</label>' +
+      '<textarea class="input" rows="2" placeholder="Saytimiz | https://example.uz" oninput="setUrlButtons(this.value)">' + esc(urlRaw) + "</textarea>" +
+      '<p class="small muted" style="margin-top:8px">Har tugmadan alohida chiziq torting — bosilganda o\\'sha yo\\'l davom etadi. URL tugmalar Telegram\\'da inline ochiladi, Instagram\\'da matn havola bo\\'lib boradi.</p>';
   }
   if (n.type === "condition") {
     return '<label class="lbl">Shart turi</label>' +
       '<select class="input" onchange="cfg(\\'kind\\', this.value)">' +
         '<option value="contains"' + (c.kind === "contains" ? " selected" : "") + '>Xabarda so\\'z bor</option>' +
         '<option value="has_tag"' + (c.kind === "has_tag" ? " selected" : "") + ">Kontaktda teg bor</option>" +
+        '<option value="subscribed"' + (c.kind === "subscribed" ? " selected" : "") + ">Kanalga obuna (faqat Telegram)</option>" +
       "</select>" +
-      '<label class="lbl" style="margin-top:10px">Qiymat (so\\'z yoki teg)</label>' +
+      '<label class="lbl" style="margin-top:10px">Qiymat (so\\'z, teg yoki @kanal)</label>' +
       '<input class="input" maxlength="100" value="' + esc(c.value || "") + '" oninput="cfg(\\'value\\', this.value)">' +
-      '<p class="small muted" style="margin-top:8px">"ha" va "yo\\'q" chiqishlaridan mos yo\\'llarga chiziq torting.</p>';
+      '<p class="small muted" style="margin-top:8px">"ha" va "yo\\'q" chiqishlaridan mos yo\\'llarga chiziq torting. Obuna tekshirish uchun bot kanalda ADMIN bo\\'lishi shart.</p>';
   }
   if (n.type === "action") {
     return '<label class="lbl">Amal</label>' +
@@ -432,6 +436,17 @@ function cfg(key, val) {
   n.config[key] = val;
   DIRTY = true;
   renderNodes(); renderEdges();
+}
+function setUrlButtons(raw) {
+  const n = NODES.find(function (x) { return x.ref === SEL; });
+  if (!n) return;
+  n.config.url_buttons = raw.split("\\n").map(function (line) {
+    const i = line.indexOf("|");
+    if (i < 1) return null;
+    const title = line.slice(0, i).trim(), url = line.slice(i + 1).trim();
+    return title && /^https?:\\/\\//.test(url) ? { title: title, url: url } : null;
+  }).filter(Boolean);
+  DIRTY = true;
 }
 function addBtn() {
   const n = NODES.find(function (x) { return x.ref === SEL; });

@@ -12,6 +12,7 @@ import {
   sendTelegramMessage,
   sendTelegramPhoto,
   sendTelegramButtons,
+  sendTelegramDocument,
 } from "./telegram.js";
 
 export function senderFor(platform, token) {
@@ -22,6 +23,8 @@ export function senderFor(platform, token) {
       image: (userId, url) => sendTelegramPhoto(userId, url, token),
       buttons: (userId, text, buttons, urlButtons) =>
         sendTelegramButtons(userId, text, buttons, token, urlButtons),
+      // 9.2: fayl (PDF va h.k.) — lead magnit uchun
+      file: (userId, url, caption) => sendTelegramDocument(userId, url, token, caption),
     };
   }
   return {
@@ -35,6 +38,15 @@ export function senderFor(platform, token) {
         .map((u) => `${u.title}: ${u.url}`)
         .join("\n");
       return sendInstagramButtons(userId, extra ? `${text}\n\n${extra}` : text, buttons, token);
+    },
+    // IG'da fayl yuborib bo'lmaydi — rasm bo'lsa rasm, aks holda havola
+    file: async (userId, url, caption) => {
+      if (/\.(jpe?g|png|gif|webp)(\?|$)/i.test(url)) {
+        const r = await sendInstagramImage(userId, url, token);
+        if (r.ok && caption) await sendInstagramMessage(userId, caption, token);
+        return r;
+      }
+      return sendInstagramMessage(userId, (caption ? caption + "\n\n" : "") + "📎 " + url, token);
     },
   };
 }

@@ -6,7 +6,7 @@
 // ============================================================
 import { state, ACCOUNTS_MAP } from "../state.js";
 import { IG_TOKEN } from "../config.js";
-import { sendInstagramMessage } from "../instagram.js";
+import { senderFor } from "./channels.js";
 import {
   findFollowupCandidates,
   markFollowupSent,
@@ -35,9 +35,9 @@ export async function runFollowupPass() {
     console.log(`⏰ Follow-up: ${candidates.length} ta nomzod (kutish ${waitHours} soat, maks ${maxCount})`);
 
     for (const c of candidates) {
-      // 24-soat qoidasi ikkinchi qatlam tekshiruvi (SQL'da ham bor)
+      // 24-soat qoidasi ikkinchi qatlam tekshiruvi (faqat Instagram; SQL'da ham bor)
       const userAgeH = (Date.now() - new Date(c.last_user_at).getTime()) / 3600000;
-      if (userAgeH >= 23) {
+      if (c.platform !== "telegram" && userAgeH >= 23) {
         console.log(`⏭ Follow-up o'tkazildi (mijoz ${c.id}): 24-soat oynasi yopilgan (${userAgeH.toFixed(1)} soat)`);
         continue;
       }
@@ -49,7 +49,7 @@ export async function runFollowupPass() {
 
       const msg = applyVars(text, c);
       try {
-        const result = await sendInstagramMessage(c.ig_user_id, msg, token);
+        const result = await senderFor(c.platform || "instagram", token).text(c.ig_user_id, msg);
         if (result.ok) {
           await saveMessage(c.id, "assistant", msg, false, "followup");
           await markFollowupSent(c.id);

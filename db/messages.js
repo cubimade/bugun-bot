@@ -84,20 +84,22 @@ export async function getRecentUserMessages(limit = 250) {
 
 // Instagram 24 soat qoidasi: faqat oxirgi 24 soatda o'zi yozgan
 // mijozlarga xabar yuborish mumkin. Teg berilsa — shu teg bo'yicha.
+// 9.1: Telegram'da 24-soat cheklovi YO'Q — barcha mijozlarga yuboriladi.
 export async function listBroadcastRecipients(projectId, tag = null) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name
        FROM contacts c
+       JOIN projects p ON p.id = c.project_id
       WHERE c.project_id = $1
         AND ($2::text IS NULL OR $2 = ANY(c.tags))
         -- 8.7: faol flow'dagi mijozga broadcast yuborilmaydi (to'qnashuv)
         AND NOT EXISTS (SELECT 1 FROM contact_flow_state s
                          WHERE s.contact_id = c.id AND s.status = 'active')
-        AND EXISTS (
+        AND (p.platform = 'telegram' OR EXISTS (
           SELECT 1 FROM messages m
            WHERE m.contact_id = c.id AND m.role = 'user'
              AND m.created_at >= now() - interval '24 hours'
-        )
+        ))
       ORDER BY c.last_seen DESC`,
     [projectId, tag]
   );

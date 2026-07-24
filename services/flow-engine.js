@@ -7,12 +7,8 @@
 // ============================================================
 import { state, ACCOUNTS_MAP } from "../state.js";
 import { IG_TOKEN } from "../config.js";
-import {
-  sendInstagramMessage,
-  sendInstagramImage,
-  sendButtons,
-  sendPrivateReply,
-} from "../instagram.js";
+import { sendPrivateReply } from "../instagram.js";
+import { senderFor } from "./channels.js";
 import {
   saveMessage,
   setBotPaused,
@@ -40,8 +36,13 @@ function applyVars(text, ctx) {
     .replaceAll("{akkaunt}", ctx.projectName || "");
 }
 
+// Platforma adapteri (9.1): IG yoki Telegram — bir xil interfeys
+function sendOf(ctx) {
+  return senderFor(ctx.platform || "instagram", ctx.token);
+}
+
 // Birinchi xabar komment orqali kelgan bo'lsa — private reply (comment_id),
-// keyingilari oddiy DM. ctx.commentId bir marta ishlatiladi.
+// keyingilari oddiy DM. ctx.commentId bir marta ishlatiladi (faqat IG).
 async function sendText(ctx, text) {
   if (ctx.commentId) {
     const cid = ctx.commentId;
@@ -49,7 +50,7 @@ async function sendText(ctx, text) {
     await sendPrivateReply(cid, text, ctx.token);
     return { ok: true };
   }
-  return sendInstagramMessage(ctx.igUserId, text, ctx.token);
+  return sendOf(ctx).text(ctx.igUserId, text);
 }
 
 async function saveBotMessage(ctx, text) {
@@ -88,7 +89,7 @@ async function executeFrom(stateId, nodeId, ctx) {
 
       if (node.type === "message") {
         const text = applyVars(cfg.text || "", ctx);
-        if (cfg.media_url) await sendInstagramImage(ctx.igUserId, cfg.media_url, ctx.token);
+        if (cfg.media_url) await sendOf(ctx).image(ctx.igUserId, cfg.media_url);
         if (text) {
           const r = await sendText(ctx, text);
           if (!r.ok) throw new Error(r.error || "Xabar yuborilmadi");
@@ -100,7 +101,7 @@ async function executeFrom(stateId, nodeId, ctx) {
         const btns = edges
           .filter((e) => (e.condition_label || "").trim())
           .map((e) => ({ title: e.condition_label, payload: `fbtn:${e.id}` }));
-        const r = await sendButtons(ctx.igUserId, text, btns, ctx.token);
+        const r = await sendOf(ctx).buttons(ctx.igUserId, text, btns);
         if (!r.ok) throw new Error(r.error || "Tugmalar yuborilmadi");
         await saveBotMessage(ctx, text + " " + btns.map((b) => `[${b.title}]`).join(" "));
         // Javob kutamiz — holat shu node'da qoladi
@@ -246,7 +247,7 @@ export async function handleFlowInput(ctx, text, payload = null) {
         .filter((e) => (e.condition_label || "").trim())
         .map((e) => ({ title: e.condition_label, payload: `fbtn:${e.id}` }));
       const askText = "Iltimos, quyidagi tugmalardan birini tanlang 👇";
-      await sendButtons(ctx.igUserId, askText, btns, ctx.token);
+      await sendOf(ctx).buttons(ctx.igUserId, askText, btns);
       await saveBotMessage(ctx, askText);
       return true;
     }
@@ -277,6 +278,7 @@ export async function runFlowSchedulerPass() {
         igUserId: s.ig_user_id,
         name: s.contact_name,
         projectId: s.project_id,
+        platform: s.platform || "instagram",
         token,
       };
       try {

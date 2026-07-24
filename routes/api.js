@@ -16,7 +16,13 @@ import {
   requireDb,
 } from "../state.js";
 import { IG_TOKEN } from "../config.js";
-import { sendInstagramMessage, verifyToken } from "../instagram.js";
+import { verifyToken } from "../instagram.js";
+import { senderFor } from "../services/channels.js";
+import {
+  verifyBotToken,
+  setTelegramWebhook,
+  telegramWebhookSecret,
+} from "../services/telegram.js";
 import {
   listProjects,
   deleteProject,
@@ -44,6 +50,7 @@ import {
   deleteSavedReply,
   getProjectKnowledge,
   setProjectKnowledge,
+  createTelegramProject,
 } from "../db.js";
 import { getRecentErrors } from "../logger.js";
 import analyticsRouter from "./api-analytics.js";
@@ -365,9 +372,11 @@ router.post("/api/reply", protect, async (req, res, next) => {
       return res.status(400).json({ error: "Bu akkaunt uchun token topilmadi" });
     }
 
-    const result = await sendInstagramMessage(acct.ig_user_id, text, token);
+    // 9.1: platformaga mos yuborish (Instagram yoki Telegram)
+    const send = senderFor(acct.platform || "instagram", token);
+    const result = await send.text(acct.ig_user_id, text);
     if (!result.ok) {
-      return res.status(502).json({ error: "Instagram: " + result.error });
+      return res.status(502).json({ error: (acct.platform === "telegram" ? "Telegram: " : "Instagram: ") + result.error });
     }
 
     await saveMessage(contactId, "assistant", text, true); // operator belgisi bilan
@@ -455,6 +464,56 @@ router.post("/api/accounts", protect, async (req, res, next) => {
         (warning ? " — ⚠️ ID mos emas" : "")
     );
     res.json({ ok: true, projectId, username: check.username || null, warning });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ============================================================
+//  9.1: TELEGRAM BOT QO'SHISH — token tekshiriladi, loyiha yaratiladi,
+//  webhook avtomatik o'rnatiladi (secret bilan).
+// ============================================================
+router.post("/api/accounts/telegram", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const name = String(req.body?.name || "").trim().slice(0, 120);
+    const token = String(req.body?.token || "").trim();
+    if (!token || token.length > 200 || !/^\d{5,12}:[\w-]{20,60}$/.test(token)) {
+      return res.status(400).json({ error: "Bot token formati noto'g'ri (123456:ABC-... ko'rinishida bo'ladi)" });
+    }
+
+    // Tokenni Telegram'da jonli tekshiramiz
+    const check = await verifyBotToken(token);
+    if (check.ok === false) {
+      return res.status(400).json({ error: "Token ishlamadi — Telegram javobi: " + check.error });
+    }
+    if (check.ok === null) {
+      return res.status(502).json({ error: "Telegram'ga ulanib bo'lmadi: " + check.error });
+    }
+
+    const projectId = await createTelegramProject(
+      name || (check.username ? "@" + check.username : "Telegram bot"),
+      check.botId,
+      token,
+      check.username
+    );
+
+    // Webhook'ni avtomatik o'rnatamiz (domen: so'rov kelgan host)
+    const host = process.env.RAILWAY_PUBLIC_DOMAIN || req.get("host");
+    const url = `https://${host}/webhook/telegram/${projectId}`;
+    const wh = await setTelegramWebhook(token, url, telegramWebhookSecret(projectId));
+
+    console.log(
+      `➕ Telegram bot qo'shildi: @${check.username} (loyiha ${projectId})` +
+        (wh.ok ? " — webhook o'rnatildi" : ` — ⚠️ webhook xatosi: ${wh.error}`)
+    );
+    res.json({
+      ok: true,
+      projectId,
+      username: check.username,
+      webhook: wh.ok,
+      warning: wh.ok ? null : "Webhook o'rnatilmadi: " + wh.error,
+    });
   } catch (err) {
     next(err);
   }

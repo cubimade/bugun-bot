@@ -82,7 +82,7 @@ export function matchKeywordRule(rules, text) {
 export async function findFollowupCandidates({ waitHours, maxCount, limit = 30 }) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name,
-            p.name AS project_name, p.ig_account_id, p.access_token,
+            p.name AS project_name, p.ig_account_id, p.access_token, p.platform,
             last.created_at AS last_at, lastu.created_at AS last_user_at
        FROM contacts c
        JOIN projects p ON p.id = c.project_id
@@ -103,7 +103,8 @@ export async function findFollowupCandidates({ waitHours, maxCount, limit = 30 }
         AND NOT EXISTS (SELECT 1 FROM contact_flow_state s
                          WHERE s.contact_id = c.id AND s.status = 'active')
         AND last.created_at < now() - make_interval(hours => $2)
-        AND lastu.created_at >= now() - interval '23 hours'
+        -- 9.1: 24-soat qoidasi faqat Instagram'da (Telegram'da cheklov yo'q)
+        AND (p.platform = 'telegram' OR lastu.created_at >= now() - interval '23 hours')
       ORDER BY last.created_at ASC
       LIMIT $3`,
     [maxCount, waitHours, limit]

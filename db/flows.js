@@ -254,7 +254,7 @@ export async function claimDueFlowStates(limit = 20) {
         AND c.id = s.contact_id AND p.id = c.project_id
       RETURNING s.id, s.contact_id, s.flow_id, s.current_node_id, s.variables,
                 c.ig_user_id, c.name AS contact_name, c.project_id,
-                p.ig_account_id, p.access_token`,
+                p.ig_account_id, p.access_token, p.platform`,
     [limit]
   );
   return rows;

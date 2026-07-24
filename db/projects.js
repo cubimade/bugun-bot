@@ -59,6 +59,7 @@ export async function setProjectKnowledge(projectId, text) {
 export async function listProjects() {
   const { rows } = await pool.query(
     `SELECT p.id, p.name, p.ig_account_id, p.knowledge_base, p.created_at,
+            p.platform, p.tg_username,
             (p.access_token IS NOT NULL) AS has_token,
             (SELECT COUNT(*)::int FROM contacts c WHERE c.project_id = p.id) AS contacts,
             (SELECT COUNT(*)::int FROM messages m
@@ -116,10 +117,28 @@ export async function getProjectActivity(projectId) {
 // Akkaunt tokeni (broadcast/qo'lda javob uchun)
 export async function getProjectToken(projectId) {
   const { rows } = await pool.query(
-    `SELECT id, name, ig_account_id, access_token FROM projects WHERE id = $1`,
+    `SELECT id, name, ig_account_id, access_token, platform, tg_username
+       FROM projects WHERE id = $1`,
     [projectId]
   );
   return rows[0] || null;
+}
+
+// 9.1: Telegram bot loyihasini yaratish/yangilash
+// ig_account_id ustunida "tg:<botId>" saqlanadi (unique constraint uchun)
+export async function createTelegramProject(name, botId, token, username) {
+  const { rows } = await pool.query(
+    `INSERT INTO projects (name, ig_account_id, access_token, platform, tg_username)
+     VALUES ($1, $2, $3, 'telegram', $4)
+     ON CONFLICT (ig_account_id) DO UPDATE
+       SET name = EXCLUDED.name,
+           access_token = EXCLUDED.access_token,
+           tg_username = EXCLUDED.tg_username,
+           platform = 'telegram'
+     RETURNING id`,
+    [name, "tg:" + botId, token, username || null]
+  );
+  return rows[0].id;
 }
 
 // ------------------------------------------------------------

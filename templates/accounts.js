@@ -25,10 +25,10 @@ async function loadAccounts() {
     $("cards").innerHTML = projects.map((p) => \`
       <div class="card hoverable glass-glow">
         <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">
-          <div class="stat-ic" style="background:linear-gradient(135deg,#f43f5e,#8b5cf6);font-size:19px">📸</div>
+          <div class="stat-ic" style="background:\${p.platform === "telegram" ? "linear-gradient(135deg,#0ea5e9,#6366f1)" : "linear-gradient(135deg,#f43f5e,#8b5cf6)"};font-size:19px">\${p.platform === "telegram" ? "✈️" : "📸"}</div>
           <div style="min-width:0;flex:1">
             <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
-            <span class="small muted">ID: \${esc(p.ig_account_id || "asosiy loyiha")}</span>
+            <span class="small muted">\${p.platform === "telegram" ? "Telegram" + (p.tg_username ? " · @" + esc(p.tg_username) : "") : "ID: " + esc(p.ig_account_id || "asosiy loyiha")}</span>
           </div>
           <span title="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}" style="display:flex;align-items:center;gap:5px" class="small \${p.active ? "" : "muted"}">
             <span class="dot \${p.active ? "dot-green" : "dot-red"}"></span>\${p.active ? "faol" : "nofaol"}
@@ -40,7 +40,7 @@ async function loadAccounts() {
           <span>\${p.knowledge_base ? '🧠 <span style="color:#4ade80">bor</span>' : '🧠 bo\\'sh'}</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="runDiagnostics(\${p.id})">🔍 Tekshirish</button>
+          \${p.platform === "telegram" ? "" : \`<button class="btn btn-sm" onclick="runDiagnostics(\${p.id})">🔍 Tekshirish</button>\`}
           <a class="btn btn-sm" href="/dashboard/knowledge">🧠 Bilim bazasi</a>
           <button class="btn btn-sm btn-danger" onclick="confirmDelete(\${p.id})">🗑 O'chirish</button>
         </div>
@@ -222,6 +222,54 @@ async function runDiagnostics(projectId) {
   }
 }
 
+// ============================================================
+//  9.1: TELEGRAM BOT QO'SHISH — BotFather yo'riqnomasi + token
+// ============================================================
+function addTelegramModal() {
+  openModal("✈️ Telegram bot qo'shish", \`
+    \${wizBox(\`<strong class="small">Bot yaratish (1 daqiqa):</strong>
+      <ol class="small muted" style="margin:6px 0 0 18px;line-height:1.8">
+        <li>Telegram'da \${WIZ_LINK("https://t.me/BotFather", "@BotFather")} ni oching</li>
+        <li><strong>/newbot</strong> yuboring</li>
+        <li>Bot nomini kiriting (masalan: Bugun Media)</li>
+        <li>Username kiriting (masalan: bugunmedia_bot — "_bot" bilan tugashi shart)</li>
+        <li>BotFather bergan <strong>token</strong>ni nusxalang (123456:ABC-... ko'rinishida)</li>
+      </ol>\`)}
+    <label class="lbl">Akkaunt nomi (ixtiyoriy)</label>
+    <input class="input" id="tgName" maxlength="120" placeholder="Masalan: Telegram bot" style="margin-bottom:10px">
+    <label class="lbl">Bot token</label>
+    <input class="input" id="tgToken" maxlength="200" placeholder="123456789:AAE..." style="margin-bottom:10px">
+    <div id="tgResult"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn" onclick="closeModal()">Bekor qilish</button>
+      <button class="btn btn-primary" id="tgSaveBtn" onclick="saveTelegramBot()">✓ Tekshirish va ulash</button>
+    </div>\`);
+}
+async function saveTelegramBot() {
+  const token = $("tgToken").value.trim();
+  if (!token) return toast("Bot token majburiy", false);
+  const btn = $("tgSaveBtn");
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Tekshirilmoqda...';
+  try {
+    const r = await postJson("/api/accounts/telegram", { name: $("tgName").value.trim(), token });
+    $("tgResult").innerHTML =
+      '<div class="card" style="padding:12px;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.08);margin-bottom:6px">' +
+      "🎉 <strong>Bot ulandi!</strong> — @" + esc(r.username) +
+      '<div class="small muted" style="margin-top:4px">' +
+      (r.webhook ? "Webhook avtomatik o'rnatildi — botga yozib sinab ko'ring!" : "⚠️ " + esc(r.warning || "")) +
+      "</div></div>";
+    toast("Telegram bot ulandi ✓ — @" + r.username);
+    btn.textContent = "Yopish";
+    btn.disabled = false;
+    btn.onclick = () => { closeModal(); loadAccounts(); };
+    loadAccounts();
+  } catch (e) {
+    $("tgResult").innerHTML =
+      '<div class="card" style="padding:12px;border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)">❌ <strong>Xatolik:</strong> ' + esc(e.message) + "</div>";
+    btn.disabled = false; btn.textContent = "↻ Qayta urinish";
+  }
+}
+
 function confirmDelete(id) {
   const p = PROJECTS.find((x) => x.id === id);
   openModal("Akkauntni o'chirish", \`
@@ -244,7 +292,7 @@ loadAccounts();`;
   return renderLayout({
     title: "Akkauntlar",
     active: "accounts",
-    headerAction: `<button class="btn btn-primary" onclick="addAccountModal()">${ICONS.plus} Yangi akkaunt</button>`,
+    headerAction: `<button class="btn" onclick="addTelegramModal()">✈️ Telegram bot</button> <button class="btn btn-primary" onclick="addAccountModal()">${ICONS.plus} Instagram akkaunt</button>`,
     content,
     script,
   });

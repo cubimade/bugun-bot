@@ -163,6 +163,8 @@ function renderFilters() {
     { k: "negative", label: "😟 Salbiy" },
     { k: "paused", label: "🔕 Pauzada" },
     { k: "story", label: "📸 Story javoblari" },
+    { k: "ig", label: "📷 Instagram" },
+    { k: "tg", label: "✈️ Telegram" },
     { k: "archived", label: "🗄 Arxiv" },
     ...ALL_TAGS.map((t) => ({ k: "tag:" + t, label: "🏷 " + t })),
   ];
@@ -179,6 +181,8 @@ function matchesFilter(c) {
   if (FILTER === "negative") return c.sentiment === "negative";
   if (FILTER === "paused") return c.bot_paused;
   if (FILTER === "story") return c.has_story;
+  if (FILTER === "ig") return c.platform !== "telegram";
+  if (FILTER === "tg") return c.platform === "telegram";
   if (FILTER.startsWith("tag:")) return (c.tags || []).includes(FILTER.slice(4));
   return true;
 }
@@ -199,6 +203,7 @@ function renderList() {
       \${avatar(c.name || c.ig_user_id, 40)}
       <div style="min-width:0;flex:1">
         <div style="display:flex;align-items:center;gap:6px">
+          <span title="\${c.platform === "telegram" ? "Telegram" : "Instagram"}" style="font-size:11px">\${c.platform === "telegram" ? "✈️" : "📷"}</span>
           <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">\${esc(c.name || c.ig_user_id)}</strong>
           \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
           \${c.bot_paused ? '<span title="Bot pauzada — operator gaplashadi">🔕</span>' : ""}

@@ -8,7 +8,7 @@ import express from "express";
 import { protect } from "../middleware/auth.js";
 import { state, ACCOUNTS_MAP, requireDb } from "../state.js";
 import { IG_TOKEN } from "../config.js";
-import { sendInstagramMessage } from "../instagram.js";
+import { senderFor } from "../services/channels.js";
 import {
   saveMessage,
   listBroadcastRecipients,
@@ -95,12 +95,13 @@ router.post("/api/broadcast", protect, async (req, res, next) => {
     BROADCAST_JOBS.set(jobId, job);
     res.json({ jobId, total: job.total });
 
-    // Fon jarayoni: ketma-ket yuboramiz (Instagram rate-limit uchun pauza bilan)
+    // Fon jarayoni: ketma-ket yuboramiz (rate-limit uchun pauza bilan)
+    const send = senderFor(project.platform || "instagram", token);
     (async () => {
       for (const r of recipients) {
         try {
           const text = applyVars(message, r, project.name);
-          const result = await sendInstagramMessage(r.ig_user_id, text, token);
+          const result = await send.text(r.ig_user_id, text);
           if (result.ok) {
             job.sent++;
             await saveMessage(r.id, "assistant", text);
@@ -185,12 +186,13 @@ export function startBroadcastScheduler() {
             continue;
           }
           const recipients = await listBroadcastRecipients(b.project_id, b.tag);
+          const send = senderFor(project?.platform || "instagram", token);
           let sent = 0;
           let failed = 0;
           for (const r of recipients) {
             try {
               const text = applyVars(b.message, r, project?.name);
-              const result = await sendInstagramMessage(r.ig_user_id, text, token);
+              const result = await send.text(r.ig_user_id, text);
               if (result.ok) {
                 sent++;
                 await saveMessage(r.id, "assistant", text);

@@ -43,7 +43,7 @@ export async function listContacts(limit = 50, offset = 0) {
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
             c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
             c.archived,
-            p.name AS project_name,
+            p.name AS project_name, p.platform,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
               ORDER BY created_at DESC LIMIT 1) AS last_text,
@@ -159,7 +159,7 @@ export async function setContactSentiment(contactId, sentiment) {
 export async function getContactAccount(contactId) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.project_id,
-            p.ig_account_id, p.access_token
+            p.ig_account_id, p.access_token, p.platform
        FROM contacts c JOIN projects p ON p.id = c.project_id
       WHERE c.id = $1`,
     [contactId]

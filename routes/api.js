@@ -12,12 +12,10 @@ import { protect } from "../middleware/auth.js";
 import {
   state,
   ACCOUNTS_MAP,
-  STARTED_AT,
   registerAccount,
-  reloadSettings,
   requireDb,
 } from "../state.js";
-import { IG_TOKEN, OFF_HOURS_MESSAGE } from "../config.js";
+import { IG_TOKEN } from "../config.js";
 import { sendInstagramMessage } from "../instagram.js";
 import {
   listProjects,
@@ -45,18 +43,18 @@ import {
   deleteSavedReply,
   getProjectKnowledge,
   setProjectKnowledge,
-  saveSettings,
 } from "../db.js";
-import { APP_VERSION } from "../templates.js";
 import { getRecentErrors } from "../logger.js";
 import analyticsRouter from "./api-analytics.js";
 import broadcastRouter from "./api-broadcast.js";
+import settingsRouter from "./api-settings.js";
 
 const router = express.Router();
 
-// Analitika va broadcast endpointlari ham /api/* ostida
+// Analitika, broadcast va sozlamalar endpointlari ham /api/* ostida
 router.use(analyticsRouter);
 router.use(broadcastRouter);
+router.use(settingsRouter);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -427,83 +425,6 @@ router.post("/api/accounts", protect, async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
-
-// ============================================================
-//  SOZLAMALAR va TIZIM HOLATI
-// ============================================================
-const SETTING_KEYS = [
-  "work_hours_enabled",
-  "work_start",
-  "work_end",
-  "off_hours_message",
-  "greeting_message",
-  "reply_length",
-];
-
-router.get("/api/settings", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    await reloadSettings();
-    // Standart qiymatlar (env) + database ustunligi
-    res.json({
-      settings: {
-        work_hours_enabled:
-          state.SETTINGS.work_hours_enabled ??
-          String((process.env.WORK_HOURS_ENABLED ?? "false") === "true"),
-        work_start: state.SETTINGS.work_start ?? String(process.env.WORK_START ?? 9),
-        work_end: state.SETTINGS.work_end ?? String(process.env.WORK_END ?? 21),
-        off_hours_message: state.SETTINGS.off_hours_message ?? OFF_HOURS_MESSAGE,
-        greeting_message: state.SETTINGS.greeting_message ?? "",
-        reply_length: state.SETTINGS.reply_length ?? "orta",
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post("/api/settings", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const body = req.body || {};
-    const toSave = {};
-    for (const k of SETTING_KEYS) {
-      if (body[k] != null) toSave[k] = String(body[k]).slice(0, 2000);
-    }
-    if (!Object.keys(toSave).length) {
-      return res.status(400).json({ error: "Saqlash uchun sozlama yo'q" });
-    }
-    await saveSettings(toSave);
-    await reloadSettings();
-    console.log(`⚙️ Sozlamalar yangilandi: ${Object.keys(toSave).join(", ")}`);
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Tizim holati (sozlamalar sahifasidagi "Tizim" kartasi uchun)
-router.get("/api/system", protect, async (req, res) => {
-  let dbOk = false;
-  if (state.DB_READY) {
-    try {
-      const { pool } = await import("../db.js");
-      await pool.query("SELECT 1");
-      dbOk = true;
-    } catch (err) {
-      dbOk = false;
-    }
-  }
-  res.json({
-    version: APP_VERSION,
-    node: process.version,
-    db: dbOk,
-    accounts: ACCOUNTS_MAP.size,
-    startedAt: STARTED_AT.toISOString(),
-    uptimeSec: Math.floor(process.uptime()),
-    models: { haiku: "Haiku 4.5 (oddiy savollar)", sonnet: "Sonnet 5 (murakkab savollar)" },
-  });
 });
 
 export default router;

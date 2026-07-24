@@ -109,6 +109,8 @@ import { recordError, getRecentErrors } from "./logger.js";
 
 const APP = express();
 APP.use(express.json());
+// Statik fayllar (dizayn CSS/JS) — 1 kun keshlanadi, ?v= bilan yangilanadi
+APP.use(express.static("public", { maxAge: "1d" }));
 
 // ============================================================
 //  DATABASE + AKKAUNTLAR holati

@@ -33,7 +33,11 @@ export function renderSettingsPage() {
       <label class="lbl">Salomlashish uslubi (birinchi xabarda, ixtiyoriy)</label>
       <input class="input" id="greetMsg" maxlength="300" placeholder="Masalan: Assalomu alaykum! BUGUN MEDIA'ga xush kelibsiz 👋" style="margin-bottom:14px">
       <label class="lbl">📸 Story javobiga salomlashish (ixtiyoriy)</label>
-      <input class="input" id="storyGreet" maxlength="300" placeholder="Masalan: Story'imga javob berganingiz uchun rahmat! 🙌" style="margin-bottom:16px">
+      <input class="input" id="storyGreet" maxlength="300" placeholder="Masalan: Story'imga javob berganingiz uchun rahmat! 🙌" style="margin-bottom:14px">
+      <label class="lbl">🖼 Rasm kelganda javob (ixtiyoriy)</label>
+      <input class="input" id="mediaImg" maxlength="500" placeholder="Rasmni oldim! 📸 Savolingizni yozib yuborsangiz, aniq javob beraman." style="margin-bottom:14px">
+      <label class="lbl">🎤 Ovozli xabarga javob (ixtiyoriy)</label>
+      <input class="input" id="mediaAud" maxlength="500" placeholder="Ovozli xabaringizni oldim 🎤 Savolingizni matn bilan yozing." style="margin-bottom:16px">
       <button class="btn btn-primary" onclick="saveBotSettings(this)">${ICONS.check} Saqlash</button>
     </div>
 
@@ -129,6 +133,8 @@ async function loadSettings() {
     $("offMsg").value = s.off_hours_message || "";
     $("greetMsg").value = s.greeting_message || "";
     $("storyGreet").value = s.story_reply_greeting || "";
+    $("mediaImg").value = s.media_image_reply || "";
+    $("mediaAud").value = s.media_audio_reply || "";
     $("replyLen").value = s.reply_length || "orta";
     $("fuEnabled").checked = s.followup_enabled === "true";
     $("fuFields").style.opacity = $("fuEnabled").checked ? "1" : ".45";
@@ -147,6 +153,8 @@ async function saveBotSettings(btn) {
       off_hours_message: $("offMsg").value.trim(),
       greeting_message: $("greetMsg").value.trim(),
       story_reply_greeting: $("storyGreet").value.trim(),
+      media_image_reply: $("mediaImg").value.trim(),
+      media_audio_reply: $("mediaAud").value.trim(),
     });
     toast("Bot sozlamalari saqlandi ✓");
   } catch (e) { toast("Xatolik: " + e.message, false); }

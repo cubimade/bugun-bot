@@ -170,8 +170,15 @@ async function handleDirectMessage(event, projectId, token) {
     console.log("⚠️ senderId topilmadi");
     return;
   }
+
+  // 7.6: Media xabar (rasm/ovoz/video/fayl) — jim qolmaymiz, tayyor javob
+  const attachments = event.message?.attachments || [];
+  if (!userText && attachments.length) {
+    await handleMediaMessage(senderId, attachments, projectId, token);
+    return;
+  }
   if (!userText) {
-    console.log("ℹ️ Matn yo'q (rasm/stiker bo'lishi mumkin) — o'tkazamiz");
+    console.log("ℹ️ Matn ham, media ham yo'q — o'tkazamiz");
     return;
   }
 
@@ -346,6 +353,74 @@ async function handleDirectMessage(event, projectId, token) {
       }
     })().catch((err) => console.error("⚠️ Sentiment saqlashda xatolik:", err.message));
   }
+}
+
+// ============================================================
+//  7.6: MEDIA XABAR (rasm/ovoz/video/fayl) — tayyor javob, AI'siz
+// ============================================================
+const MEDIA_LABELS = {
+  image: "[rasm]",
+  audio: "[ovozli xabar]",
+  video: "[video]",
+  share: "[ulashilgan post]",
+  story_mention: "[story'da belgilagan]",
+};
+const DEFAULT_IMAGE_REPLY =
+  "Rasmni oldim! 📸 Savolingizni yozib yuborsangiz, aniq javob beraman.";
+const DEFAULT_AUDIO_REPLY =
+  "Ovozli xabaringizni oldim 🎤 Iltimos, savolingizni matn bilan yozing — shunda tez javob beraman.";
+const DEFAULT_MEDIA_REPLY =
+  "Xabaringizni oldim! 🙌 Savolingizni matn bilan yozsangiz, tez javob beraman.";
+
+async function handleMediaMessage(senderId, attachments, projectId, token) {
+  if (isRateLimited(senderId)) {
+    console.log(`🚦 Rate limit: ${senderId} — media o'tkazildi`);
+    return;
+  }
+  const kind = attachments[0]?.type || "file";
+  const label = MEDIA_LABELS[kind] || "[fayl]";
+  console.log(`📎 Media xabar (${senderId}): ${label}`);
+
+  let contactId = null;
+  let paused = false;
+  if (state.DB_READY && projectId) {
+    try {
+      const contact = await getOrCreateContact(projectId, senderId);
+      contactId = contact.id;
+      await saveMessage(contactId, "user", label);
+      resetFollowupCount(contactId).catch(() => {});
+      if (contact.bot_paused) {
+        const until = contact.paused_until ? new Date(contact.paused_until) : null;
+        if (until && until <= new Date()) {
+          await setBotPaused(contactId, false, null);
+        } else {
+          paused = true;
+        }
+      }
+    } catch (dbErr) {
+      console.error("⚠️ Media xabarni saqlashda xatolik:", dbErr.message);
+    }
+  }
+  if (paused) {
+    console.log(`🔕 Bot pauzada (mijoz ${contactId}) — media javobsiz qoldirildi`);
+    return;
+  }
+
+  const reply =
+    kind === "audio"
+      ? state.SETTINGS.media_audio_reply || DEFAULT_AUDIO_REPLY
+      : kind === "image"
+        ? state.SETTINGS.media_image_reply || DEFAULT_IMAGE_REPLY
+        : DEFAULT_MEDIA_REPLY;
+
+  if (contactId) {
+    try {
+      await saveMessage(contactId, "assistant", reply);
+    } catch (dbErr) {
+      console.error("⚠️ Saqlashda xatolik:", dbErr.message);
+    }
+  }
+  await sendInstagramMessage(senderId, reply, token);
 }
 
 // ============================================================

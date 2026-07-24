@@ -24,6 +24,8 @@ const SETTING_KEYS = [
   "followup_wait_hours",
   "followup_max",
   "followup_text",
+  "media_image_reply", // 7.6
+  "media_audio_reply",
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -46,6 +48,8 @@ router.get("/api/settings", protect, async (req, res, next) => {
         followup_wait_hours: state.SETTINGS.followup_wait_hours ?? "12",
         followup_max: state.SETTINGS.followup_max ?? "1",
         followup_text: state.SETTINGS.followup_text ?? "",
+        media_image_reply: state.SETTINGS.media_image_reply ?? "",
+        media_audio_reply: state.SETTINGS.media_audio_reply ?? "",
       },
     });
   } catch (err) {

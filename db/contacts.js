@@ -131,7 +131,7 @@ export async function getContact(contactId) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.needs_human, c.tags,
             c.unread, c.first_seen, c.last_seen, c.bot_paused, c.paused_until,
-            c.note, c.sentiment, c.archived, c.language, p.name AS project_name, p.platform,
+            c.note, c.sentiment, c.archived, c.language, c.profile, p.name AS project_name, p.platform,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count
        FROM contacts c JOIN projects p ON p.id = c.project_id
       WHERE c.id = $1`,
@@ -236,7 +236,7 @@ export async function setDealAmount(contactId, amount) {
 export async function listPipelineContacts(limit = 400) {
   const { rows } = await pool.query(
     `SELECT c.id, c.name, c.ig_user_id, c.tags, c.stage, c.stage_changed_at,
-            c.deal_amount, c.last_seen, c.sentiment, p.name AS project_name,
+            c.deal_amount, c.last_seen, c.sentiment, c.profile, p.name AS project_name,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
               ORDER BY created_at DESC LIMIT 1) AS last_text
        FROM contacts c

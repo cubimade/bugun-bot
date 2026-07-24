@@ -182,6 +182,7 @@ function renderProfile() {
       <div class="drawer-stat"><div class="small muted" style="margin-bottom:3px">Birinchi ko'rilgan</div><strong class="small">${fmt(c.first_seen)}</strong></div>
       <div class="drawer-stat"><div class="small muted" style="margin-bottom:3px">Oxirgi faollik</div><strong class="small">${fmt(c.last_seen)}</strong></div>
     </div>
+    ${profileAiBlock(c.profile)}
     <div>
       <label class="lbl">📝 Izoh (faqat sizga ko'rinadi)</label>
       <textarea class="input" id="noteText" rows="4" maxlength="2000" placeholder="Masalan: narx so'radi, ertaga qo'ng'iroq qilish kerak...">${esc(c.note || "")}</textarea>
@@ -192,6 +193,19 @@ function renderProfile() {
       <button class="btn" onclick="toggleProfilePause()">${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
       <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" title="Butunlay o'chirish (GDPR)">🗑</button>
     </div>`;
+}
+// 10.6: AI yig'gan mijoz profili (drawer'da)
+function profileAiBlock(p) {
+  if (!p || typeof p !== "object" || !Object.keys(p).length) return "";
+  const labels = { ism: "👤 Ism", telefon: "📞 Telefon", email: "✉️ Email", ehtiyoj: "🎯 Ehtiyoj", byudjet: "💰 Byudjet", shoshilinchlik: "⚡ Shoshilinchlik" };
+  const rows = Object.keys(labels)
+    .filter((k) => p[k])
+    .map((k) => `<div class="small" style="display:flex;gap:6px;padding:3px 0"><span class="muted" style="min-width:110px">${labels[k]}:</span><span style="word-break:break-word">${esc(p[k])}</span></div>`)
+    .join("");
+  if (!rows) return "";
+  return `<div style="background:var(--panel2);border-radius:12px;padding:11px 13px">
+    <div class="small" style="font-weight:700;margin-bottom:5px">🤖 AI profil <span class="muted" style="font-weight:400">(suhbatdan yig'ilgan)</span></div>
+    ${rows}</div>`;
 }
 async function saveNote(btn) {
   btn.disabled = true;

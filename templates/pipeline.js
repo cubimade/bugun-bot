@@ -90,6 +90,10 @@ function cardHtml(c) {
       '<strong class="small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.name || c.ig_user_id) + "</strong>" +
       '<span class="pipe-money" data-amid="' + c.id + '" title="Summa" style="cursor:pointer">💰</span></div>' +
     (t ? '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px">' + esc(t.length > 42 ? t.slice(0, 42) + "…" : t) + "</div>" : "") +
+    (c.profile && (c.profile.ehtiyoj || c.profile.byudjet)
+      ? '<div class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px" title="AI profil">🤖 ' +
+        esc([c.profile.ehtiyoj, c.profile.byudjet].filter(Boolean).join(" · ").slice(0, 46)) + "</div>"
+      : "") +
     '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">' +
       (c.deal_amount ? '<span class="badge b-green pipe-sum">' + fmtSum(c.deal_amount) + "</span>" : "") +
       (c.tags || []).slice(0, 3).map(function (tg) { return '<span class="badge b-indigo">' + esc(tg) + "</span>"; }).join("") +

@@ -15,7 +15,8 @@ import {
   RATE_LIMIT_WINDOW_MS,
   SALES_MODE_PROMPT,
 } from "../config.js";
-import { getClaudeReply, getSentiment } from "../claude.js";
+import { getClaudeReply, getSentiment, getProfileExtract } from "../claude.js";
+import { mergeContactProfile, setContactName } from "../db.js";
 import {
   getOrCreateContact,
   saveMessage,
@@ -365,6 +366,23 @@ export async function processIncomingText(msg) {
         if (s === "negative") console.log(`😟 Salbiy kayfiyat aniqlandi (mijoz ${contactId})`);
       }
     })().catch((err) => console.error("⚠️ Sentiment saqlashda xatolik:", err.message));
+
+    // 10.6: AI mijoz profili — har 5-xabarda fonda yig'iladi
+    const userMsgCount = history.filter((m) => m.role === "user").length;
+    if (userMsgCount >= 3 && userMsgCount % 5 === 0) {
+      (async () => {
+        const convo = history
+          .slice(-15)
+          .map((m) => (m.role === "user" ? "Mijoz: " : "Bot: ") + m.content)
+          .join("\n");
+        const profile = await getProfileExtract(convo);
+        if (profile) {
+          await mergeContactProfile(contactId, profile);
+          if (profile.ism) await setContactName(contactId, profile.ism);
+          console.log(`🪪 AI profil yangilandi (mijoz ${contactId}): ${Object.keys(profile).join(", ")}`);
+        }
+      })().catch((err) => console.error("⚠️ AI profil xatoligi:", err.message));
+    }
   }
 }
 

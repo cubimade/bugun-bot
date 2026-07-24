@@ -210,6 +210,48 @@ export async function getSentiment(userTexts) {
   }
 }
 
+// 10.6: AI mijoz profili — suhbatdan ma'lumot yig'ish (Haiku, har 5 xabarda).
+// JSON: {ism, telefon, email, ehtiyoj, byudjet, shoshilinchlik} yoki null.
+export async function getProfileExtract(conversationText) {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 300,
+      system:
+        "Sen suhbatdan mijoz haqidagi faktlarni ajratib oluvchi yordamchisan. " +
+        "Faqat toza JSON qaytar (markdown/izohsiz), o'zbek tilida (lotin). Format: " +
+        '{"ism":"...","telefon":"...","email":"...","ehtiyoj":"...","byudjet":"...","shoshilinchlik":"past|orta|yuqori"}. ' +
+        "Faqat mijoz ANIQ aytgan ma'lumotni yoz — taxmin qilma. " +
+        "Aytilmagan maydonni JSON'ga umuman kiritma. " +
+        "ehtiyoj — mijozga nima kerakligi 1 qisqa gapda; byudjet — aytilgan summa/oralig'i.",
+      messages: [
+        {
+          role: "user",
+          content: `Mijoz bilan suhbat:\n${String(conversationText).slice(0, 3000)}\n\nJSON qaytar.`,
+        },
+      ],
+    });
+    const raw = extractText(response)
+      .replace(/^```(json)?/m, "")
+      .replace(/```\s*$/m, "")
+      .trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    const obj = JSON.parse(raw.slice(start, end + 1));
+    // Bo'sh/uzun qiymatlarni tozalash
+    const clean = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const s = String(v || "").trim().slice(0, 200);
+      if (s && s !== "-" && s.toLowerCase() !== "null") clean[k] = s;
+    }
+    return Object.keys(clean).length ? clean : null;
+  } catch (err) {
+    console.error("⚠️ Claude (mijoz profili) xatoligi:", err.message);
+    return null;
+  }
+}
+
 // Kommentga qisqa javob.
 export async function getCommentReply(
   commentText,

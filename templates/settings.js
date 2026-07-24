@@ -173,6 +173,19 @@ export function renderSettingsPage() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px">📬 Haftalik hisobot (Telegram)</h3>
+      <p class="small muted" style="margin-bottom:14px">Har dushanba ~09:00 da asosiy ko'rsatkichlar (xabarlar, yangi mijozlar, daromad, segmentlar + AI xulosa) Telegram'ingizga boradi. Telegram bot ulangan bo'lishi kerak. Chat ID'ni bilish uchun Telegram'da <strong>@userinfobot</strong> ga yozing.</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <label class="switch"><input type="checkbox" id="repEnabled"><span class="slider"></span></label>
+        <div><strong class="small">Hisobot yoqilgan</strong></div>
+      </div>
+      <label class="lbl">Telegram chat ID (masalan: 123456789)</label>
+      <input class="input" id="repChat" maxlength="30" placeholder="123456789" style="margin-bottom:14px">
+      <button class="btn btn-primary" onclick="saveReport(this)">${ICONS.check} Saqlash</button>
+      <a class="btn" href="/api/report/weekly.html" target="_blank" style="margin-left:8px">🖨 Hisobotni hozir ko'rish</a>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px">🖥 Tizim</h3>
       <p class="small muted" style="margin-bottom:16px">Server va database holati.</p>
       <div id="sysInfo"><div class="skeleton" style="height:100px"></div></div>
@@ -224,7 +237,24 @@ async function loadSettings() {
     $("lmKeyword").value = s.lead_magnet_keyword || "";
     $("lmText").value = s.lead_magnet_text || "";
     $("lmMedia").value = s.lead_magnet_media || "";
+    $("repEnabled").checked = s.report_telegram_enabled === "true";
+    $("repChat").value = s.report_tg_chat_id || "";
   } catch (e) { toast("Sozlamalar yuklanmadi: " + e.message, false); }
+}
+// 11.7: haftalik hisobot sozlamalari
+async function saveReport(btn) {
+  if ($("repEnabled").checked && !$("repChat").value.trim()) {
+    return toast("Chat ID kiriting (@userinfobot orqali bilib oling)", false);
+  }
+  btn.disabled = true;
+  try {
+    await postJson("/api/settings", {
+      report_telegram_enabled: String($("repEnabled").checked),
+      report_tg_chat_id: $("repChat").value.trim(),
+    });
+    toast("Hisobot sozlamalari saqlandi ✓ — har dushanba ~09:00 da boradi");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
 }
 // 9.6: Lead magnit
 async function loadLmStats() {

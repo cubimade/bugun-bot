@@ -37,9 +37,11 @@ import {
   matchKeywordRule,
   incrementKeywordHit,
   resetFollowupCount,
+  findTriggerFlow,
 } from "../db.js";
 import { sendInstagramImage } from "../instagram.js";
 import { keywordRulesFor, autoTag } from "../services/rules.js";
+import { tryStartFlow, handleFlowInput } from "../services/flow-engine.js";
 import { state, ACCOUNTS_MAP, resolveAccount, workHoursOverrides } from "../state.js";
 
 const router = express.Router();
@@ -181,12 +183,14 @@ async function handleDirectMessage(event, projectId, token) {
 
   // --- Doimiy xotira: mijoz + suhbat tarixi (shu akkaunt loyihasida) ---
   let contactId = null;
+  let contactName = null;
   let history = [];
   let paused = false;
   if (state.DB_READY && projectId) {
     try {
       const contact = await getOrCreateContact(projectId, senderId);
       contactId = contact.id;
+      contactName = contact.name;
       await saveMessage(contactId, "user", userText, false, msgSource);
       // 7.5: mijoz javob berdi — follow-up hisoblagichi nolga
       resetFollowupCount(contactId).catch(() => {});
@@ -217,12 +221,29 @@ async function handleDirectMessage(event, projectId, token) {
     return;
   }
 
-  // 8.1: Tugma bosildi (quick reply) — payload bo'yicha javob beramiz
+  // 8.2: Flow konteksti — motor xabar yuborish uchun ishlatadi
+  const flowCtx = {
+    contactId,
+    igUserId: senderId,
+    name: contactName,
+    projectId,
+    token,
+  };
+
+  // 8.1/8.2: Tugma bosildi (quick reply) — payload bo'yicha javob beramiz
   const quickPayload = event.message?.quick_reply?.payload || null;
   if (quickPayload) {
-    const handled = await handleQuickReplyPayload(senderId, contactId, quickPayload, token);
-    if (handled) return;
+    // Flow tugmasi (fbtn:) — flow motori boshqaradi
+    if (quickPayload.startsWith("fbtn:")) {
+      if (await handleFlowInput(flowCtx, userText, quickPayload)) return;
+    } else {
+      const handled = await handleQuickReplyPayload(senderId, contactId, quickPayload, token);
+      if (handled) return;
+    }
   }
+
+  // 8.2: Faol flow bor — u boshqaradi (AI javob bermaydi)
+  if (await handleFlowInput(flowCtx, userText)) return;
 
   // 7.4: Kalit so'z qoidasi — mos kelsa tayyor javob (AI chaqirilmaydi, tejamkor!)
   const kwRule = matchKeywordRule(await keywordRulesFor(projectId), userText);
@@ -245,6 +266,11 @@ async function handleDirectMessage(event, projectId, token) {
 
   // Bu mijozning birinchi xabari? (tarixда faqat shu xabar bo'lsa — yangi)
   const isNewContact = history.length <= 1;
+
+  // 8.2: Flow triggerlari — mos faol flow bo'lsa, u boshqaradi (AI'siz)
+  if (isStoryReply && (await tryStartFlow("story", flowCtx, userText))) return;
+  if (await tryStartFlow("keyword", flowCtx, userText)) return;
+  if (isNewContact && (await tryStartFlow("new_contact", flowCtx, userText))) return;
 
   // 8.1: Yangi mijozga salomlashish tugmalari (sozlamalarda yoqilgan bo'lsa)
   // AI chaqirilmaydi — tayyor salom + tugmalar (Narxlar/Xizmatlar/Bog'lanish)
@@ -501,6 +527,34 @@ async function handleComment(entry, value, projectId, token) {
     }
 
     console.log(`💬 Yangi komment (@${username || fromId}): ${commentText}`);
+
+    // 8.2: Komment triggerli flow — mos bo'lsa flow boshqaradi
+    if (state.DB_READY && projectId && fromId) {
+      try {
+        const flow = await findTriggerFlow(projectId, "comment", commentText);
+        if (flow) {
+          const contact = await getOrCreateContact(projectId, fromId, username || null);
+          const started = await tryStartFlow(
+            "comment",
+            {
+              contactId: contact.id,
+              igUserId: fromId,
+              name: contact.name || username,
+              projectId,
+              token,
+              commentId, // birinchi xabar private reply orqali boradi
+            },
+            commentText
+          );
+          if (started) {
+            await replyToComment(commentId, "Javobni DM'ga yubordim 📩", token);
+            return;
+          }
+        }
+      } catch (flowErr) {
+        console.error("⚠️ Komment flow xatoligi:", flowErr.message);
+      }
+    }
 
     // 7.4: Komment'da kalit so'z — avtomatik DM (ManyChat uslubi), AI'siz
     const kwRule = matchKeywordRule(await keywordRulesFor(projectId), commentText);

@@ -151,6 +151,54 @@ export async function initDb() {
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'sent';
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS tag TEXT;
 
+    -- 8.2: FLOW BUILDER — vizual suhbat oqimlari
+    CREATE TABLE IF NOT EXISTS flows (
+      id            SERIAL PRIMARY KEY,
+      project_id    INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      name          TEXT NOT NULL,
+      trigger_type  TEXT NOT NULL DEFAULT 'manual'
+                    CHECK (trigger_type IN ('keyword','story','comment','new_contact','manual')),
+      trigger_value TEXT,
+      is_active     BOOLEAN NOT NULL DEFAULT false,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS flow_nodes (
+      id          SERIAL PRIMARY KEY,
+      flow_id     INTEGER NOT NULL REFERENCES flows(id) ON DELETE CASCADE,
+      type        TEXT NOT NULL CHECK (type IN ('message','buttons','condition','action','delay')),
+      config      JSONB NOT NULL DEFAULT '{}',
+      position_x  INTEGER NOT NULL DEFAULT 0,
+      position_y  INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS flow_edges (
+      id              SERIAL PRIMARY KEY,
+      flow_id         INTEGER NOT NULL REFERENCES flows(id) ON DELETE CASCADE,
+      from_node_id    INTEGER NOT NULL REFERENCES flow_nodes(id) ON DELETE CASCADE,
+      to_node_id      INTEGER NOT NULL REFERENCES flow_nodes(id) ON DELETE CASCADE,
+      condition_label TEXT
+    );
+
+    -- Kontaktning flow'dagi joriy holati (current_node_id ataylab FK'siz:
+    -- graf qayta saqlanganda eski holat flow'ni yiqitmasin — motor o'zi to'xtatadi)
+    CREATE TABLE IF NOT EXISTS contact_flow_state (
+      id              SERIAL PRIMARY KEY,
+      contact_id      INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+      flow_id         INTEGER NOT NULL REFERENCES flows(id) ON DELETE CASCADE,
+      current_node_id INTEGER,
+      variables       JSONB NOT NULL DEFAULT '{}',
+      next_run_at     TIMESTAMPTZ,
+      status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','completed','stopped')),
+      started_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_flow_nodes_flow ON flow_nodes(flow_id);
+    CREATE INDEX IF NOT EXISTS idx_flow_edges_flow ON flow_edges(flow_id);
+    CREATE INDEX IF NOT EXISTS idx_flow_state_contact ON contact_flow_state(contact_id) WHERE status = 'active';
+    CREATE INDEX IF NOT EXISTS idx_flow_state_next_run ON contact_flow_state(next_run_at) WHERE status = 'active';
+
     -- Tez qidiruv uchun indekslar
     CREATE INDEX IF NOT EXISTS idx_messages_contact ON messages(contact_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_contacts_project ON contacts(project_id);

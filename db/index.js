@@ -12,3 +12,4 @@ export * from "./contacts.js";
 export * from "./messages.js";
 export * from "./analytics.js";
 export * from "./automation.js";
+export * from "./flows.js";

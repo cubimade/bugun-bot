@@ -14,7 +14,7 @@ export async function getOrCreateContact(projectId, igUserId, name = null) {
      ON CONFLICT (project_id, ig_user_id)
      DO UPDATE SET last_seen = now(),
                    name = COALESCE(EXCLUDED.name, contacts.name)
-     RETURNING id, bot_paused, paused_until`,
+     RETURNING id, name, bot_paused, paused_until`,
     [projectId, igUserId, name]
   );
   return rows[0];
@@ -186,6 +186,14 @@ export async function addContactTags(contactId, newTags) {
       WHERE id = $1`,
     [contactId, newTags]
   );
+}
+
+// 8.2: Bitta tegni olib tashlash (flow "amal" node'i uchun)
+export async function removeContactTag(contactId, tag) {
+  await pool.query(`UPDATE contacts SET tags = array_remove(tags, $2) WHERE id = $1`, [
+    contactId,
+    tag,
+  ]);
 }
 
 export async function listAllTags() {

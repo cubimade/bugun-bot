@@ -1,80 +1,89 @@
-# 🤖 Bugun Bot — Instagram AI chat-bot
+# 🤖 Bugun Bot — Instagram AI chat-bot platformasi
 
 Elbek Eshmurodovning Instagram biznes akkauntlari uchun sun'iy intellektli
-avtomatik javob tizimi. Bot Instagram **DM** va **kommentlar**ga o'zbek tilida,
-do'stona javob beradi va suhbatlarni eslab qoladi.
+avtomatik javob tizimi va boshqaruv paneli. Bot Instagram **DM** va
+**kommentlar**ga o'zbek tilida, do'stona javob beradi, suhbatlarni eslab
+qoladi va biznes analitikasini ko'rsatadi.
 
 ## ✨ Imkoniyatlar
 
+### Bot
 - 💬 **DM'ga javob** — Claude AI orqali o'zbek tilida tabiiy javob
-- 🧠 **Doimiy xotira** — har suhbat PostgreSQL'da saqlanadi, bot avvalgi gaplarni eslaydi
-- 💭 **Kommentga javob** — postga yozilgan kommentga avtomatik javob
-- 📩 **ManyChat uslubidagi DM** — komment egasiga avtomatik shaxsiy xabar
-- 👥 **Ko'p akkaunt** — bir botda bir nechta Instagram akkaunt (har biri o'z tokeni bilan)
-- 📊 **Statistika** — `/stats` sahifasida mijozlar, xabarlar, oxirgi suhbatlar
+- 🧠 **Doimiy xotira** — har suhbat PostgreSQL'da, bot avvalgi gaplarni eslaydi
+- 📚 **Bilim bazasi** — har akkaunt uchun biznes ma'lumoti (narxlar, xizmatlar)
+- 💭 **Kommentga javob** + ManyChat uslubida komment egasiga DM
+- 👥 **Ko'p akkaunt** — bir botda bir nechta Instagram akkaunt
+- 🔕 **Operator rejimi** — bot pauza, operator qo'lda javob yozadi (30 daqiqa avto-pauza)
+- 🌙 **Ish vaqti** — tashqarida tayyor javob (AI chaqirilmaydi)
+- 😟 **Kayfiyat tahlili** — salbiy mijozlar avtomatik belgilanadi
+
+### Boshqaruv paneli (9 sahifa, glass dizayn, light/dark)
+- 📊 **Boshqaruv** — statistika kartalari (trend + sparkline), 7 kun grafigi, donut
+- 💬 **Suhbatlar (Inbox)** — jonli chat, tezkor javoblar, 👍/👎 baholash, arxiv
+- 👥 **Kontaktlar** — teglar, izohlar, CSV/JSON eksport, GDPR o'chirish
+- 📈 **Tahlil** — soatlik heatmap, konversiya voronkasi, 6+ metrika, AI xulosalar
+- 📢 **Broadcast** — ommaviy xabar, rejalashtirish, {ism}/{akkaunt} o'zgaruvchilari
+- 📚 **Bilim bazasi**, 🖼 **Akkauntlar**, ⚙️ **Sozlamalar**
+- 🔍 **Global qidiruv** (kontakt + xabar matni), 🔔 **bildirishnomalar**
 
 ## 🛠 Texnologiyalar
 
-- **Node.js + Express** — server va webhook
-- **Claude API** (Anthropic) — AI javoblar (Haiku modeli)
+- **Node.js + Express** — server va webhook (ESM)
+- **Claude API** (Anthropic) — Haiku (oddiy) / Sonnet (murakkab savollar)
 - **PostgreSQL** — doimiy xotira
 - **Railway** — 24/7 deploy
+- Diagrammalar — sof SVG + vanilla JS (kutubxonasiz)
 
 ## 📁 Fayllar tuzilishi
 
-| Fayl | Vazifasi |
-|------|----------|
-| `index.js` | Asosiy server, webhook marshrutlari, orkestratsiya |
-| `config.js` | Sozlamalar, promptlar, muhit o'zgaruvchilari |
-| `claude.js` | AI javob mantiqi (Claude bilan ishlash) |
-| `instagram.js` | Instagram Graph API'ga xabar/komment yuborish |
-| `db.js` | PostgreSQL (projects, contacts, messages jadvallari) |
-| `pages.js` | HTML sahifalar (privacy, data-deletion, stats) |
+```
+index.js             — express sozlash, marshrutlarni ulash (~100 qator)
+config.js            — sozlamalar, promptlar, env o'zgaruvchilar
+claude.js            — AI javob mantiqi (Claude)
+instagram.js         — Instagram Graph API
+state.js             — umumiy server holati (DB, akkauntlar, sozlamalar)
+logger.js            — oxirgi xatolar xotirasi
+middleware/          — auth (Basic Auth), rate-limit
+routes/              — webhook, api, api-analytics, api-broadcast, dashboard, public
+db/                  — pool (migratsiya), projects, contacts, messages, analytics
+templates/           — layout, components + 8 sahifa shabloni
+public/              — app.css, app.js, favicon.svg (statik, keshlanadi)
+services/            — backup (kunlik JSON zaxira)
+pages.js             — ommaviy sahifalar (privacy, data-deletion, stats)
+```
+
+Batafsil: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## 🚀 Ishga tushirish
 
 ### Mahalliy (local)
 
-1. Paketlarni o'rnating:
-   ```bash
-   npm install
-   ```
-2. `.env.example` ni nusxalab `.env` yarating va qiymatlarni to'ldiring.
-3. Serverni ishga tushiring:
-   ```bash
-   npm start
-   ```
+```bash
+npm install
+cp .env.example .env   # qiymatlarni to'ldiring
+npm start
+```
 
 ### Railway'da deploy
 
-1. Loyihani GitHub'ga push qiling — Railway avtomatik deploy qiladi.
-2. Railway "Variables" bo'limiga muhit o'zgaruvchilarini qo'shing
-   (`.env.example` dagi ro'yxat bo'yicha).
-3. `DATABASE_URL` — Railway Postgres xizmatidan avtomatik ulanadi.
+[DEPLOYMENT.md](DEPLOYMENT.md) ga qarang — env o'zgaruvchilar, webhook
+sozlash, ko'p akkaunt, zaxira.
 
-## 🔑 Muhit o'zgaruvchilari
+## 🌐 Asosiy marshrutlar
 
-`.env.example` fayliga qarang. Asosiylari:
-
-- `ANTHROPIC_API_KEY` — Claude API kaliti
-- `IG_ACCESS_TOKEN` — Instagram token (bitta akkaunt uchun)
-- `IG_ACCOUNTS` — ko'p akkaunt uchun JSON ro'yxat (ixtiyoriy)
-- `VERIFY_TOKEN` — webhook tekshiruvi
-- `DATABASE_URL` — PostgreSQL (Railway beradi)
-- `AUTO_DM_ON_COMMENT` — kommentga DM yuborish (true/false)
-
-## 🌐 Marshrutlar (endpointlar)
-
-| Marshrut | Vazifasi |
-|----------|----------|
-| `GET /` | Bot ishlayotganini ko'rsatadi |
-| `GET/POST /webhook` | Instagram webhook (tekshiruv + xabarlar) |
-| `GET /stats` | Statistika sahifasi |
-| `GET /privacy` | Maxfiylik siyosati |
-| `GET /data-deletion` | Ma'lumotni o'chirish ko'rsatmasi |
+| Marshrut | Vazifasi | Himoya |
+|----------|----------|--------|
+| `GET/POST /webhook` | Instagram webhook | verify token + imzo (APP_SECRET) |
+| `GET /dashboard/*` | Boshqaruv paneli (9 sahifa) | parol (Basic Auth) |
+| `GET /api/*` | Dashboard API | parol + rate limit |
+| `GET /health` | Server + DB holati (monitoring) | — |
+| `GET /stats` | Statistika sahifasi | parol |
+| `GET /privacy`, `/data-deletion` | Huquqiy sahifalar | — |
 
 ## 🔒 Xavfsizlik
 
-Maxfiy qiymatlar (token, API kalit) **hech qachon kodda yozilmaydi** —
-faqat `process.env` orqali o'qiladi. `.env` va `node_modules` GitHub'ga
-yuklanmaydi (`.gitignore`).
+- Maxfiy qiymatlar faqat `process.env` orqali — kodda hech qachon yozilmaydi
+- Webhook imzosi tekshiriladi (`X-Hub-Signature-256` + `APP_SECRET`)
+- Rate limiting: `/webhook` 300/daq, `/api` 120/daq (IP bo'yicha)
+- Barcha kiruvchi ma'lumot validatsiya qilinadi, HTML `esc()` bilan himoyalanadi
+- Kunlik JSON zaxira (7 kun) + Railway Postgres backup

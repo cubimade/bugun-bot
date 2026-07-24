@@ -46,6 +46,7 @@ Tavsiya etiladi:
 | O'zgaruvchi | Tavsif |
 |-------------|--------|
 | `DASHBOARD_PASSWORD` | `/dashboard` va API'ni parol bilan himoyalash (Basic Auth) |
+| `APP_SECRET` | Meta ilovaning **App Secret** qiymati — webhook imzosini (X-Hub-Signature-256) tekshirish uchun. Meta App Dashboard → Settings → Basic → App Secret. Qo'yilmasa imzo tekshirilmaydi (startupda ogohlantirish chiqadi) |
 
 Ixtiyoriy:
 
@@ -106,6 +107,14 @@ psql "DATABASE_PUBLIC_URL" < bugun_bot_backup.sql
 
 Muhim jadvallar: `projects`, `contacts`, `messages`.
 
+**C) Avtomatik JSON zaxira (o'rnatilgan):** server har kuni muhim jadvallarni
+`/backups/backup-YYYY-MM-DD.json` fayliga yozadi (oxirgi 7 kun, tokenlarsiz).
+Diqqat: Railway diski **efemer** — har deploy'da o'chadi, shuning uchun asosiy
+zaxira sifatida A yoki B usulini ishlating.
+
+**D) To'liq eksport (dashboard'dan):** Kontaktlar sahifasi → "📦 To'liq
+eksport" — barcha kontakt + suhbatlar JSON fayl sifatida yuklab olinadi.
+
 ---
 
 ## 7. Muammolarni topish (loglar)
@@ -121,11 +130,15 @@ Muhim jadvallar: `projects`, `contacts`, `messages`.
 | Marshrut | Tavsif | Himoya |
 |----------|--------|--------|
 | `GET /` | Holat | — |
-| `GET/POST /webhook` | Instagram webhook | verify token |
-| `GET /dashboard` | Boshqaruv paneli | parol |
-| `GET /stats` | Statistika | — |
-| `GET /api/*` | Dashboard ma'lumotlari | parol |
+| `GET /health` | Server + DB holati JSON (monitoring) | — |
+| `GET/POST /webhook` | Instagram webhook | verify token + imzo (APP_SECRET) + rate limit |
+| `GET /dashboard*` | Boshqaruv paneli (9 sahifa) | parol |
+| `GET /stats` | Statistika | parol |
+| `GET /api/*` | Dashboard ma'lumotlari | parol + rate limit (120/daq) |
 | `GET /privacy`, `/data-deletion` | Huquqiy sahifalar | — |
+
+> Railway'da **Healthcheck Path** sifatida `/health` ni qo'yish tavsiya
+> etiladi (Service → Settings → Health Check).
 
 ---
 

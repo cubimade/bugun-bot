@@ -40,6 +40,7 @@ async function loadAccounts() {
           <span>\${p.knowledge_base ? '🧠 <span style="color:#4ade80">bor</span>' : '🧠 bo\\'sh'}</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="runDiagnostics(\${p.id})">🔍 Tekshirish</button>
           <a class="btn btn-sm" href="/dashboard/knowledge">🧠 Bilim bazasi</a>
           <button class="btn btn-sm btn-danger" onclick="confirmDelete(\${p.id})">🗑 O'chirish</button>
         </div>
@@ -187,6 +188,40 @@ async function wizFinish() {
     btn.disabled = false; btn.textContent = "↻ Qayta urinish";
   }
 }
+// ============================================================
+//  7.2: AKKAUNT DIAGNOSTIKASI — token, webhook, faollik, bilim bazasi
+// ============================================================
+const DIAG_ICON = { ok: "✅", warn: "⚠️", err: "❌", unknown: "❔" };
+const DIAG_LABEL = {
+  token: "🔑 Token holati",
+  webhook: "📡 Webhook obunasi",
+  activity: "📈 Faollik",
+  knowledge: "🧠 Bilim bazasi",
+};
+async function runDiagnostics(projectId) {
+  const p = PROJECTS.find((x) => x.id === projectId);
+  openModal("🔍 Diagnostika — " + (p ? p.name : "#" + projectId), skeletonRows(4, 52));
+  try {
+    const r = await api("/api/accounts/" + projectId + "/diagnostics");
+    $("modalBody").innerHTML = Object.keys(DIAG_LABEL).map((k) => {
+      const c = r.checks[k];
+      return \`<div class="card" style="padding:11px 13px;margin-bottom:9px">
+        <div style="display:flex;align-items:flex-start;gap:9px">
+          <span style="font-size:16px">\${DIAG_ICON[c.status] || "❔"}</span>
+          <div style="min-width:0;flex:1">
+            <strong class="small">\${DIAG_LABEL[k]}</strong>
+            <div class="small muted" style="margin-top:2px">\${esc(c.text)}</div>
+            \${c.fix ? \`<div class="small" style="margin-top:5px;color:var(--accent-soft)">→ \${esc(c.fix)} <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener" style="color:var(--accent-soft);font-weight:600">Meta panel ↗</a></div>\` : ""}
+          </div>
+        </div>
+      </div>\`;
+    }).join("") +
+    '<div style="display:flex;justify-content:flex-end;margin-top:4px"><button class="btn" onclick="closeModal()">Yopish</button></div>';
+  } catch (e) {
+    $("modalBody").innerHTML = emptyState("⚠️", "Diagnostika xatosi: " + e.message);
+  }
+}
+
 function confirmDelete(id) {
   const p = PROJECTS.find((x) => x.id === id);
   openModal("Akkauntni o'chirish", \`

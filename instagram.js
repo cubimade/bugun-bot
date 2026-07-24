@@ -41,6 +41,26 @@ export async function verifyToken(token) {
   }
 }
 
+// Webhook obunasini tekshirish (7.2 diagnostika).
+// ok: true + subscribed/fields | false (so'rov rad etildi) | null (aniqlab bo'lmadi)
+export async function checkSubscription(token) {
+  try {
+    const r = await fetch(`${BASE}/me/subscribed_apps`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await r.json();
+    if (data.error) return { ok: false, error: data.error.message || "Tekshirib bo'lmadi" };
+    const apps = data.data || [];
+    return {
+      ok: true,
+      subscribed: apps.length > 0,
+      fields: apps[0]?.subscribed_fields || [],
+    };
+  } catch (err) {
+    return { ok: null, error: err.message };
+  }
+}
+
 // DM (shaxsiy xabar) yuborish.
 // Natija: { ok: true } yoki { ok: false, error: "..." } — dashboard'dagi
 // qo'lda javob va broadcast muvaffaqiyatni bilishi uchun.

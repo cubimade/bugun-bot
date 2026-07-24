@@ -100,6 +100,19 @@ export async function listAccountsWithTokens() {
   return rows;
 }
 
+// 7.2 diagnostika: akkauntning oxirgi mijoz xabari vaqti
+export async function getProjectActivity(projectId) {
+  const { rows } = await pool.query(
+    `SELECT MAX(m.created_at) AS last_user_msg,
+            COUNT(DISTINCT c.id)::int AS contacts
+       FROM contacts c
+       LEFT JOIN messages m ON m.contact_id = c.id AND m.role = 'user'
+      WHERE c.project_id = $1`,
+    [projectId]
+  );
+  return rows[0];
+}
+
 // Akkaunt tokeni (broadcast/qo'lda javob uchun)
 export async function getProjectToken(projectId) {
   const { rows } = await pool.query(

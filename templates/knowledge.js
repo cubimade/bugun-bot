@@ -20,8 +20,10 @@ export function renderKnowledgePage() {
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
         <h3 id="editTitle" style="flex:1"></h3>
+        <button class="btn btn-sm" onclick="reviewKb(this)">🔍 Sifatni tekshirish</button>
         <button class="btn btn-sm" onclick="insertTemplate()">📋 Shablon qo'yish</button>
       </div>
+      <div id="kbReview" style="display:none;margin-bottom:14px"></div>
       <p class="small muted" style="margin-bottom:10px">
         Nima yozish kerak: <strong>xizmatlar, narxlar, aloqa ma'lumotlari, ish vaqti, manzil, FAQ</strong>.
         Bot faqat shu yerda yozilgan ma'lumotdan foydalanadi — qanchalik to'liq bo'lsa, javoblar shunchalik aniq.
@@ -88,6 +90,7 @@ async function openEditor(id) {
   $("editTitle").textContent = "🧠 " + (p ? p.name : "Akkaunt");
   $("listView").style.display = "none";
   $("editView").style.display = "";
+  $("kbReview").style.display = "none"; $("kbReview").innerHTML = "";
   $("kbText").value = ""; updateChars();
   try {
     const { knowledge } = await api("/api/knowledge/" + id);
@@ -119,6 +122,49 @@ async function saveKb() {
     if (p) p.knowledge_base = $("kbText").value;
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false; btn.innerHTML = "Saqlash";
+}
+// 7.7: Bilim bazasi sifatini AI bilan baholash
+const SECTION_LABELS = {
+  xizmatlar: "Xizmatlar", narxlar: "Narxlar", aloqa: "Aloqa",
+  ish_vaqti: "Ish vaqti", faq: "FAQ",
+};
+const SECTION_ICONS = { ok: "✅", partial: "⚠️", missing: "❌" };
+async function reviewKb(btn) {
+  if (!CURRENT_ID) return;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Baholanmoqda...';
+  $("kbReview").style.display = ""; $("kbReview").innerHTML = skeletonRows(2, 60);
+  try {
+    const { review: r, cachedAt } = await api("/api/knowledge/" + CURRENT_ID + "/review");
+    const scoreColor = r.score >= 70 ? "var(--success)" : r.score >= 40 ? "var(--warning)" : "var(--danger)";
+    $("kbReview").innerHTML = \`
+      <div class="card glow" style="padding:16px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px">
+          <div style="text-align:center">
+            <div style="font-size:34px;font-weight:800;color:\${scoreColor};line-height:1">\${r.score}</div>
+            <div class="small muted">/ 100 ball</div>
+          </div>
+          <div style="flex:1;min-width:180px;display:flex;gap:8px;flex-wrap:wrap">
+            \${Object.keys(SECTION_LABELS).map((k) =>
+              \`<span class="badge" title="\${SECTION_LABELS[k]}">\${SECTION_ICONS[(r.sections || {})[k]] || "❔"} \${SECTION_LABELS[k]}</span>\`).join("")}
+          </div>
+        </div>
+        \${(r.tips || []).length ? \`
+          <strong class="small">Tavsiyalar:</strong>
+          <ul class="small" style="margin:6px 0 0 18px;line-height:1.8">
+            \${r.tips.map((t) => "<li>" + esc(t) + "</li>").join("")}
+          </ul>\` : ""}
+        \${r.unanswered_note ? \`<div class="small" style="margin-top:10px;color:var(--warning)">🤷 \${esc(r.unanswered_note)}</div>\` : ""}
+        \${(r.unanswered_samples || []).length ? \`
+          <details style="margin-top:10px"><summary class="small muted" style="cursor:pointer">Bot javob berolmagan savollar (\${r.unanswered_samples.length})</summary>
+          <ul class="small muted" style="margin:6px 0 0 18px;line-height:1.7">
+            \${r.unanswered_samples.map((q) => "<li>" + esc(q) + "</li>").join("")}
+          </ul></details>\` : ""}
+        <div class="small muted" style="margin-top:10px">Baholangan: \${fmt(cachedAt)} · matn o'zgarsa qayta baholanadi</div>
+      </div>\`;
+  } catch (e) {
+    $("kbReview").innerHTML = '<div class="card">' + emptyState("⚠️", "Baholab bo'lmadi: " + e.message) + "</div>";
+  }
+  btn.disabled = false; btn.innerHTML = "🔍 Sifatni tekshirish";
 }
 loadCards();`;
 

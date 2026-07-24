@@ -14,9 +14,51 @@ import {
   insertTagRule,
   updateTagRule,
   deleteTagRule,
+  getProjectKnowledge,
+  getUnansweredSamples,
 } from "../db.js";
+import { getKnowledgeReview } from "../claude.js";
 
 const router = express.Router();
+
+// --- 7.7: Bilim bazasi sifat bahosi (Haiku, 1 soatlik kesh) ---
+const KB_REVIEW_TTL_MS = 60 * 60 * 1000;
+const KB_REVIEW_CACHE = new Map(); // projectId -> { at, data, kbLen }
+
+router.get("/api/knowledge/:projectId/review", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const projectId = Number(req.params.projectId);
+    const knowledge = await getProjectKnowledge(projectId);
+    if (!(knowledge || "").trim()) {
+      return res.json({
+        review: {
+          score: 0,
+          sections: { xizmatlar: "missing", narxlar: "missing", aloqa: "missing", ish_vaqti: "missing", faq: "missing" },
+          tips: ["Bilim bazasi bo'sh — avval xizmatlar, narxlar va aloqa ma'lumotini kiriting."],
+          unanswered_note: "",
+        },
+        cachedAt: new Date().toISOString(),
+      });
+    }
+    const force = req.query.refresh === "1";
+    const hit = KB_REVIEW_CACHE.get(projectId);
+    // Kesh: 1 soat VA bilim bazasi o'zgarmagan bo'lsa
+    if (!force && hit && Date.now() - hit.at < KB_REVIEW_TTL_MS && hit.kbLen === knowledge.length) {
+      return res.json({ review: hit.data, cachedAt: new Date(hit.at).toISOString() });
+    }
+    const unanswered = await getUnansweredSamples(projectId);
+    const review = await getKnowledgeReview(knowledge, unanswered.join("\n"));
+    if (!review) {
+      return res.status(502).json({ error: "Baholab bo'lmadi — birozdan keyin urinib ko'ring" });
+    }
+    review.unanswered_samples = unanswered;
+    KB_REVIEW_CACHE.set(projectId, { at: Date.now(), data: review, kbLen: knowledge.length });
+    res.json({ review, cachedAt: new Date().toISOString() });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // --- 7.4: Kalit so'z qoidalari ---
 router.get("/api/keywords", protect, async (req, res, next) => {

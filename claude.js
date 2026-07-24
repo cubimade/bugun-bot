@@ -146,6 +146,49 @@ export async function getWhatsChanged(comparison) {
   }
 }
 
+// 7.7: Bilim bazasi sifatini baholash (Haiku). JSON yoki null qaytaradi.
+// unansweredText — bot javob berolmagan savollar namunasi (bog'lash uchun).
+export async function getKnowledgeReview(knowledge, unansweredText = "") {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 700,
+      system:
+        "Sen Instagram chat-bot bilim bazasi sifatini baholovchi ekspertsan. " +
+        "Faqat toza JSON qaytar (markdown/izohsiz), o'zbek tilida (lotin). Format: " +
+        '{"score":N,' +
+        '"sections":{"xizmatlar":"ok|partial|missing","narxlar":"ok|partial|missing",' +
+        '"aloqa":"ok|partial|missing","ish_vaqti":"ok|partial|missing","faq":"ok|partial|missing"},' +
+        '"tips":["aniq tavsiya"],"unanswered_note":"javobsiz savollar haqida 1 gap yoki bo\'sh"}. ' +
+        "score — 0-100 umumiy ball (to'liqlik, aniqlik, sotuvga yordami). " +
+        "tips — eng muhim 3-5 tavsiya, aniq va amaliy (masalan: 'Narxlar ko'rsatilmagan — mijozlar eng ko'p shuni so'raydi'). " +
+        "Agar javobsiz savollar berilgan bo'lsa — qaysilariga bilim bazasida javob yo'qligini unanswered_note'da ayt.",
+      messages: [
+        {
+          role: "user",
+          content:
+            `Bilim bazasi matni:\n"""\n${String(knowledge || "").slice(0, 12000)}\n"""\n\n` +
+            (unansweredText
+              ? `Bot javob berolmagan savollar namunasi:\n${unansweredText.slice(0, 2000)}\n\n`
+              : "") +
+            "Baholab JSON qaytar.",
+        },
+      ],
+    });
+    const raw = extractText(response)
+      .replace(/^```(json)?/m, "")
+      .replace(/```\s*$/m, "")
+      .trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    return JSON.parse(raw.slice(start, end + 1));
+  } catch (err) {
+    console.error("⚠️ Claude (bilim bazasi bahosi) xatoligi:", err.message);
+    return null;
+  }
+}
+
 // D2: Mijoz kayfiyati (sentiment) — juda arzon Haiku chaqiruvi.
 // 'positive' | 'neutral' | 'negative' yoki "" (xatoda).
 export async function getSentiment(userTexts) {

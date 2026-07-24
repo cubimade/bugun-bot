@@ -449,6 +449,31 @@ export async function getMetrics(period) {
 }
 
 // ------------------------------------------------------------
+//  7.7: Bot javob berolmagan savollar namunasi (bilim bazasi bahosi uchun)
+// ------------------------------------------------------------
+export async function getUnansweredSamples(projectId, limit = 10) {
+  const { rows } = await pool.query(
+    `WITH juft AS (
+       SELECT m.text AS bot_text, m.role,
+              LAG(m.text) OVER (PARTITION BY m.contact_id ORDER BY m.created_at) AS prev_text,
+              LAG(m.role) OVER (PARTITION BY m.contact_id ORDER BY m.created_at) AS prev_role
+         FROM messages m
+         JOIN contacts c ON c.id = m.contact_id
+        WHERE c.project_id = $1 AND m.created_at >= now() - interval '30 days'
+     )
+     SELECT DISTINCT prev_text AS question
+       FROM juft
+      WHERE role = 'assistant' AND prev_role = 'user'
+        AND (bot_text ILIKE '%bilmayman%' OR bot_text ILIKE '%kechirasiz%'
+             OR bot_text ILIKE '%aniq emas%' OR bot_text ILIKE '%ma''lumot yo''q%'
+             OR bot_text ILIKE '%javob berolmayman%')
+      LIMIT $2`,
+    [projectId, limit]
+  );
+  return rows.map((r) => r.question).filter(Boolean);
+}
+
+// ------------------------------------------------------------
 //  F1: CSV eksport uchun kontaktlar (davr bo'yicha)
 // ------------------------------------------------------------
 export async function listContactsForExport(period) {

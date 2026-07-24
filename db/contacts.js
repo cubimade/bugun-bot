@@ -14,7 +14,7 @@ export async function getOrCreateContact(projectId, igUserId, name = null) {
      ON CONFLICT (project_id, ig_user_id)
      DO UPDATE SET last_seen = now(),
                    name = COALESCE(EXCLUDED.name, contacts.name)
-     RETURNING id, name, bot_paused, paused_until`,
+     RETURNING id, name, bot_paused, paused_until, language`,
     [projectId, igUserId, name]
   );
   return rows[0];
@@ -42,6 +42,7 @@ export async function listContacts(limit = 50, offset = 0) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
             c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
+            c.language,
             c.archived,
             p.name AS project_name, p.platform,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
@@ -130,7 +131,7 @@ export async function getContact(contactId) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.needs_human, c.tags,
             c.unread, c.first_seen, c.last_seen, c.bot_paused, c.paused_until,
-            c.note, c.sentiment, c.archived, p.name AS project_name,
+            c.note, c.sentiment, c.archived, c.language, p.name AS project_name, p.platform,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count
        FROM contacts c JOIN projects p ON p.id = c.project_id
       WHERE c.id = $1`,
@@ -144,6 +145,14 @@ export async function setContactNote(contactId, note) {
   await pool.query(`UPDATE contacts SET note = $2 WHERE id = $1`, [
     contactId,
     note,
+  ]);
+}
+
+// 9.3: Mijoz tilini saqlash (heuristika aniqlaydi)
+export async function setContactLanguage(contactId, language) {
+  await pool.query(`UPDATE contacts SET language = $2 WHERE id = $1`, [
+    contactId,
+    language,
   ]);
 }
 

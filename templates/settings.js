@@ -77,6 +77,18 @@ export function renderSettingsPage() {
         <option value="orta">O'rtacha (2-4 gap) — tavsiya</option>
         <option value="batafsil">Batafsil (4-6 gap)</option>
       </select>
+      <label class="lbl">🌐 Qo'llab-quvvatlanadigan tillar (bot mijoz tilida javob beradi)</label>
+      <div style="display:flex;gap:16px;margin-bottom:12px" class="small">
+        <label style="display:flex;align-items:center;gap:6px;opacity:.7"><input type="checkbox" checked disabled> 🇺🇿 O'zbek</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="langRu"> 🇷🇺 Русский</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="langEn"> 🇬🇧 English</label>
+      </div>
+      <label class="lbl">Standart til (aniqlanmaganda)</label>
+      <select class="input" id="defLang" style="margin-bottom:16px">
+        <option value="uz">🇺🇿 O'zbek</option>
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <label class="switch"><input type="checkbox" id="salesMode"><span class="slider"></span></label>
         <div><strong class="small">💼 Sotuv rejimi</strong>
@@ -170,6 +182,10 @@ async function loadSettings() {
     $("mediaAud").value = s.media_audio_reply || "";
     $("replyLen").value = s.reply_length || "orta";
     $("salesMode").checked = s.sales_mode === "true";
+    const langs = (s.supported_languages || "uz,ru,en").split(",");
+    $("langRu").checked = langs.includes("ru");
+    $("langEn").checked = langs.includes("en");
+    $("defLang").value = s.default_language || "uz";
     $("fuEnabled").checked = s.followup_enabled === "true";
     $("fuFields").style.opacity = $("fuEnabled").checked ? "1" : ".45";
     $("fuWait").value = s.followup_wait_hours || "12";
@@ -254,7 +270,15 @@ async function saveFollowupSettings(btn) {
 async function saveAiSettings(btn) {
   btn.disabled = true;
   try {
-    await postJson("/api/settings", { reply_length: $("replyLen").value, sales_mode: String($("salesMode").checked) });
+    const langs = ["uz"];
+    if ($("langRu").checked) langs.push("ru");
+    if ($("langEn").checked) langs.push("en");
+    await postJson("/api/settings", {
+      reply_length: $("replyLen").value,
+      sales_mode: String($("salesMode").checked),
+      supported_languages: langs.join(","),
+      default_language: $("defLang").value,
+    });
     toast("AI sozlamalari saqlandi ✓");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;

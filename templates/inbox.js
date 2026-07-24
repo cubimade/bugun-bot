@@ -209,6 +209,7 @@ function renderList() {
           \${c.bot_paused ? '<span title="Bot pauzada — operator gaplashadi">🔕</span>' : ""}
           \${c.sentiment === "negative" ? '<span title="Salbiy kayfiyat — tez aralashing!">😟</span>' : ""}
           \${c.has_story ? '<span title="Story\\'ga javob yozgan">📸</span>' : ""}
+          \${c.language && c.language !== "uz" ? '<span title="Mijoz tili">' + (c.language === "ru" ? "🇷🇺" : "🇬🇧") + "</span>" : ""}
         </div>
         <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(c.last_text || "—")}</div>
       </div>
@@ -249,6 +250,7 @@ function renderChatHead() {
         \${c.needs_human ? '<span class="badge b-amber">🙋 odam kerak</span>' : ""}
         \${c.bot_paused ? '<span class="badge b-amber">🔕 bot pauzada</span>' : ""}
         \${sentimentBadge(c.sentiment)}
+        \${c.language ? '<span class="badge b-gray" title="Mijoz tili">' + (c.language === "ru" ? "🇷🇺 RU" : c.language === "en" ? "🇬🇧 EN" : "🇺🇿 UZ") + "</span>" : ""}
       </div>
       <div class="small muted" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         \${esc(c.project_name || "")} · ID: \${esc(c.ig_user_id)}

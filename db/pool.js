@@ -151,6 +151,9 @@ export async function initDb() {
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'sent';
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS tag TEXT;
 
+    -- 9.3: Ko'p tillilik — mijoz tili (uz | ru | en)
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS language TEXT;
+
     -- 9.1: Ko'p kanallilik — loyiha platformasi (instagram | telegram)
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT 'instagram';
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS tg_username TEXT;

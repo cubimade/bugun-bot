@@ -27,6 +27,8 @@ const SETTING_KEYS = [
   "media_image_reply", // 7.6
   "media_audio_reply",
   "sales_mode", // 8.6
+  "supported_languages", // 9.3 (csv: uz,ru,en)
+  "default_language",
   "greeting_buttons_enabled", // 8.1
   "greeting_buttons_text",
   "greeting_buttons", // JSON: [{title, reply}]
@@ -55,6 +57,8 @@ router.get("/api/settings", protect, async (req, res, next) => {
         media_image_reply: state.SETTINGS.media_image_reply ?? "",
         media_audio_reply: state.SETTINGS.media_audio_reply ?? "",
         sales_mode: state.SETTINGS.sales_mode ?? "false",
+        supported_languages: state.SETTINGS.supported_languages ?? "uz,ru,en",
+        default_language: state.SETTINGS.default_language ?? "uz",
         greeting_buttons_enabled: state.SETTINGS.greeting_buttons_enabled ?? "false",
         greeting_buttons_text: state.SETTINGS.greeting_buttons_text ?? "",
         greeting_buttons: state.SETTINGS.greeting_buttons ?? "[]",

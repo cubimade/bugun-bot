@@ -29,6 +29,8 @@ import {
   resetFollowupCount,
 } from "../db.js";
 import { keywordRulesFor, autoTag } from "./rules.js";
+import { detectLanguage, languageInstruction } from "./lang.js";
+import { setContactLanguage } from "../db.js";
 import { tryStartFlow, handleFlowInput } from "./flow-engine.js";
 import { senderFor } from "./channels.js";
 import { state, workHoursOverrides } from "../state.js";
@@ -74,6 +76,7 @@ export async function processIncomingText(msg) {
   // --- Doimiy xotira: mijoz + suhbat tarixi ---
   let contactId = null;
   let contactName = msg.name || null;
+  let contactLang = null;
   let history = [];
   let paused = false;
   if (state.DB_READY && projectId) {
@@ -81,9 +84,21 @@ export async function processIncomingText(msg) {
       const contact = await getOrCreateContact(projectId, String(senderId), msg.name || null);
       contactId = contact.id;
       contactName = contact.name || contactName;
+      contactLang = contact.language || null;
       await saveMessage(contactId, "user", userText, false, msgSource);
       resetFollowupCount(contactId).catch(() => {});
       autoTag(contactId, projectId, userText);
+
+      // 9.3: Til aniqlash — qo'llab-quvvatlanadigan ro'yxatda bo'lsa saqlaymiz
+      const detected = detectLanguage(userText);
+      if (detected && detected !== contactLang) {
+        const supported = (state.SETTINGS.supported_languages || "uz,ru,en").split(",").map((s) => s.trim());
+        if (supported.includes(detected)) {
+          contactLang = detected;
+          setContactLanguage(contactId, detected).catch(() => {});
+          console.log(`🌐 Mijoz tili aniqlandi: ${detected} (mijoz ${contactId})`);
+        }
+      }
 
       if (contact.bot_paused) {
         const until = contact.paused_until ? new Date(contact.paused_until) : null;
@@ -245,6 +260,8 @@ export async function processIncomingText(msg) {
   if (state.SETTINGS.sales_mode === "true") {
     systemPrompt += SALES_MODE_PROMPT;
   }
+  // 9.3: mijoz tili — bot o'sha tilda javob beradi
+  systemPrompt += languageInstruction(contactLang || state.SETTINGS.default_language);
 
   // 4) AI javob
   const model = pickModel(userText);

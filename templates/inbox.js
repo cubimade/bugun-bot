@@ -70,6 +70,7 @@ export function renderInboxPage() {
       <div class="chat-msgs" id="chatMsgs" style="display:none"></div>
       <div class="composer" id="composer" style="display:none">
         <button class="btn" onclick="openQuickReplies()" title="Tezkor javoblar" style="padding:9px 12px">⚡</button>
+        <button class="btn" onclick="openMediaPicker()" title="Media yuborish" style="padding:9px 12px">📎</button>
         <textarea class="input" id="replyText" rows="1" placeholder="Qo'lda javob yozish... (bot o'rniga siz)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendReply()">${ICONS.send} Yuborish</button>
@@ -135,6 +136,36 @@ function useQuickReply(id) {
   closeModal();
   $("replyText").focus();
   $("replyText").dispatchEvent(new Event("input"));
+}
+
+// 9.5: Media yuborish — kutubxonadan tanlab mijozga jo'natish
+async function openMediaPicker() {
+  if (!SELECTED) return toast("Avval suhbatni tanlang", false);
+  try {
+    const { media } = await api("/api/media");
+    if (!media.length) {
+      openModal("📎 Media", '<p class="muted" style="line-height:1.7">Kutubxona bo\\'sh.<br><a href="/dashboard/media" style="color:var(--accent-soft)">Media</a> sahifasida fayl yuklang.</p>');
+      return;
+    }
+    openModal("📎 Media yuborish", '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:55vh;overflow-y:auto">' +
+      media.map(function (m) {
+        const prev = m.type === "image"
+          ? '<img src="' + m.url + '" style="width:100%;height:76px;object-fit:cover;border-radius:8px" loading="lazy">'
+          : '<div style="height:76px;display:flex;align-items:center;justify-content:center;font-size:30px;background:var(--panel2);border-radius:8px">' + (m.type === "video" ? "🎬" : "📄") + "</div>";
+        return '<div onclick="sendMedia(' + m.id + ')" style="cursor:pointer">' + prev +
+          '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + esc(m.name) + "</div></div>";
+      }).join("") + "</div>");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function sendMedia(mediaId) {
+  closeModal();
+  try {
+    toast("Yuborilmoqda...");
+    await postJson("/api/reply-media", { contactId: SELECTED, mediaId });
+    toast("Media yuborildi ✓");
+    const { contact, messages } = await api("/api/conversation/" + SELECTED);
+    CURRENT = contact; renderChatHead(); renderMessages(messages);
+  } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 
 // C1: Bot pauza (operator rejimi)

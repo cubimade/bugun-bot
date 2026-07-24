@@ -51,6 +51,7 @@ import {
   getProjectKnowledge,
   setProjectKnowledge,
   createTelegramProject,
+  getMediaMeta,
 } from "../db.js";
 import { getRecentErrors } from "../logger.js";
 import analyticsRouter from "./api-analytics.js";
@@ -60,6 +61,7 @@ import diagnosticsRouter from "./api-diagnostics.js";
 import automationRouter from "./api-automation.js";
 import flowsRouter from "./api-flows.js";
 import pipelineRouter from "./api-pipeline.js";
+import mediaRouter from "./api-media.js";
 
 const router = express.Router();
 
@@ -71,6 +73,7 @@ router.use(diagnosticsRouter);
 router.use(automationRouter);
 router.use(flowsRouter);
 router.use(pipelineRouter);
+router.use(mediaRouter);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -391,6 +394,45 @@ router.post("/api/reply", protect, async (req, res, next) => {
 
     console.log(`👤 Operator javobi yuborildi (mijoz ${contactId}) — bot 30 daqiqa pauzada`);
     res.json({ ok: true, botPausedUntil: pausedUntil.toISOString() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- 9.5: Media yuborish (inbox'dan kutubxona fayli) ---
+router.post("/api/reply-media", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const contactId = Number(req.body?.contactId);
+    const mediaId = Number(req.body?.mediaId);
+    if (!contactId || !mediaId) {
+      return res.status(400).json({ error: "contactId va mediaId majburiy" });
+    }
+    const [acct, media] = await Promise.all([
+      getContactAccount(contactId),
+      getMediaMeta(mediaId),
+    ]);
+    if (!acct) return res.status(404).json({ error: "Mijoz topilmadi" });
+    if (!media) return res.status(404).json({ error: "Fayl topilmadi" });
+
+    const token =
+      acct.access_token ||
+      ACCOUNTS_MAP.get(String(acct.ig_account_id || ""))?.token ||
+      IG_TOKEN;
+    if (!token) return res.status(400).json({ error: "Bu akkaunt uchun token topilmadi" });
+
+    const host = process.env.RAILWAY_PUBLIC_DOMAIN || req.get("host");
+    const url = `https://${host}/media/${media.id}`;
+    const send = senderFor(acct.platform || "instagram", token);
+    const result = media.type === "image"
+      ? await send.image(acct.ig_user_id, url)
+      : await send.file(acct.ig_user_id, url, media.name);
+    if (!result.ok) {
+      return res.status(502).json({ error: "Yuborilmadi: " + result.error });
+    }
+    await saveMessage(contactId, "assistant", `📎 [${media.name}]`, true);
+    console.log(`📎 Media yuborildi (mijoz ${contactId}): ${media.name}`);
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

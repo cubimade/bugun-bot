@@ -33,6 +33,17 @@ import { detectLanguage, languageInstruction } from "./lang.js";
 import { setContactLanguage } from "../db.js";
 import { sttAvailable, transcribeAudio } from "./stt.js";
 import { getTelegramFileUrl } from "./telegram.js";
+import { listPortfolioMedia } from "../db.js";
+
+// 9.5: "ishlaringizni ko'rsating" so'rovini aniqlash
+const PORTFOLIO_WORDS = [
+  "portfolio", "portfoliyo", "ishlaringiz", "ishlaringizni", "ishlarizni",
+  "namuna", "namunalar", "misollar", "qilgan ishlar",
+];
+function asksPortfolio(text) {
+  const t = String(text || "").toLowerCase();
+  return PORTFOLIO_WORDS.some((w) => t.includes(w));
+}
 import { tryStartFlow, handleFlowInput } from "./flow-engine.js";
 import { senderFor } from "./channels.js";
 import { state, workHoursOverrides } from "../state.js";
@@ -169,6 +180,28 @@ export async function processIncomingText(msg) {
   if (msg.isStoryReply && (await tryStartFlow("story", flowCtx, userText))) return;
   if (await tryStartFlow("keyword", flowCtx, userText)) return;
   if (isNewContact && (await tryStartFlow("new_contact", flowCtx, userText))) return;
+
+  // 9.5: Portfolio so'raldi — belgilangan rasmlarni avtomatik yuboramiz
+  if (state.DB_READY && projectId && asksPortfolio(userText)) {
+    try {
+      const items = await listPortfolioMedia(projectId, 3);
+      const host = process.env.RAILWAY_PUBLIC_DOMAIN;
+      if (items.length && host) {
+        for (const it of items) {
+          await send.image(senderId, `https://${host}/media/${it.id}`);
+        }
+        const followText = "Mana ishlarimizdan namunalar 👆 Batafsil ma'lumot kerak bo'lsa, bemalol so'rang 😊";
+        await send.text(senderId, followText);
+        if (contactId) {
+          await saveMessage(contactId, "assistant", `📎 [portfolio: ${items.length} ta rasm] ${followText}`).catch(() => {});
+        }
+        console.log(`⭐ Portfolio yuborildi (${items.length} ta rasm, mijoz ${contactId})`);
+        return;
+      }
+    } catch (err) {
+      console.error("⚠️ Portfolio yuborishda xatolik:", err.message);
+    }
+  }
 
   // 8.1: Yangi mijozga salomlashish tugmalari
   if (isNewContact && state.SETTINGS.greeting_buttons_enabled === "true") {

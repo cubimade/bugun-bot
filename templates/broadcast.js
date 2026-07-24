@@ -29,6 +29,11 @@ export function renderBroadcastPage() {
       <textarea class="input" id="message" rows="5" maxlength="900" placeholder="Salom {ism}! Sizga maxsus taklifimiz bor..." oninput="updatePreview()"></textarea>
       <div class="small muted" style="margin-top:4px">O'zgaruvchilar: <code>{ism}</code> — mijoz ismi, <code>{akkaunt}</code> — akkaunt nomi (yuborishda haqiqiy qiymatga almashadi)</div>
       <div class="small muted" style="text-align:right;margin:4px 0 14px"><span id="charCount">0</span>/900</div>
+      <label class="lbl">🖼 Rasm (ixtiyoriy — xabardan oldin yuboriladi)</label>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+        <input class="input" id="bcMedia" maxlength="500" placeholder="https://... yoki kutubxonadan tanlang">
+        <button class="btn btn-sm" onclick="pickBcMedia()">📎</button>
+      </div>
       <label class="lbl">Qachon yuborilsin?</label>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
         <select class="input" id="whenSel" style="width:auto" onchange="toggleSchedule()">
@@ -179,6 +184,20 @@ function confirmSend() {
       <button class="btn btn-primary" onclick="closeModal();doSend()">Ha, yuborish</button>
     </div>\`);
 }
+// 9.5: kutubxonadan rasm tanlash
+async function pickBcMedia() {
+  try {
+    const { media } = await api("/api/media");
+    const imgs = (media || []).filter(function (m) { return m.type === "image"; });
+    if (!imgs.length) return toast("Kutubxonada rasm yo'q — Media sahifasida yuklang", false);
+    openModal("📎 Rasm tanlash", '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:55vh;overflow-y:auto">' +
+      imgs.map(function (m) {
+        return '<div onclick="$(\\'bcMedia\\').value=location.origin+\\'' + "/media/" + '\\'+' + m.id + ';closeModal();toast(\\'Rasm tanlandi ✓\\')" style="cursor:pointer">' +
+          '<img src="' + m.url + '" style="width:100%;height:76px;object-fit:cover;border-radius:8px" loading="lazy">' +
+          '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + esc(m.name) + "</div></div>";
+      }).join("") + "</div>");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
 async function doSend() {
   const btn = $("sendBtn");
   const later = $("whenSel").value === "later";
@@ -191,6 +210,7 @@ async function doSend() {
         projectId: Number($("account").value),
         tag: $("audience").value || null,
         message: $("message").value.trim(),
+        media_url: $("bcMedia").value.trim() || null,
         scheduledAt: new Date($("schedAt").value).toISOString(),
       });
       toast("Broadcast rejalashtirildi 🗓 " + fmt(r.scheduledAt));
@@ -210,6 +230,7 @@ async function doSend() {
       projectId: Number($("account").value),
       tag: $("audience").value || null,
       message: $("message").value.trim(),
+      media_url: $("bcMedia").value.trim() || null,
     });
     $("progressNums").textContent = "0/" + total;
     const timer = setInterval(async () => {

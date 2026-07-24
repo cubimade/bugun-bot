@@ -59,6 +59,11 @@ router.post("/api/broadcast", protect, async (req, res, next) => {
     if (message.length > 900) {
       return res.status(400).json({ error: "Xabar juda uzun (900 belgigacha)" });
     }
+    // 9.5: ixtiyoriy rasm
+    const mediaUrl = String(req.body?.media_url || "").trim().slice(0, 500) || null;
+    if (mediaUrl && !/^https:\/\//.test(mediaUrl)) {
+      return res.status(400).json({ error: "Rasm URL https:// bilan boshlanishi kerak" });
+    }
 
     const project = await getProjectToken(projectId);
     if (!project) return res.status(404).json({ error: "Akkaunt topilmadi" });
@@ -80,6 +85,7 @@ router.post("/api/broadcast", protect, async (req, res, next) => {
         tag,
         message,
         scheduledAt: scheduledAt.toISOString(),
+        mediaUrl,
       });
       console.log(`🗓 Broadcast rejalashtirildi (#${id}): ${scheduledAt.toISOString()}`);
       return res.json({ scheduled: true, id, scheduledAt: scheduledAt.toISOString() });
@@ -101,6 +107,7 @@ router.post("/api/broadcast", protect, async (req, res, next) => {
       for (const r of recipients) {
         try {
           const text = applyVars(message, r, project.name);
+          if (mediaUrl) await send.image(r.ig_user_id, mediaUrl);
           const result = await send.text(r.ig_user_id, text);
           if (result.ok) {
             job.sent++;
@@ -192,6 +199,7 @@ export function startBroadcastScheduler() {
           for (const r of recipients) {
             try {
               const text = applyVars(b.message, r, project?.name);
+              if (b.media_url) await send.image(r.ig_user_id, b.media_url);
               const result = await send.text(r.ig_user_id, text);
               if (result.ok) {
                 sent++;

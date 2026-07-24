@@ -150,6 +150,21 @@ export async function initDb() {
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'sent';
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS tag TEXT;
+    -- 9.5: broadcast'ga rasm biriktirish
+    ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS media_url TEXT;
+
+    -- 9.5: Media kutubxona — fayllar database'da (redeploy'da yo'qolmaydi)
+    CREATE TABLE IF NOT EXISTS media_library (
+      id           SERIAL PRIMARY KEY,
+      project_id   INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      name         TEXT NOT NULL,
+      type         TEXT NOT NULL DEFAULT 'image' CHECK (type IN ('image','video','file')),
+      mime         TEXT,
+      size         INTEGER NOT NULL DEFAULT 0,
+      data         BYTEA,
+      is_portfolio BOOLEAN NOT NULL DEFAULT false,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
 
     -- 9.3: Ko'p tillilik — mijoz tili (uz | ru | en)
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS language TEXT;

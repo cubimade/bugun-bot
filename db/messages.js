@@ -116,11 +116,11 @@ export async function insertBroadcast({ projectId, audience, message, total, sen
 }
 
 // --- Rejalashtirilgan broadcast (C3) ---
-export async function insertScheduledBroadcast({ projectId, audience, tag, message, scheduledAt }) {
+export async function insertScheduledBroadcast({ projectId, audience, tag, message, scheduledAt, mediaUrl }) {
   const { rows } = await pool.query(
-    `INSERT INTO broadcasts (project_id, audience, tag, message, status, scheduled_at)
-     VALUES ($1, $2, $3, $4, 'scheduled', $5) RETURNING id`,
-    [projectId, audience, tag, message, scheduledAt]
+    `INSERT INTO broadcasts (project_id, audience, tag, message, status, scheduled_at, media_url)
+     VALUES ($1, $2, $3, $4, 'scheduled', $5, $6) RETURNING id`,
+    [projectId, audience, tag, message, scheduledAt, mediaUrl || null]
   );
   return rows[0].id;
 }
@@ -130,7 +130,7 @@ export async function claimDueBroadcasts() {
   const { rows } = await pool.query(
     `UPDATE broadcasts SET status = 'sending'
       WHERE status = 'scheduled' AND scheduled_at <= now()
-      RETURNING id, project_id, tag, message`
+      RETURNING id, project_id, tag, message, media_url`
   );
   return rows;
 }

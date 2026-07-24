@@ -377,7 +377,8 @@ function panelForm(n) {
     return '<label class="lbl">Xabar matni ({ism} ishlaydi)</label>' +
       '<textarea class="input" rows="5" maxlength="900" oninput="cfg(\\'text\\', this.value)">' + esc(c.text || "") + "</textarea>" +
       '<label class="lbl" style="margin-top:10px">Rasm URL (ixtiyoriy, https://...)</label>' +
-      '<input class="input" maxlength="500" value="' + esc(c.media_url || "") + '" oninput="cfg(\\'media_url\\', this.value)">';
+      '<input class="input" id="pnMediaUrl" maxlength="500" value="' + esc(c.media_url || "") + '" oninput="cfg(\\'media_url\\', this.value)">' +
+      '<button class="btn btn-sm" style="margin-top:6px" onclick="pickMedia()">📎 Kutubxonadan tanlash</button>';
   }
   if (n.type === "buttons") {
     const btns = (c.buttons || []).map(function (b, i) {
@@ -436,6 +437,27 @@ function cfg(key, val) {
   n.config[key] = val;
   DIRTY = true;
   renderNodes(); renderEdges();
+}
+// 9.5: kutubxonadan rasm tanlash (message node uchun)
+async function pickMedia() {
+  try {
+    const { media } = await api("/api/media");
+    const imgs = (media || []).filter(function (m) { return m.type === "image"; });
+    if (!imgs.length) return toast("Kutubxonada rasm yo'q — Media sahifasida yuklang", false);
+    openModal("📎 Rasm tanlash", '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:55vh;overflow-y:auto">' +
+      imgs.map(function (m) {
+        return '<div onclick="useMedia(' + m.id + ')" style="cursor:pointer"><img src="' + m.url + '" style="width:100%;height:76px;object-fit:cover;border-radius:8px" loading="lazy">' +
+          '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + esc(m.name) + "</div></div>";
+      }).join("") + "</div>");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+function useMedia(id) {
+  const url = location.origin + "/media/" + id;
+  cfg("media_url", url);
+  const inp = $("pnMediaUrl");
+  if (inp) inp.value = url;
+  closeModal();
+  toast("Rasm tanlandi ✓");
 }
 function setUrlButtons(raw) {
   const n = NODES.find(function (x) { return x.ref === SEL; });

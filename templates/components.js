@@ -40,6 +40,7 @@ export const ICONS = {
   key: I('<circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4"/><path d="M18 5l2 2"/><path d="M15 8l2 2"/>'),
   flow: I('<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M5 8.5v2a3 3 0 0 0 3 3h1.5"/><path d="M19 8.5v2a3 3 0 0 1-3 3h-1.5"/><path d="M12 13.5v2"/>'),
   pipeline: I('<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="5" height="7" rx="1.5"/>'),
+  media: I('<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/>'),
 };
 
 // ------------------------------------------------------------
@@ -54,6 +55,7 @@ export const NAV_ITEMS = [
   { key: "pipeline", label: "Voronka", href: "/dashboard/pipeline", icon: "pipeline" },
   { key: "broadcast", label: "Broadcast", href: "/dashboard/broadcast", icon: "broadcast" },
   { key: "knowledge", label: "Bilim bazasi", href: "/dashboard/knowledge", icon: "knowledge" },
+  { key: "media", label: "Media", href: "/dashboard/media", icon: "media" },
   { key: "keywords", label: "Kalit so'zlar", href: "/dashboard/keywords", icon: "key" },
   { key: "accounts", label: "Akkauntlar", href: "/dashboard/accounts", icon: "accounts" },
   { key: "settings", label: "Sozlamalar", href: "/dashboard/settings", icon: "settings" },

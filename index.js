@@ -40,7 +40,8 @@ import publicRouter from "./routes/public.js";
 const APP = express();
 APP.use(compression()); // B5: gzip — HTML/JSON javoblar kichrayadi
 // C2: rawBody — webhook imzosini (X-Hub-Signature-256) tekshirish uchun kerak
-APP.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
+// limit 8mb — media kutubxona yuklashi (base64) uchun (9.5)
+APP.use(express.json({ limit: "8mb", verify: (req, res, buf) => { req.rawBody = buf; } }));
 // Statik fayllar (dizayn CSS/JS) — 1 kun keshlanadi, ?v= bilan yangilanadi
 APP.use(express.static("public", { maxAge: "1d" }));
 

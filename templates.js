@@ -15,3 +15,4 @@ export { renderSettingsPage } from "./templates/settings.js";
 export { renderInsightsPage } from "./templates/insights.js";
 export { renderFlowsPage, renderFlowEditorPage } from "./templates/flows.js";
 export { renderPipelinePage } from "./templates/pipeline.js";
+export { renderMediaPage } from "./templates/media.js";

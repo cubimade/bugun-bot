@@ -31,6 +31,8 @@ import {
 import { keywordRulesFor, autoTag } from "./rules.js";
 import { detectLanguage, languageInstruction } from "./lang.js";
 import { setContactLanguage } from "../db.js";
+import { sttAvailable, transcribeAudio } from "./stt.js";
+import { getTelegramFileUrl } from "./telegram.js";
 import { tryStartFlow, handleFlowInput } from "./flow-engine.js";
 import { senderFor } from "./channels.js";
 import { state, workHoursOverrides } from "../state.js";
@@ -85,7 +87,9 @@ export async function processIncomingText(msg) {
       contactId = contact.id;
       contactName = contact.name || contactName;
       contactLang = contact.language || null;
-      await saveMessage(contactId, "user", userText, false, msgSource);
+      // 9.4: ovozdan o'girilgan matn inbox'da 🎤 belgisi bilan ko'rinadi
+      const savedText = msg.voiceTranscribed ? `🎤 (ovozdan): ${userText}` : userText;
+      await saveMessage(contactId, "user", savedText, false, msgSource);
       resetFollowupCount(contactId).catch(() => {});
       autoTag(contactId, projectId, userText);
 
@@ -340,6 +344,23 @@ export async function processIncomingMedia(msg) {
   if (isRateLimited(`${platform}:${senderId}`)) {
     console.log(`🚦 Rate limit: ${senderId} — media o'tkazildi`);
     return;
+  }
+
+  // 9.4: Ovozli xabar → matn (ELEVENLABS_API_KEY bo'lsa)
+  if (kind === "audio" && sttAvailable()) {
+    let audioUrl = msg.mediaUrl || null;
+    if (!audioUrl && msg.tgFileId) {
+      audioUrl = await getTelegramFileUrl(msg.tgFileId, token);
+    }
+    if (audioUrl) {
+      const transcript = await transcribeAudio(audioUrl);
+      if (transcript) {
+        // Matnga o'girildi — odatdagi AI oqimi (inbox'da 🎤 belgisi bilan)
+        await processIncomingText({ ...msg, text: transcript, voiceTranscribed: true });
+        return;
+      }
+    }
+    console.log("🎤 Transkripsiya bo'lmadi — tayyor javob yuboriladi");
   }
   const label = MEDIA_LABELS[kind] || "[fayl]";
   console.log(`📎 Media xabar [${platform}] (${senderId}): ${label}`);

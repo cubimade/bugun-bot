@@ -107,6 +107,15 @@ export async function setContactArchived(contactId, value) {
   ]);
 }
 
+// F2: Kontaktni BUTUNLAY o'chirish (GDPR) — xabarlar CASCADE bilan o'chadi
+export async function deleteContact(contactId) {
+  const { rows } = await pool.query(
+    `DELETE FROM contacts WHERE id = $1 RETURNING id`,
+    [contactId]
+  );
+  return rows[0]?.id || null;
+}
+
 // Mijozni "jonli operator kerak" deb belgilash (yoki bekor qilish)
 export async function setNeedsHuman(contactId, value) {
   await pool.query(`UPDATE contacts SET needs_human = $2 WHERE id = $1`, [

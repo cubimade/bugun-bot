@@ -30,6 +30,7 @@ import { APP_VERSION } from "./templates.js";
 import webhookRouter from "./routes/webhook.js";
 import apiRouter from "./routes/api.js";
 import { startBroadcastScheduler } from "./routes/api-broadcast.js";
+import { startBackupScheduler } from "./services/backup.js";
 import dashboardRouter from "./routes/dashboard.js";
 import publicRouter from "./routes/public.js";
 
@@ -100,4 +101,5 @@ APP.listen(PORT, async () => {
   console.log(`🚀 Bugun-bot ${PORT}-portda ishga tushdi! (v${APP_VERSION} — ko'p sahifali platforma)`);
   await setupDatabase();
   startBroadcastScheduler();
+  startBackupScheduler(); // F1: kunlik JSON zaxira (oxirgi 7 kun)
 });

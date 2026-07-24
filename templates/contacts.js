@@ -164,7 +164,7 @@ loadData();`;
   return renderLayout({
     title: "Kontaktlar",
     active: "contacts",
-    headerAction: `<button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
+    headerAction: `<button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" title="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
     content,
     script,
   });

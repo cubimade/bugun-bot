@@ -190,6 +190,7 @@ function renderProfile() {
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px">
       <a class="btn btn-primary" href="/dashboard/inbox?contact=${c.id}" style="flex:1;min-width:150px">💬 Suhbatga o'tish</a>
       <button class="btn" onclick="toggleProfilePause()">${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
+      <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" title="Butunlay o'chirish (GDPR)">🗑</button>
     </div>`;
 }
 async function saveNote(btn) {
@@ -213,6 +214,29 @@ async function toggleProfilePause() {
 function closeProfile() {
   $("drawerBack").classList.remove("show");
   $("drawer").classList.remove("show");
+}
+
+// ===== F2: Kontaktni butunlay o'chirish (GDPR) — tasdiqlash bilan =====
+function confirmDeleteContact() {
+  const c = PROFILE;
+  if (!c) return;
+  openModal("🗑 Kontaktni o'chirish", `
+    <p style="line-height:1.7;margin-bottom:16px"><strong>${esc(c.name || c.ig_user_id)}</strong> butunlay o'chiriladi:
+    barcha xabarlar (${c.msg_count ?? 0} ta), teglar va izohlar ham o'chadi.<br>
+    <strong style="color:var(--danger)">Bu amalni ortga qaytarib bo'lmaydi!</strong></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="closeModal()">Bekor qilish</button>
+      <button class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="doDeleteContact(${c.id})">🗑 Ha, o'chirilsin</button>
+    </div>`);
+}
+async function doDeleteContact(id) {
+  try {
+    await api("/api/contacts/" + id, { method: "DELETE" });
+    closeModal();
+    closeProfile();
+    toast("Kontakt butunlay o'chirildi 🗑");
+    setTimeout(() => location.reload(), 700);
+  } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 
 // ===== D1: Global qidiruv (topbar) =====

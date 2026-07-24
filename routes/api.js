@@ -28,6 +28,8 @@ import {
   listNeedsHuman,
   setContactArchived,
   rateMessage,
+  deleteContact,
+  pool,
   getContact,
   getContactMessages,
   markContactRead,
@@ -142,6 +144,42 @@ router.post("/api/contacts/:id/archive", protect, async (req, res, next) => {
     const value = Boolean(req.body?.value);
     await setContactArchived(contactId, value);
     res.json({ ok: true, value });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- F2: Kontaktni butunlay o'chirish (GDPR) — xabarlar ham o'chadi ---
+router.delete("/api/contacts/:id", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const id = await deleteContact(Number(req.params.id));
+    if (!id) return res.status(404).json({ error: "Mijoz topilmadi" });
+    console.log(`🗑 Kontakt butunlay o'chirildi (GDPR): ${id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- F3: To'liq ma'lumot eksporti (barcha kontakt + suhbatlar JSON) ---
+router.get("/api/export/full.json", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const [projects, contacts, messages] = await Promise.all([
+      pool.query(`SELECT id, name, ig_account_id, knowledge_base, created_at FROM projects`),
+      pool.query(`SELECT * FROM contacts ORDER BY id`),
+      pool.query(`SELECT * FROM messages ORDER BY contact_id, created_at`),
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="bugun-bot-export-${stamp}.json"`);
+    res.send(JSON.stringify({
+      exportedAt: new Date().toISOString(),
+      projects: projects.rows,
+      contacts: contacts.rows,
+      messages: messages.rows,
+    }));
   } catch (err) {
     next(err);
   }

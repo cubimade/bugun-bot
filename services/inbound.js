@@ -38,6 +38,7 @@ import { listPortfolioMedia, addContactTags } from "../db.js";
 import { handleSalesPayload, handleSalesIntents } from "./sales-bot.js";
 import { getActiveAbTest, setContactAbVariant } from "../db.js";
 import { notifyAdmin } from "./notify.js";
+import { dispatchEvent } from "./outbound-webhooks.js";
 
 // 11.5: faol A/B test keshi (60s) — har xabarda DB so'ramaslik uchun
 const AB_CACHE = new Map(); // "projectId:type" -> { at, test }
@@ -228,6 +229,16 @@ export async function processIncomingText(msg) {
   }
 
   const isNewContact = history.length <= 1;
+
+  // 12.4: chiquvchi webhook — yangi kontakt hodisasi (fonda)
+  if (isNewContact && contactId) {
+    dispatchEvent("new_contact", projectId, {
+      contact_id: contactId,
+      name: contactName,
+      platform,
+      first_message: userText.slice(0, 300),
+    });
+  }
 
   // 8.2: Flow triggerlari
   if (msg.isStoryReply && (await tryStartFlow("story", flowCtx, userText))) return;

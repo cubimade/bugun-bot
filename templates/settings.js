@@ -219,6 +219,37 @@ export function renderSettingsPage() {
       <a class="btn" href="/api/report/weekly.html" target="_blank" style="margin-left:8px">🖨 Hisobotni hozir ko'rish</a>
     </div>
 
+    <div class="card" id="integCard" style="display:none">
+      <h3 style="margin-bottom:4px">🔌 Integratsiyalar</h3>
+      <p class="small muted" style="margin-bottom:14px">Chiquvchi webhook: hodisa bo'lganda (yangi kontakt, sotuv, bron, to'lov) belgilangan URL'ga POST yuboriladi — n8n/Zapier/Make shu orqali ulanadi. Kontaktlar CSV eksporti (Google Sheets uchun): Kontaktlar sahifasida "⬇ CSV". Tashqi tizimlar uchun API: <code>GET/POST /api/v1/contacts</code> (X-API-Key bilan).</p>
+      <strong class="small">📡 Chiquvchi webhooklar</strong>
+      <div id="whList" style="margin:8px 0"><div class="skeleton" style="height:38px"></div></div>
+      <div style="display:grid;gap:8px;margin-bottom:8px">
+        <input class="input" id="whUrl" maxlength="300" placeholder="https://n8n.misol.uz/webhook/...">
+        <div style="display:flex;gap:12px;flex-wrap:wrap" class="small">
+          <label style="display:flex;gap:6px;cursor:pointer"><input type="checkbox" class="whEv" value="new_contact" checked> Yangi kontakt</label>
+          <label style="display:flex;gap:6px;cursor:pointer"><input type="checkbox" class="whEv" value="won"> Sotuv</label>
+          <label style="display:flex;gap:6px;cursor:pointer"><input type="checkbox" class="whEv" value="booking"> Bron</label>
+          <label style="display:flex;gap:6px;cursor:pointer"><input type="checkbox" class="whEv" value="payment_paid"> To'lov</label>
+          <button class="btn btn-sm btn-primary" onclick="addWebhook(this)">➕ Qo'shish</button>
+        </div>
+      </div>
+      <details class="small muted" style="margin-bottom:14px"><summary style="cursor:pointer">n8n bilan ulash yo'riqnomasi</summary>
+        <ol style="margin:8px 0 0 18px;line-height:1.8">
+          <li>n8n'da yangi workflow → <strong>Webhook</strong> node qo'shing (HTTP Method: POST)</li>
+          <li>Webhook URL'ni nusxalab yuqoridagi maydonga qo'ying, hodisalarni tanlang</li>
+          <li>Qo'shilganda beriladigan <strong>secret</strong> bilan X-Bugun-Signature (HMAC-SHA256) imzosini tekshirishingiz mumkin</li>
+          <li>"Test" tugmasi bilan sinab ko'ring — n8n'da test hodisa ko'rinadi</li>
+        </ol>
+      </details>
+      <strong class="small">🔑 API kalitlar (tashqi tizimlar uchun)</strong>
+      <div id="akList" style="margin:8px 0"><div class="skeleton" style="height:32px"></div></div>
+      <div style="display:flex;gap:8px">
+        <input class="input" id="akName" maxlength="100" placeholder="Kalit nomi (masalan: CRM)">
+        <button class="btn btn-sm btn-primary" onclick="addApiKey(this)">➕</button>
+      </div>
+    </div>
+
     <div class="card">
       <h3 style="margin-bottom:4px">🖥 Tizim</h3>
       <p class="small muted" style="margin-bottom:16px">Server va database holati.</p>
@@ -657,6 +688,84 @@ async function loadAudit() {
     }).join("") : '<span class="small muted">Hali yozuv yo\\'q</span>';
   } catch (e) { $("auditList").innerHTML = '<span class="small muted">Yuklanmadi: ' + esc(e.message) + "</span>"; }
 }
+// ===== 12.4: integratsiyalar (owner/admin) =====
+async function initInteg() {
+  try {
+    const me = await api("/api/me");
+    if (!["owner", "admin"].includes(me.user.role)) return;
+    $("integCard").style.display = "";
+    loadWebhooks();
+    if (me.user.role === "owner") loadApiKeys();
+    else $("akList").innerHTML = '<span class="small muted">Faqat owner boshqaradi</span>';
+  } catch (e) { /* jim */ }
+}
+const EV_LBL = { new_contact: "yangi kontakt", won: "sotuv", booking: "bron", payment_paid: "to'lov" };
+async function loadWebhooks() {
+  try {
+    const { webhooks } = await api("/api/webhooks");
+    $("whList").innerHTML = webhooks.length ? webhooks.map(function (w) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;' + (w.is_active ? "" : "opacity:.5") + '">' +
+        '<span class="small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(w.url) +
+        ' <span class="muted">(' + (w.events || []).map(function (e) { return EV_LBL[e] || e; }).join(", ") + ")</span></span>" +
+        '<button class="btn btn-sm" onclick="testWebhook(' + w.id + ')" title="Test yuborish">🧪</button>' +
+        '<button class="btn btn-sm" onclick="toggleWebhook(' + w.id + "," + !w.is_active + ')">' + (w.is_active ? "⏸" : "▶️") + "</button>" +
+        '<button class="btn btn-sm" onclick="delWebhook(' + w.id + ')">🗑</button></div>';
+    }).join("") : '<span class="small muted">Hali webhook yo\\'q</span>';
+  } catch (e) { $("whList").innerHTML = '<span class="small muted">Yuklanmadi</span>'; }
+}
+async function addWebhook(btn) {
+  const url = $("whUrl").value.trim();
+  const events = Array.from(document.querySelectorAll(".whEv:checked")).map(function (c) { return c.value; });
+  if (!url) return toast("URL kiriting", false);
+  btn.disabled = true;
+  try {
+    const r = await postJson("/api/webhooks", { url, events });
+    openModal("✅ Webhook qo'shildi", '<p class="small" style="margin-bottom:8px">Imzo tekshirish uchun secret (bir marta ko\\'rsatiladi):</p>' +
+      '<div class="card" style="padding:12px;font-family:monospace;font-size:13px;word-break:break-all">' + esc(r.secret) + "</div>" +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');
+    $("whUrl").value = "";
+    loadWebhooks();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+async function testWebhook(id) {
+  try {
+    const r = await postJson("/api/webhooks/" + id + "/test", {});
+    toast(r.ok ? "Test yuborildi ✓ (HTTP " + r.status + ")" : "Yuborilmadi: " + (r.error || "HTTP " + r.status), r.ok);
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function toggleWebhook(id, val) {
+  try { await postJson("/api/webhooks/" + id, { is_active: val }); loadWebhooks(); }
+  catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function delWebhook(id) {
+  try { await api("/api/webhooks/" + id, { method: "DELETE" }); loadWebhooks(); toast("O'chirildi"); }
+  catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function loadApiKeys() {
+  try {
+    const { keys } = await api("/api/api-keys");
+    $("akList").innerHTML = keys.length ? keys.map(function (k) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)" class="small">' +
+        "<span style='flex:1'>🔑 " + esc(k.name) + ' <span class="muted">' + esc(k.key_hint || "") + (k.last_used ? " · ishlatilgan: " + timeAgo(k.last_used) : "") + "</span></span>" +
+        '<button class="btn btn-sm" onclick="delApiKey(' + k.id + ')">🗑</button></div>';
+    }).join("") : '<span class="small muted">Hali kalit yo\\'q</span>';
+  } catch (e) { /* jim */ }
+}
+async function addApiKey(btn) {
+  btn.disabled = true;
+  try {
+    const r = await postJson("/api/api-keys", { name: $("akName").value.trim() || "API kalit" });
+    openModal("🔑 API kalit yaratildi", '<p class="small" style="margin-bottom:8px">Bir marta ko\\'rsatiladi — nusxalab oling:</p>' +
+      '<div class="card" style="padding:12px;font-family:monospace;font-size:13px;word-break:break-all">' + esc(r.key) + "</div>" +
+      '<p class="small muted" style="margin-top:10px">Ishlatish: <code>curl -H "X-API-Key: ..." ' + location.origin + "/api/v1/contacts</code></p>" +
+      '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');
+    $("akName").value = "";
+    loadApiKeys();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+initInteg();
 initUsers();
 loadSettings(); loadSystem(); loadQuickReplies();`;
 

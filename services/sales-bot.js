@@ -99,6 +99,12 @@ export async function handleSalesPayload(ctx, payload) {
       await saveBot(ctx, confirmText, "booking");
       console.log(`📅 Yangi bron: mijoz ${ctx.contactId}, ${new Date(ts).toISOString()}`);
       notifyAdmin("booking", `📅 Yangi bron!\n${ctx.name || ctx.igUserId} — ${fmtLocal(new Date(ts))}`).catch(() => {});
+      const { dispatchEvent } = await import("./outbound-webhooks.js");
+      dispatchEvent("booking", ctx.projectId, {
+        contact_id: ctx.contactId,
+        name: ctx.name,
+        starts_at: new Date(ts).toISOString(),
+      });
       return true;
     } catch (err) {
       console.error("⚠️ Bron yaratishda xatolik:", err.message);

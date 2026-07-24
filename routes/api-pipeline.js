@@ -33,6 +33,11 @@ router.post("/api/contacts/:id/stage", protect, async (req, res, next) => {
       return res.status(400).json({ error: "Noto'g'ri bosqich" });
     }
     await setContactStage(Number(req.params.id), stage);
+    // 12.4: "Sotildi" bosqichiga o'tganda chiquvchi webhook
+    if (stage === "won") {
+      const { dispatchEvent } = await import("../services/outbound-webhooks.js");
+      dispatchEvent("won", null, { contact_id: Number(req.params.id) });
+    }
     res.json({ ok: true });
   } catch (err) {
     next(err);

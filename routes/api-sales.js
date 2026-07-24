@@ -194,6 +194,9 @@ router.post("/api/payments/:id/status", protect, async (req, res, next) => {
       console.log(`💰 To'lov tasdiqlandi — mijoz ${r.contact_id} "Sotildi" bosqichiga o'tdi`);
       const { notifyAdmin } = await import("../services/notify.js");
       notifyAdmin("payment", `💰 To'lov tasdiqlandi! Mijoz #${r.contact_id} "Sotildi" bosqichiga o'tdi.`).catch(() => {});
+      const { dispatchEvent } = await import("../services/outbound-webhooks.js");
+      dispatchEvent("payment_paid", null, { contact_id: r.contact_id, payment_id: Number(req.params.id) });
+      dispatchEvent("won", null, { contact_id: r.contact_id });
     }
     res.json({ ok: true });
   } catch (err) {

@@ -84,6 +84,10 @@ async function loadData() {
       ? PROJECTS.map((x) => \`<option value="\${x.id}">\${esc(x.name)}</option>\`).join("")
       : '<option value="">Akkaunt yo\\'q</option>';
     $("audience").innerHTML = '<option value="">Hammasi (24 soat ichida yozganlar)</option>' +
+      '<option value="seg:vip">🌟 Segment: VIP</option>' +
+      '<option value="seg:faol">🔥 Segment: Faol</option>' +
+      '<option value="seg:uxlagan">😴 Segment: Uxlagan (qaytarish kampaniyasi)</option>' +
+      '<option value="seg:sovuq">❄️ Segment: Sovuq</option>' +
       (t.tags || []).map((x) => \`<option value="\${esc(x)}">🏷 Teg: \${esc(x)}</option>\`).join("");
     updateCount();
   } catch (e) { toast("Yuklashda xatolik: " + e.message, false); }

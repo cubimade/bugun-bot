@@ -63,6 +63,7 @@ import flowsRouter from "./api-flows.js";
 import pipelineRouter from "./api-pipeline.js";
 import mediaRouter from "./api-media.js";
 import salesRouter from "./api-sales.js";
+import analytics2Router from "./api-analytics2.js";
 
 const router = express.Router();
 
@@ -76,6 +77,7 @@ router.use(flowsRouter);
 router.use(pipelineRouter);
 router.use(mediaRouter);
 router.use(salesRouter);
+router.use(analytics2Router);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;

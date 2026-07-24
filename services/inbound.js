@@ -36,6 +36,22 @@ import { sttAvailable, transcribeAudio } from "./stt.js";
 import { getTelegramFileUrl } from "./telegram.js";
 import { listPortfolioMedia, addContactTags } from "../db.js";
 import { handleSalesPayload, handleSalesIntents } from "./sales-bot.js";
+import { getActiveAbTest, setContactAbVariant } from "../db.js";
+
+// 11.5: faol A/B test keshi (60s) — har xabarda DB so'ramaslik uchun
+const AB_CACHE = new Map(); // "projectId:type" -> { at, test }
+export async function activeAbTest(projectId, testType) {
+  const key = `${projectId}:${testType}`;
+  const hit = AB_CACHE.get(key);
+  if (hit && Date.now() - hit.at < 60 * 1000) return hit.test;
+  try {
+    const test = await getActiveAbTest(projectId, testType);
+    AB_CACHE.set(key, { at: Date.now(), test });
+    return test;
+  } catch {
+    return null;
+  }
+}
 
 // 9.5: "ishlaringizni ko'rsating" so'rovini aniqlash
 const PORTFOLIO_WORDS = [
@@ -320,8 +336,18 @@ export async function processIncomingText(msg) {
   if (isNewContact) {
     systemPrompt +=
       "\n\nEslatma: bu mijozning birinchi xabari — iliq salomlash va o'zingni qisqa tanishtir.";
-    if (state.SETTINGS.greeting_message) {
-      systemPrompt += `\nSalomlashishda ushbu matn/uslubdan foydalan: "${state.SETTINGS.greeting_message}"`;
+    // 11.5: A/B test — salomlashish matni varianti
+    let greetText = state.SETTINGS.greeting_message || "";
+    const abTest = await activeAbTest(projectId, "greeting");
+    if (abTest && contactId) {
+      const variant = Math.random() * 100 < abTest.split_percent ? "A" : "B";
+      setContactAbVariant(contactId, variant).catch(() => {});
+      const vText = variant === "A" ? abTest.variant_a : abTest.variant_b;
+      if ((vText || "").trim()) greetText = vText.trim();
+      console.log(`🧪 A/B: mijoz ${contactId} → ${variant} varianti ("${abTest.name}")`);
+    }
+    if (greetText) {
+      systemPrompt += `\nSalomlashishda ushbu matn/uslubdan foydalan: "${greetText}"`;
     }
   }
   if (state.SETTINGS.reply_length === "qisqa") {

@@ -11,6 +11,8 @@ import {
   findFollowupCandidates,
   markFollowupSent,
   saveMessage,
+  getActiveAbTest,
+  setContactAbVariant,
 } from "../db.js";
 
 const DEFAULT_TEXT = "{ism}, savolingiz qoldimi? 😊 Yordam kerak bo'lsa, bemalol yozing!";
@@ -32,6 +34,13 @@ export async function runFollowupPass() {
   try {
     const candidates = await findFollowupCandidates({ waitHours, maxCount });
     if (!candidates.length) return;
+    // 11.5: follow-up matni A/B testi (global — barcha loyihalar uchun bittasi)
+    let abTest = null;
+    try {
+      abTest = await getActiveAbTest(null, "followup");
+    } catch {
+      /* jim */
+    }
     console.log(`⏰ Follow-up: ${candidates.length} ta nomzod (kutish ${waitHours} soat, maks ${maxCount})`);
 
     for (const c of candidates) {
@@ -47,7 +56,18 @@ export async function runFollowupPass() {
         IG_TOKEN;
       if (!token) continue;
 
-      const msg = applyVars(text, c);
+      // 11.5: A/B — variant matni (variant yo'q bo'lsa hozir belgilanadi)
+      let textToUse = text;
+      if (abTest) {
+        let v = c.ab_variant;
+        if (v !== "A" && v !== "B") {
+          v = Math.random() * 100 < abTest.split_percent ? "A" : "B";
+          setContactAbVariant(c.id, v).catch(() => {});
+        }
+        const vt = v === "A" ? abTest.variant_a : abTest.variant_b;
+        if ((vt || "").trim()) textToUse = vt.trim();
+      }
+      const msg = applyVars(textToUse, c);
       try {
         const result = await senderFor(c.platform || "instagram", token).text(c.ig_user_id, msg);
         if (result.ok) {

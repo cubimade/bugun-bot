@@ -210,6 +210,70 @@ export async function getSentiment(userTexts) {
   }
 }
 
+// 11.3: Yo'qotilgan mijozlar tahlili (Haiku, kunlik kesh bilan chaqiriladi).
+// JSON: {reasons:[{reason,count}], tips:[...]} yoki null.
+export async function getLostAnalysis(samplesText) {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 600,
+      system:
+        "Sen sotuv voronkasida yo'qotilgan mijozlarni tahlil qiluvchi ekspertsan. " +
+        "Faqat toza JSON qaytar (markdown/izohsiz), o'zbek tilida (lotin). Format: " +
+        '{"reasons":[{"reason":"...","count":N}],"tips":["..."]}. ' +
+        "reasons — yo'qotishning 3-5 asosiy sababi (masalan: 'narx eshitgach javob bermadi'), " +
+        "count — taxminan nechta mijozda kuzatilgani. " +
+        "tips — 3-4 aniq amaliy tavsiya (masalan: 'Narx aytishdan oldin qiymatni tushuntiring', 'Follow-up yoqing').",
+      messages: [
+        {
+          role: "user",
+          content: `Yo'qotilgan/jim qolgan mijozlarning oxirgi suhbat parchalari:\n${String(samplesText).slice(0, 8000)}\n\nTahlil qilib JSON qaytar.`,
+        },
+      ],
+    });
+    const raw = extractText(response).replace(/^```(json)?/m, "").replace(/```\s*$/m, "").trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    return JSON.parse(raw.slice(start, end + 1));
+  } catch (err) {
+    console.error("⚠️ Claude (yo'qotish tahlili) xatoligi:", err.message);
+    return null;
+  }
+}
+
+// 11.6: Kontent tavsiyalari (Haiku, kunlik kesh).
+// JSON: {topics:[{topic,count}], ideas:[{title,desc}]} yoki null.
+export async function getContentIdeas(messagesText) {
+  try {
+    const response = await claude.messages.create({
+      model: MODEL_HAIKU,
+      max_tokens: 800,
+      system:
+        "Sen Instagram kontent-strategisan. Mijozlar savollaridan kontent g'oyalari chiqarasan. " +
+        "Faqat toza JSON qaytar (markdown/izohsiz), o'zbek tilida (lotin). Format: " +
+        '{"topics":[{"topic":"...","count":N}],"ideas":[{"title":"...","desc":"..."}]}. ' +
+        "topics — eng ko'p takrorlangan 5 tagacha savol mavzusi va taxminiy soni; " +
+        "ideas — 5 ta aniq post/reels/story g'oyasi (title — sarlavha, desc — 1-2 gap tavsif, " +
+        "qaysi format ekanini ham ayt: post/reels/story).",
+      messages: [
+        {
+          role: "user",
+          content: `Oxirgi 7 kunlik mijoz xabarlari:\n${String(messagesText).slice(0, 8000)}\n\nJSON qaytar.`,
+        },
+      ],
+    });
+    const raw = extractText(response).replace(/^```(json)?/m, "").replace(/```\s*$/m, "").trim();
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start === -1 || end === -1) return null;
+    return JSON.parse(raw.slice(start, end + 1));
+  } catch (err) {
+    console.error("⚠️ Claude (kontent tavsiyalari) xatoligi:", err.message);
+    return null;
+  }
+}
+
 // 10.6: AI mijoz profili — suhbatdan ma'lumot yig'ish (Haiku, har 5 xabarda).
 // JSON: {ism, telefon, email, ehtiyoj, byudjet, shoshilinchlik} yoki null.
 export async function getProfileExtract(conversationText) {

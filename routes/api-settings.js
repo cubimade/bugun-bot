@@ -43,6 +43,11 @@ const SETTING_KEYS = [
   "calc_base_price",
   "referral_bonus_enabled", // 10.5
   "referral_bonus_percent",
+  "avg_check", // 11.1
+  "monthly_cost",
+  "report_telegram_enabled", // 11.7
+  "report_tg_chat_id",
+  "report_last_week",
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -81,6 +86,10 @@ router.get("/api/settings", protect, async (req, res, next) => {
         calc_base_price: state.SETTINGS.calc_base_price ?? "0",
         referral_bonus_enabled: state.SETTINGS.referral_bonus_enabled ?? "false",
         referral_bonus_percent: state.SETTINGS.referral_bonus_percent ?? "10",
+        avg_check: state.SETTINGS.avg_check ?? "",
+        monthly_cost: state.SETTINGS.monthly_cost ?? "",
+        report_telegram_enabled: state.SETTINGS.report_telegram_enabled ?? "false",
+        report_tg_chat_id: state.SETTINGS.report_tg_chat_id ?? "",
         greeting_buttons_enabled: state.SETTINGS.greeting_buttons_enabled ?? "false",
         greeting_buttons_text: state.SETTINGS.greeting_buttons_text ?? "",
         greeting_buttons: state.SETTINGS.greeting_buttons ?? "[]",

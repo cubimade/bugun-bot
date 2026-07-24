@@ -16,6 +16,13 @@ export function renderContactsPage() {
     <select class="input" id="accFilter" style="width:auto;min-width:150px" onchange="renderTable()">
       <option value="">Barcha akkauntlar</option>
     </select>
+    <select class="input" id="segFilter" style="width:auto;min-width:150px" onchange="renderTable()">
+      <option value="">Barcha segmentlar</option>
+      <option value="vip">🌟 VIP</option>
+      <option value="faol">🔥 Faol</option>
+      <option value="uxlagan">😴 Uxlagan</option>
+      <option value="sovuq">❄️ Sovuq</option>
+    </select>
   </div>
   <div class="table-wrap">
     <table class="tbl">
@@ -71,12 +78,16 @@ function filtered() {
   const q = ($("search").value || "").toLowerCase().trim();
   const tag = $("tagFilter").value;
   const acc = $("accFilter").value;
+  const seg = $("segFilter").value;
   return CONTACTS.filter((c) =>
     (!q || String(c.name || "").toLowerCase().includes(q) || String(c.ig_user_id).includes(q)) &&
     (!tag || (c.tags || []).includes(tag)) &&
-    (!acc || c.project_name === acc)
+    (!acc || c.project_name === acc) &&
+    (!seg || c.segment === seg)
   );
 }
+// 11.2: segment badge
+const SEG_BADGE = { vip: "🌟 VIP", faol: "🔥 Faol", uxlagan: "😴 Uxlagan", sovuq: "❄️ Sovuq" };
 function renderTable() {
   const items = filtered();
   document.querySelector(".page-head h1").textContent = "Kontaktlar · " + TOTAL + " ta";
@@ -106,6 +117,7 @@ function renderTable() {
       <td class="small muted">\${esc(c.project_name || "—")}</td>
       <td>
         <span style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+          \${c.segment && SEG_BADGE[c.segment] ? \`<span class="badge \${c.segment === "vip" ? "b-green" : c.segment === "faol" ? "b-indigo" : "b-gray"}">\${SEG_BADGE[c.segment]}</span>\` : ""}
           \${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join("")}
           <button class="chip-add" onclick="openTagEditor(\${c.id})" title="Teg qo'shish/o'chirish"
             style="background:none;border:1px dashed var(--border);border-radius:999px;color:var(--muted);font-size:11px;padding:2px 8px;cursor:pointer">+ teg</button>

@@ -81,7 +81,7 @@ export function matchKeywordRule(rules, text) {
 // ------------------------------------------------------------
 export async function findFollowupCandidates({ waitHours, maxCount, limit = 30 }) {
   const { rows } = await pool.query(
-    `SELECT c.id, c.ig_user_id, c.name,
+    `SELECT c.id, c.ig_user_id, c.name, c.ab_variant,
             p.name AS project_name, p.ig_account_id, p.access_token, p.platform,
             last.created_at AS last_at, lastu.created_at AS last_user_at
        FROM contacts c

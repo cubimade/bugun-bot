@@ -91,7 +91,10 @@ export async function listBroadcastRecipients(projectId, tag = null) {
        FROM contacts c
        JOIN projects p ON p.id = c.project_id
       WHERE c.project_id = $1
-        AND ($2::text IS NULL OR $2 = ANY(c.tags))
+        -- 11.2: "seg:<nom>" — segment bo'yicha; oddiy qiymat — teg bo'yicha
+        AND ($2::text IS NULL
+             OR (left($2, 4) = 'seg:' AND c.segment = substr($2, 5))
+             OR (left($2, 4) <> 'seg:' AND $2 = ANY(c.tags)))
         -- 8.7: faol flow'dagi mijozga broadcast yuborilmaydi (to'qnashuv)
         AND NOT EXISTS (SELECT 1 FROM contact_flow_state s
                          WHERE s.contact_id = c.id AND s.status = 'active')

@@ -224,6 +224,25 @@ export async function initDb() {
     -- 10.6: AI mijoz profili
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile JSONB;
 
+    -- 11.2: Segmentatsiya (vip/faol/uxlagan/sovuq), 11.5: A/B variant
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS segment TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS ab_variant TEXT;
+
+    -- 11.5: A/B testlar
+    CREATE TABLE IF NOT EXISTS ab_tests (
+      id            SERIAL PRIMARY KEY,
+      project_id    INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      name          TEXT NOT NULL,
+      test_type     TEXT NOT NULL DEFAULT 'greeting' CHECK (test_type IN ('greeting','followup')),
+      variant_a     TEXT,
+      variant_b     TEXT,
+      split_percent INTEGER NOT NULL DEFAULT 50,
+      metric        TEXT NOT NULL DEFAULT 'reply_rate',
+      status        TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running','stopped','finished')),
+      started_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+      ended_at      TIMESTAMPTZ
+    );
+
     -- 9.5: Media kutubxona — fayllar database'da (redeploy'da yo'qolmaydi)
     CREATE TABLE IF NOT EXISTS media_library (
       id           SERIAL PRIMARY KEY,

@@ -68,6 +68,48 @@ export function renderInsightsPage() {
     </div>
   </div>
 
+  <div class="card glow" style="margin-top:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <h3>💰 Moliyaviy natija</h3>
+      <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" class="small">
+        <a class="btn btn-sm" href="/api/report/weekly.html" target="_blank">🖨 Haftalik hisobot</a>
+      </span>
+    </div>
+    <div id="finBody"><div class="skeleton" style="height:120px"></div></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;border-top:1px solid var(--border);padding-top:12px" class="small">
+      <label class="lbl" style="margin:0">O'rtacha chek (so'm):</label>
+      <input class="input" id="finAvg" type="number" min="0" style="width:130px">
+      <label class="lbl" style="margin:0">Oylik xarajat:</label>
+      <input class="input" id="finCost" type="number" min="0" style="width:130px">
+      <button class="btn btn-sm btn-primary" onclick="saveFin(this)">Saqlash</button>
+    </div>
+  </div>
+
+  <div class="two-col-ana">
+    <div class="card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <h3>📉 Yo'qotilgan mijozlar</h3>
+        <button class="btn btn-sm" onclick="loadLost(true)">↻</button>
+      </div>
+      <div id="lostBody"><div class="skeleton" style="height:160px"></div></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <h3>🔮 Prognoz</h3>
+        <span class="small muted">taxminiy, 60 kun trendi</span>
+      </div>
+      <div id="fcBody"><div class="skeleton" style="height:160px"></div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <h3>💡 Kontent tavsiyalari</h3>
+      <button class="btn btn-sm" onclick="loadContent(true)">↻</button>
+    </div>
+    <div id="contentBody"><div class="skeleton" style="height:140px"></div></div>
+  </div>
+
   <div class="card glass-featured" style="margin-top:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
       <h3>✨ Bu hafta nima o'zgardi</h3>
@@ -348,8 +390,101 @@ async function loadInsights(force) {
     $("insMeta").textContent = "";
   }
 }
+// ===== 11.1: Moliyaviy natija =====
+async function loadFinance() {
+  try {
+    const [f, s] = await Promise.all([api("/api/finance"), api("/api/settings")]);
+    $("finAvg").value = s.settings.avg_check || "";
+    $("finCost").value = s.settings.monthly_cost || "";
+    const fmtS = function (n) { return Number(n || 0).toLocaleString("uz-UZ") + " so'm"; };
+    const maxRev = Math.max(1, Math.max.apply(null, f.monthly.map(function (m) { return m.revenue; })));
+    const bars = f.monthly.map(function (m) {
+      const h = Math.round((m.revenue / maxRev) * 70);
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="' + m.month + ": " + fmtS(m.revenue) + " (" + m.won + ' sotuv)">' +
+        '<div style="width:70%;max-width:26px;height:' + Math.max(h, 2) + 'px;background:var(--grad);border-radius:5px 5px 0 0;opacity:' + (m.revenue ? 1 : 0.25) + '"></div>' +
+        '<span class="small muted" style="font-size:9.5px">' + m.month.slice(5) + "</span></div>";
+    }).join("");
+    $("finBody").innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px">' +
+        finStat("💰 Daromad" + (f.revenueIsEstimate ? " (taxminiy)" : ""), fmtS(f.revenue)) +
+        finStat("✅ Sotilgan", f.won + " ta") +
+        finStat("📈 Konversiya", f.conversion + "%") +
+        finStat("🧲 LTV", fmtS(f.ltv)) +
+        (f.roi != null ? finStat("📊 ROI", f.roi + "%") : "") +
+      "</div>" +
+      '<div class="small muted" style="margin-bottom:6px">Oylar bo\\'yicha daromad:</div>' +
+      '<div style="display:flex;align-items:flex-end;gap:3px;height:90px">' + bars + "</div>";
+  } catch (e) { $("finBody").innerHTML = emptyState("💰", "Yuklanmadi: " + e.message); }
+}
+function finStat(lbl, val) {
+  return '<div style="background:var(--panel2);border-radius:12px;padding:11px"><div class="small muted" style="margin-bottom:3px">' + lbl + '</div><strong style="font-size:15px">' + val + "</strong></div>";
+}
+async function saveFin(btn) {
+  btn.disabled = true;
+  try {
+    await postJson("/api/settings", { avg_check: $("finAvg").value || "0", monthly_cost: $("finCost").value || "0" });
+    toast("Saqlandi ✓");
+    loadFinance();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+// ===== 11.3: Yo'qotilgan mijozlar =====
+async function loadLost(force) {
+  if (force) $("lostBody").innerHTML = skeletonRows(3, 40);
+  try {
+    const r = await api("/api/insights/lost" + (force ? "?refresh=1" : ""));
+    const fn = r.funnel || {};
+    const stages = [["new", "🆕 Yangi"], ["interested", "🔥 Qiziqqan"], ["negotiation", "🤝 Muzokara"], ["won", "✅ Sotildi"], ["lost", "❌ Yo'q"]];
+    let html = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
+      stages.map(function (s) { return '<span class="badge">' + s[1] + ": <strong>" + (fn[s[0]] || 0) + "</strong></span>"; }).join("") + "</div>";
+    if (r.ai && (r.ai.reasons || []).length) {
+      html += '<strong class="small">Yo\\'qotish sabablari (AI):</strong><ul class="small" style="margin:6px 0 10px 18px;line-height:1.8">' +
+        r.ai.reasons.map(function (x) { return "<li>" + esc(x.reason) + (x.count ? ' <span class="muted">(~' + x.count + " mijoz)</span>" : "") + "</li>"; }).join("") + "</ul>" +
+        '<strong class="small">Tavsiyalar:</strong><ul class="small" style="margin:6px 0 0 18px;line-height:1.8">' +
+        (r.ai.tips || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+    } else {
+      html += '<span class="small muted">Tahlil uchun yetarli yo\\'qotilgan mijoz yo\\'q (yaxshi belgi! 🎉)</span>';
+    }
+    $("lostBody").innerHTML = html;
+  } catch (e) { $("lostBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message); }
+}
+// ===== 11.4: Prognoz =====
+async function loadForecast() {
+  try {
+    const r = await api("/api/forecast");
+    const f = r.forecast;
+    const vals = (r.days || []).map(function (d) { return d.newContacts; });
+    $("fcBody").innerHTML =
+      (r.warning ? '<div class="card" style="padding:10px 12px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08);margin-bottom:10px" class="small">⚠️ ' + esc(r.warning) + "</div>" : "") +
+      '<div class="small" style="line-height:1.9;margin-bottom:10px">Shu tempda oyiga taxminan:<br>' +
+        "👥 <strong>~" + f.monthlyContacts + "</strong> yangi mijoz · " +
+        "✅ <strong>~" + f.monthlyWon + "</strong> sotuv" +
+        (f.monthlyRevenue ? ' · 💰 <strong>~' + Number(f.monthlyRevenue).toLocaleString("uz-UZ") + "</strong> so'm" : "") +
+      "</div>" +
+      '<div class="small muted" style="margin-bottom:4px">Kunlik yangi mijozlar (60 kun):</div>' +
+      sparkline(vals, "var(--accent)") +
+      '<div class="small muted" style="margin-top:8px">' + esc(f.note) + "</div>";
+  } catch (e) { $("fcBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message); }
+}
+// ===== 11.6: Kontent tavsiyalari =====
+async function loadContent(force) {
+  if (force) $("contentBody").innerHTML = skeletonRows(3, 40);
+  try {
+    const r = await api("/api/insights/content" + (force ? "?refresh=1" : ""));
+    if (!r.ai) { $("contentBody").innerHTML = emptyState("💡", r.note || "Tahlil uchun xabar kam — mijozlar yozganda paydo bo'ladi"); return; }
+    $("contentBody").innerHTML =
+      (r.bestTime ? '<div class="small" style="margin-bottom:10px">🕗 Auditoriyangiz <strong>' + r.bestTime + "</strong> oralig'ida faol — post/story shu vaqtda chiqaring.</div>" : "") +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
+        (r.ai.topics || []).map(function (t) { return '<span class="badge b-indigo">' + esc(t.topic) + " · " + (t.count || "?") + "</span>"; }).join("") + "</div>" +
+      '<div style="display:grid;gap:8px">' +
+        (r.ai.ideas || []).map(function (i) {
+          return '<div style="background:var(--panel2);border-radius:11px;padding:10px 13px"><strong class="small">' + esc(i.title) + '</strong><div class="small muted" style="margin-top:3px">' + esc(i.desc) + "</div></div>";
+        }).join("") + "</div>";
+  } catch (e) { $("contentBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message); }
+}
 renderPeriodSeg($("periodSeg"), () => { loadMetrics(); loadAnalytics(); });
-loadMetrics(); loadAnalytics(); loadChanged(); loadInsights(false);`;
+loadMetrics(); loadAnalytics(); loadChanged(); loadInsights(false);
+loadFinance(); loadLost(false); loadForecast(); loadContent(false);`;
 
   return renderLayout({
     title: "Tahlil",

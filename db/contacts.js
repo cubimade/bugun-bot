@@ -42,7 +42,7 @@ export async function listContacts(limit = 50, offset = 0) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
             c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
-            c.language,
+            c.language, c.segment,
             c.archived,
             p.name AS project_name, p.platform,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,

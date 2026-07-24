@@ -6,7 +6,7 @@ import express from "express";
 
 import { protect } from "../middleware/auth.js";
 import { state } from "../state.js";
-import { getStats } from "../db.js";
+import { getStats, pool } from "../db.js";
 import {
   renderPrivacyPage,
   renderDataDeletionPage,
@@ -15,6 +15,27 @@ import {
 import { APP_VERSION } from "../templates.js";
 
 const router = express.Router();
+
+// C6: Health check — Railway monitoring uchun (server + database holati)
+router.get("/health", async (req, res) => {
+  let db = false;
+  if (state.DB_READY) {
+    try {
+      await pool.query("SELECT 1");
+      db = true;
+    } catch {
+      db = false;
+    }
+  }
+  const ok = state.DB_READY ? db : true; // DB ulanmagan rejimda ham server sog'lom
+  res.status(ok ? 200 : 503).json({
+    ok,
+    db,
+    version: APP_VERSION,
+    uptimeSec: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
 
 router.get("/privacy", (req, res) => res.send(renderPrivacyPage()));
 router.get("/data-deletion", (req, res) => res.send(renderDataDeletionPage()));

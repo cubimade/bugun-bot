@@ -4,6 +4,7 @@
 //  POST /webhook — DM va kommentlarni qabul qilish va qayta ishlash
 // ============================================================
 import express from "express";
+import crypto from "crypto";
 
 import {
   VERIFY_TOKEN,
@@ -37,6 +38,31 @@ import { state, ACCOUNTS_MAP, resolveAccount, workHoursOverrides } from "../stat
 const router = express.Router();
 
 // ============================================================
+//  C2: WEBHOOK IMZOSI — Meta X-Hub-Signature-256 yuboradi.
+//  APP_SECRET (Meta ilova "App Secret") bilan HMAC-SHA256 tekshiriladi —
+//  soxta so'rovlar botga kira olmaydi. Env yo'q bo'lsa — tekshirilmaydi
+//  (startupda ogohlantiriladi, Railway'ga APP_SECRET qo'shish kerak).
+// ============================================================
+const APP_SECRET = process.env.APP_SECRET || "";
+if (!APP_SECRET) {
+  console.warn("⚠️ APP_SECRET env yo'q — webhook imzosi tekshirilmaydi. Railway'ga APP_SECRET (Meta App Secret) qo'shing.");
+}
+
+function verifySignature(req) {
+  if (!APP_SECRET) return true;
+  const sig = req.get("x-hub-signature-256") || "";
+  if (!sig.startsWith("sha256=") || !req.rawBody) return false;
+  const expected =
+    "sha256=" +
+    crypto.createHmac("sha256", APP_SECRET).update(req.rawBody).digest("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================
 //  WEBHOOK — TEKSHIRUV (Meta ulanishni tasdiqlaydi)
 // ============================================================
 router.get("/webhook", (req, res) => {
@@ -57,6 +83,11 @@ router.get("/webhook", (req, res) => {
 //  WEBHOOK — XABAR/KOMMENT QABUL QILISH
 // ============================================================
 router.post("/webhook", async (req, res) => {
+  // C2: imzo noto'g'ri — soxta so'rov, qayta ishlamaymiz
+  if (!verifySignature(req)) {
+    console.warn("🚫 Webhook imzosi noto'g'ri — so'rov rad etildi");
+    return res.sendStatus(403);
+  }
   res.status(200).send("EVENT_RECEIVED"); // Meta'ga darhol javob (talab)
 
   try {

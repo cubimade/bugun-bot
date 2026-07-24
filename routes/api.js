@@ -310,9 +310,18 @@ router.post("/api/knowledge/:projectId", protect, async (req, res, next) => {
 router.post("/api/accounts", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    const { name, ig_account_id, token } = req.body || {};
+    // C4: input validatsiya — tur, uzunlik, format
+    const name = String(req.body?.name || "").trim().slice(0, 120);
+    const ig_account_id = String(req.body?.ig_account_id || "").trim();
+    const token = String(req.body?.token || "").trim();
     if (!ig_account_id || !token) {
       return res.status(400).json({ error: "ig_account_id va token majburiy" });
+    }
+    if (!/^\d{5,25}$/.test(ig_account_id)) {
+      return res.status(400).json({ error: "ig_account_id faqat raqamlardan iborat bo'lishi kerak" });
+    }
+    if (token.length > 500) {
+      return res.status(400).json({ error: "Token juda uzun" });
     }
     const projectId = await registerAccount({
       name,

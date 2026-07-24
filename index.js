@@ -25,6 +25,7 @@ import compression from "compression";
 import { PORT } from "./config.js";
 import { setupDatabase } from "./state.js";
 import { recordError } from "./logger.js";
+import { rateLimit } from "./middleware/rate-limit.js";
 import { APP_VERSION } from "./templates.js";
 import webhookRouter from "./routes/webhook.js";
 import apiRouter from "./routes/api.js";
@@ -34,13 +35,17 @@ import publicRouter from "./routes/public.js";
 
 const APP = express();
 APP.use(compression()); // B5: gzip — HTML/JSON javoblar kichrayadi
-APP.use(express.json());
+// C2: rawBody — webhook imzosini (X-Hub-Signature-256) tekshirish uchun kerak
+APP.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 // Statik fayllar (dizayn CSS/JS) — 1 kun keshlanadi, ?v= bilan yangilanadi
 APP.use(express.static("public", { maxAge: "1d" }));
 
 // ============================================================
-//  MARSHRUTLAR
+//  MARSHRUTLAR (C1: rate limit bilan)
+//  /webhook — Meta yuboradi (burst bo'lishi mumkin), /api — dashboard
 // ============================================================
+APP.use("/webhook", rateLimit({ max: 300, name: "webhook" }));
+APP.use("/api", rateLimit({ max: 120, name: "api" }));
 APP.use(webhookRouter);
 APP.use(apiRouter);
 APP.use(dashboardRouter);

@@ -11,6 +11,7 @@ import {
   renderContactsPage,
   renderBroadcastPage,
   renderKnowledgePage,
+  renderKeywordsPage,
   renderAccountsPage,
   renderSettingsPage,
   renderInsightsPage,
@@ -24,6 +25,7 @@ router.get("/dashboard/contacts", protect, (req, res) => res.send(renderContacts
 router.get("/dashboard/insights", protect, (req, res) => res.send(renderInsightsPage()));
 router.get("/dashboard/broadcast", protect, (req, res) => res.send(renderBroadcastPage()));
 router.get("/dashboard/knowledge", protect, (req, res) => res.send(renderKnowledgePage()));
+router.get("/dashboard/keywords", protect, (req, res) => res.send(renderKeywordsPage()));
 router.get("/dashboard/accounts", protect, (req, res) => res.send(renderAccountsPage()));
 router.get("/dashboard/settings", protect, (req, res) => res.send(renderSettingsPage()));
 

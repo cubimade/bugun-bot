@@ -91,6 +91,29 @@ export async function initDb() {
     -- 7-bosqich (7.3): xabar manbasi — dm | story_reply | comment | followup
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'dm';
 
+    -- 7.4: Kalit so'z → avto-javob qoidalari (project_id NULL = barcha akkauntlar)
+    CREATE TABLE IF NOT EXISTS keyword_rules (
+      id          SERIAL PRIMARY KEY,
+      project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      keyword     TEXT NOT NULL,
+      match_type  TEXT NOT NULL DEFAULT 'contains' CHECK (match_type IN ('exact', 'contains')),
+      reply_text  TEXT NOT NULL,
+      media_url   TEXT,
+      is_active   BOOLEAN NOT NULL DEFAULT true,
+      hit_count   INTEGER NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- 7.8: Avtomatik teglash qoidalari (so'z → teg)
+    CREATE TABLE IF NOT EXISTS tag_rules (
+      id          SERIAL PRIMARY KEY,
+      project_id  INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      keyword     TEXT NOT NULL,
+      tag_name    TEXT NOT NULL,
+      is_active   BOOLEAN NOT NULL DEFAULT true,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- Tezkor javoblar (saved replies)
     CREATE TABLE IF NOT EXISTS saved_replies (
       id          SERIAL PRIMARY KEY,

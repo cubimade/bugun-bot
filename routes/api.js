@@ -49,14 +49,16 @@ import analyticsRouter from "./api-analytics.js";
 import broadcastRouter from "./api-broadcast.js";
 import settingsRouter from "./api-settings.js";
 import diagnosticsRouter from "./api-diagnostics.js";
+import automationRouter from "./api-automation.js";
 
 const router = express.Router();
 
-// Analitika, broadcast, sozlamalar va diagnostika ham /api/* ostida
+// Analitika, broadcast, sozlamalar, diagnostika va avtomatizatsiya ham /api/* ostida
 router.use(analyticsRouter);
 router.use(broadcastRouter);
 router.use(settingsRouter);
 router.use(diagnosticsRouter);
+router.use(automationRouter);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;

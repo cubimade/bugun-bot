@@ -33,7 +33,11 @@ import {
   setNeedsHuman,
   setBotPaused,
   setContactSentiment,
+  getActiveKeywordRules,
+  matchKeywordRule,
+  incrementKeywordHit,
 } from "../db.js";
+import { sendInstagramImage } from "../instagram.js";
 import { state, ACCOUNTS_MAP, resolveAccount, workHoursOverrides } from "../state.js";
 
 const router = express.Router();
@@ -120,6 +124,23 @@ router.post("/webhook", async (req, res) => {
   }
 });
 
+// --- 7.4: Kalit so'z qoidalari keshi (60 soniya, loyiha bo'yicha) ---
+const KEYWORD_CACHE = new Map(); // projectId -> { at, rules }
+async function keywordRulesFor(projectId) {
+  if (!state.DB_READY) return [];
+  const key = String(projectId ?? "null");
+  const hit = KEYWORD_CACHE.get(key);
+  if (hit && Date.now() - hit.at < 60 * 1000) return hit.rules;
+  try {
+    const rules = await getActiveKeywordRules(projectId);
+    KEYWORD_CACHE.set(key, { at: Date.now(), rules });
+    return rules;
+  } catch (err) {
+    console.error("⚠️ Kalit so'z qoidalarini o'qishda xatolik:", err.message);
+    return [];
+  }
+}
+
 // --- Rate limiting (spam himoyasi) — xotirada, senderId bo'yicha ---
 const rateMap = new Map();
 function isRateLimited(senderId) {
@@ -197,6 +218,25 @@ async function handleDirectMessage(event, projectId, token) {
   // Pauzada: xabar saqlandi, lekin bot javob BERMAYDI (operator gaplashadi)
   if (paused) {
     console.log(`🔕 Bot pauzada (mijoz ${contactId}) — javob berilmaydi, operator gaplashadi`);
+    return;
+  }
+
+  // 7.4: Kalit so'z qoidasi — mos kelsa tayyor javob (AI chaqirilmaydi, tejamkor!)
+  const kwRule = matchKeywordRule(await keywordRulesFor(projectId), userText);
+  if (kwRule) {
+    console.log(`🔑 Kalit so'z ishladi: "${kwRule.keyword}" (qoida #${kwRule.id})`);
+    if (kwRule.media_url) {
+      await sendInstagramImage(senderId, kwRule.media_url, token);
+    }
+    await sendInstagramMessage(senderId, kwRule.reply_text, token);
+    if (contactId) {
+      try {
+        await saveMessage(contactId, "assistant", kwRule.reply_text);
+      } catch (dbErr) {
+        console.error("⚠️ Saqlashda xatolik:", dbErr.message);
+      }
+    }
+    incrementKeywordHit(kwRule.id).catch(() => {});
     return;
   }
 
@@ -328,6 +368,16 @@ async function handleComment(entry, value, projectId, token) {
     }
 
     console.log(`💬 Yangi komment (@${username || fromId}): ${commentText}`);
+
+    // 7.4: Komment'da kalit so'z — avtomatik DM (ManyChat uslubi), AI'siz
+    const kwRule = matchKeywordRule(await keywordRulesFor(projectId), commentText);
+    if (kwRule) {
+      console.log(`🔑 Kommentda kalit so'z ishladi: "${kwRule.keyword}" (qoida #${kwRule.id})`);
+      await sendPrivateReply(commentId, kwRule.reply_text, token);
+      await replyToComment(commentId, "Javobni DM'ga yubordim 📩", token);
+      incrementKeywordHit(kwRule.id).catch(() => {});
+      return;
+    }
 
     // Shu akkauntning bilim bazasi bilan komment javobini tayyorlaymiz
     let knowledge = "";

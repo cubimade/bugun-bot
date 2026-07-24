@@ -83,6 +83,27 @@ export async function sendInstagramMessage(recipientId, text, token = IG_TOKEN) 
   }
 }
 
+// Rasm (media) yuborish — kalit so'z javobidagi media_url uchun (7.4)
+export async function sendInstagramImage(recipientId, imageUrl, token = IG_TOKEN) {
+  try {
+    const data = await igPost(
+      `${BASE}/me/messages`,
+      {
+        recipient: { id: recipientId },
+        message: { attachment: { type: "image", payload: { url: imageUrl } } },
+      },
+      token
+    );
+    if (data.error) {
+      console.error("⚠️ Rasm yuborish xatoligi:", JSON.stringify(data.error));
+      return { ok: false, error: data.error.message || "Instagram xatoligi" };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 // Kommentga ommaviy javob (komment ostiga).
 export async function replyToComment(commentId, text, token = IG_TOKEN) {
   try {

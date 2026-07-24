@@ -9,6 +9,7 @@ export { renderInboxPage } from "./templates/inbox.js";
 export { renderContactsPage } from "./templates/contacts.js";
 export { renderBroadcastPage } from "./templates/broadcast.js";
 export { renderKnowledgePage } from "./templates/knowledge.js";
+export { renderKeywordsPage } from "./templates/keywords.js";
 export { renderAccountsPage } from "./templates/accounts.js";
 export { renderSettingsPage } from "./templates/settings.js";
 export { renderInsightsPage } from "./templates/insights.js";

@@ -90,6 +90,9 @@ export async function listBroadcastRecipients(projectId, tag = null) {
        FROM contacts c
       WHERE c.project_id = $1
         AND ($2::text IS NULL OR $2 = ANY(c.tags))
+        -- 8.7: faol flow'dagi mijozga broadcast yuborilmaydi (to'qnashuv)
+        AND NOT EXISTS (SELECT 1 FROM contact_flow_state s
+                         WHERE s.contact_id = c.id AND s.status = 'active')
         AND EXISTS (
           SELECT 1 FROM messages m
            WHERE m.contact_id = c.id AND m.role = 'user'

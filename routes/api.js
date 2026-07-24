@@ -37,6 +37,7 @@ import {
   getContactAccount,
   saveMessage,
   setBotPaused,
+  stopContactFlows,
   setContactNote,
   listSavedReplies,
   insertSavedReply,
@@ -282,6 +283,8 @@ router.post("/api/contacts/:id/pause", protect, async (req, res, next) => {
     const value = Boolean(req.body?.value);
     // Qo'lda pauza — muddatsiz (operator o'zi qayta yoqadi)
     await setBotPaused(contactId, value, null);
+    // 8.7: operator aralashdi — faol flow to'xtatiladi (to'qnashuv bo'lmasin)
+    if (value) await stopContactFlows(contactId).catch(() => {});
     console.log(`${value ? "🔕 Bot pauza qilindi" : "▶️ Bot qayta yoqildi"} (mijoz ${contactId})`);
     res.json({ ok: true, value });
   } catch (err) {
@@ -374,6 +377,8 @@ router.post("/api/reply", protect, async (req, res, next) => {
     // muddat tugagach o'zi qayta yoqiladi (ChatPlace'dan aqlliroq).
     const pausedUntil = new Date(Date.now() + 30 * 60 * 1000);
     await setBotPaused(contactId, true, pausedUntil);
+    // 8.7: operator suhbatni oldi — faol flow to'xtatiladi
+    await stopContactFlows(contactId).catch(() => {});
 
     console.log(`👤 Operator javobi yuborildi (mijoz ${contactId}) — bot 30 daqiqa pauzada`);
     res.json({ ok: true, botPausedUntil: pausedUntil.toISOString() });

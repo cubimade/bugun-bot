@@ -99,6 +99,9 @@ export async function findFollowupCandidates({ waitHours, maxCount, limit = 30 }
         AND NOT c.bot_paused
         AND NOT c.followup_paused
         AND c.followup_sent_count < $1
+        -- 8.7: faol flow'dagi mijozga follow-up yuborilmaydi (to'qnashuv)
+        AND NOT EXISTS (SELECT 1 FROM contact_flow_state s
+                         WHERE s.contact_id = c.id AND s.status = 'active')
         AND last.created_at < now() - make_interval(hours => $2)
         AND lastu.created_at >= now() - interval '23 hours'
       ORDER BY last.created_at ASC

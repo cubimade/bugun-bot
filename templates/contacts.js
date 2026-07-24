@@ -171,12 +171,29 @@ function onPauseChanged(id, v) {
   if (local) { local.bot_paused = v; local.paused_until = null; }
   renderTable();
 }
+// 12.5: duplikat kontaktlar (bir xil telefon/email — AI profildan)
+async function showDuplicates() {
+  openModal("🧹 Duplikat kontaktlar", skeletonRows(3, 40));
+  try {
+    const { duplicates } = await api("/api/duplicates");
+    $("modalBody").innerHTML = duplicates.length ? duplicates.map((d) => \`
+      <div class="card" style="padding:10px 13px;margin-bottom:8px">
+        <strong class="small">📞 \${esc(d.key)}</strong>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+          \${d.contacts.map((c) => \`<a class="badge b-indigo" href="/dashboard/inbox?contact=\${c.id}">\${esc(c.name || c.ig_user_id)}</a>\`).join("")}
+        </div>
+        <div class="small muted" style="margin-top:6px">Birlashtirish: keraklisini qoldirib, ikkinchisini profil oynasidan o'chiring (xabarlari ham o'chadi).</div>
+      </div>\`).join("") : emptyState("✨", "Duplikat topilmadi — hammasi toza");
+  } catch (e) {
+    $("modalBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message);
+  }
+}
 loadData();`;
 
   return renderLayout({
     title: "Kontaktlar",
     active: "contacts",
-    headerAction: `<button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" title="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
+    headerAction: `<button class="btn" onclick="showDuplicates()" title="Bir xil telefon/emailli kontaktlar">🧹 Duplikatlar</button> <button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" title="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
     content,
     script,
   });

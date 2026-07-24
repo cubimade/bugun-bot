@@ -68,6 +68,38 @@ import { tryStartFlow, handleFlowInput } from "./flow-engine.js";
 import { senderFor } from "./channels.js";
 import { state, workHoursOverrides } from "../state.js";
 
+// ============================================================
+//  12.5: SPAM VA SO'KINISH FILTRI
+// ============================================================
+// Takroriy bir xil xabar (2 daqiqada 3+ marta) — spam belgisi
+const REPEAT_MAP = new Map(); // key -> { text, count, at }
+function isRepeatSpam(key, text) {
+  const now = Date.now();
+  const rec = REPEAT_MAP.get(key);
+  if (rec && rec.text === text && now - rec.at < 2 * 60 * 1000) {
+    rec.count++;
+    rec.at = now;
+    return rec.count >= 3;
+  }
+  REPEAT_MAP.set(key, { text, count: 1, at: now });
+  if (REPEAT_MAP.size > 3000) REPEAT_MAP.clear(); // xotira himoyasi
+  return false;
+}
+
+// Havola tashlagan YANGI kontakt (birinchi xabarida) — bot-o'xshash xatti-harakat
+function looksLikeSpamLink(text, isNewContact) {
+  return isNewContact && /(https?:\/\/|t\.me\/|bit\.ly)/i.test(text) && text.length < 250;
+}
+
+// So'kinish: sozlamalardagi ro'yxat (vergul bilan) — operatorga uzatiladi
+function hasBadWords(text) {
+  const words = (state.SETTINGS.bad_words || "")
+    .split(",").map((w) => w.trim().toLowerCase()).filter((w) => w.length >= 3);
+  if (!words.length) return false;
+  const t = String(text).toLowerCase();
+  return words.some((w) => t.includes(w));
+}
+
 // --- Rate limiting (spam himoyasi) — xotirada, senderId bo'yicha ---
 const rateMap = new Map();
 export function isRateLimited(senderId) {
@@ -164,6 +196,25 @@ export async function processIncomingText(msg) {
     platform,
     token,
   };
+
+  // 12.5: spam — takroriy xabar yoki yangi kontaktdan havola
+  const isNewForSpam = history.length <= 1;
+  if (isRepeatSpam(`${platform}:${senderId}`, userText) || looksLikeSpamLink(userText, isNewForSpam)) {
+    console.log(`🚫 Spam belgisi (mijoz ${contactId}): javob berilmaydi`);
+    if (contactId) addContactTags(contactId, ["spam"]).catch(() => {});
+    return;
+  }
+
+  // 12.5: so'kinish — bot javob bermaydi, operatorga uzatiladi
+  if (hasBadWords(userText)) {
+    console.log(`🤬 Qo'pol so'z aniqlandi (mijoz ${contactId}) — operatorga uzatildi`);
+    if (contactId) {
+      addContactTags(contactId, ["e'tibor kerak"]).catch(() => {});
+      setNeedsHuman(contactId, true).catch(() => {});
+      notifyAdmin("human", `🤬 Qo'pol muomala: ${contactName || senderId}\n"${userText.slice(0, 120)}"`).catch(() => {});
+    }
+    return;
+  }
 
   // 10-bosqich: sotuv konteksti (bron/kalkulyator/to'lov/referral)
   const salesCtx = { contactId, senderId, projectId, platform, token, send };

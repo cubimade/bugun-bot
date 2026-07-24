@@ -37,7 +37,11 @@ export function renderSettingsPage() {
       <label class="lbl">🖼 Rasm kelganda javob (ixtiyoriy)</label>
       <input class="input" id="mediaImg" maxlength="500" placeholder="Rasmni oldim! 📸 Savolingizni yozib yuborsangiz, aniq javob beraman." style="margin-bottom:14px">
       <label class="lbl">🎤 Ovozli xabarga javob (ixtiyoriy)</label>
-      <input class="input" id="mediaAud" maxlength="500" placeholder="Ovozli xabaringizni oldim 🎤 Savolingizni matn bilan yozing." style="margin-bottom:16px">
+      <input class="input" id="mediaAud" maxlength="500" placeholder="Ovozli xabaringizni oldim 🎤 Savolingizni matn bilan yozing." style="margin-bottom:14px">
+      <label class="lbl">🤬 So'kinish filtri — qo'pol so'zlar (vergul bilan; mos kelsa bot javob bermaydi, operatorga uzatiladi)</label>
+      <input class="input" id="badWords" maxlength="1000" placeholder="so'z1, so'z2, ..." style="margin-bottom:14px">
+      <label class="lbl">🏷 Brend nomi (sidebar'da ko'rinadi — white-label uchun)</label>
+      <input class="input" id="brandName" maxlength="40" placeholder="BUGUN BOT" style="margin-bottom:16px">
       <button class="btn btn-primary" onclick="saveBotSettings(this)">${ICONS.check} Saqlash</button>
     </div>
 
@@ -280,6 +284,8 @@ async function loadSettings() {
     $("storyGreet").value = s.story_reply_greeting || "";
     $("mediaImg").value = s.media_image_reply || "";
     $("mediaAud").value = s.media_audio_reply || "";
+    $("badWords").value = s.bad_words || "";
+    $("brandName").value = s.brand_name || "";
     $("replyLen").value = s.reply_length || "orta";
     $("salesMode").checked = s.sales_mode === "true";
     const langs = (s.supported_languages || "uz,ru,en").split(",");
@@ -428,6 +434,8 @@ async function saveBotSettings(btn) {
       story_reply_greeting: $("storyGreet").value.trim(),
       media_image_reply: $("mediaImg").value.trim(),
       media_audio_reply: $("mediaAud").value.trim(),
+      bad_words: $("badWords").value.trim(),
+      brand_name: $("brandName").value.trim(),
     });
     toast("Bot sozlamalari saqlandi ✓");
   } catch (e) { toast("Xatolik: " + e.message, false); }

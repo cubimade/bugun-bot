@@ -1,6 +1,7 @@
 // templates/layout.js — umumiy karkas: sidebar, head, theme (ROADMAP-6 A1)
 // Dizayn CSS/JS endi statik: public/app.css va public/app.js
 import { esc, I, ICONS, NAV_ITEMS, APP_VERSION } from "./components.js";
+import { state } from "../state.js";
 
 export function renderLayout({ title, active, headerAction = "", content, script = "" }) {
   const nav = NAV_ITEMS.map(
@@ -22,7 +23,7 @@ export function renderLayout({ title, active, headerAction = "", content, script
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
-    <div class="logo">🤖 <span class="grad-text">BUGUN BOT</span></div>
+    <div class="logo">🤖 <span class="grad-text">${esc((state.SETTINGS.brand_name || "").trim() || "BUGUN BOT")}</span></div>
     <nav class="nav">${nav}</nav>
     <div class="sidebar-foot">
       <span>v${APP_VERSION}</span>

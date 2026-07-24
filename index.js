@@ -38,6 +38,7 @@ import { startFlowScheduler } from "./services/flow-engine.js";
 import { startBookingScheduler } from "./services/booking.js";
 import { startSegmentsScheduler } from "./services/segments.js";
 import { startWeeklyReportScheduler } from "./services/report.js";
+import { startHealthScheduler } from "./services/health.js";
 import dashboardRouter from "./routes/dashboard.js";
 import publicRouter from "./routes/public.js";
 
@@ -117,4 +118,5 @@ APP.listen(PORT, async () => {
   startBookingScheduler(); // 10.1: bron eslatmalari (soatlik)
   startSegmentsScheduler(); // 11.2: segmentlar (12 soatda)
   startWeeklyReportScheduler(); // 11.7: haftalik Telegram hisobot
+  startHealthScheduler(); // 12.5: o'z-o'zini tekshirish (10 daqiqa)
 });

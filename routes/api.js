@@ -52,6 +52,7 @@ import {
   setProjectKnowledge,
   createTelegramProject,
   getMediaMeta,
+  logAudit,
 } from "../db.js";
 import { getRecentErrors } from "../logger.js";
 import analyticsRouter from "./api-analytics.js";
@@ -111,6 +112,7 @@ router.delete("/api/accounts/:projectId", protect, async (req, res, next) => {
     const igId = await deleteProject(projectId);
     if (igId) ACCOUNTS_MAP.delete(String(igId));
     console.log(`🗑 Akkaunt o'chirildi (loyiha ${projectId})`);
+    logAudit(req.user?.email || "owner", "account_delete", `loyiha #${projectId}`).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -459,6 +461,26 @@ router.post("/api/reply-media", protect, async (req, res, next) => {
   }
 });
 
+// --- 12.5: Duplikat kontaktlar (bir xil telefon/email, AI profildan) ---
+router.get("/api/duplicates", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const { rows } = await pool.query(
+      `SELECT COALESCE(NULLIF(profile->>'telefon',''), profile->>'email') AS key,
+              json_agg(json_build_object('id', id, 'name', name, 'ig_user_id', ig_user_id)) AS contacts
+         FROM contacts
+        WHERE (NULLIF(profile->>'telefon','') IS NOT NULL OR NULLIF(profile->>'email','') IS NOT NULL)
+          AND NOT archived
+        GROUP BY 1
+       HAVING COUNT(*) > 1
+        LIMIT 20`
+    );
+    res.json({ duplicates: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // --- Bilim bazasi (o'qish/yozish) ---
 router.get("/api/knowledge/:projectId", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -477,6 +499,7 @@ router.post("/api/knowledge/:projectId", protect, async (req, res, next) => {
     const text = typeof req.body?.knowledge === "string" ? req.body.knowledge : "";
     await setProjectKnowledge(projectId, text);
     console.log(`📝 Bilim bazasi yangilandi (loyiha ${projectId}, ${text.length} belgi)`);
+    logAudit(req.user?.email || "owner", "knowledge_update", `loyiha #${projectId}, ${text.length} belgi`).catch(() => {});
     res.json({ ok: true, projectId, length: text.length });
   } catch (err) {
     next(err);

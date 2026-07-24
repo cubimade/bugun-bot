@@ -130,6 +130,8 @@ router.post("/api/settings", protect, async (req, res, next) => {
     await saveSettings(toSave);
     await reloadSettings();
     console.log(`⚙️ Sozlamalar yangilandi: ${Object.keys(toSave).join(", ")}`);
+    const { logAudit } = await import("../db.js");
+    logAudit(req.user?.email || "owner", "settings_update", Object.keys(toSave).join(", ")).catch(() => {});
     res.json({ ok: true });
   } catch (err) {
     next(err);

@@ -20,6 +20,7 @@ import {
   addContactTags,
   removeContactTag,
   getContact,
+  setContactStage,
   getFlowNode,
   getOutgoingEdges,
   getStartNode,
@@ -133,8 +134,7 @@ async function executeFrom(stateId, nodeId, ctx) {
           console.log(`🔕 Flow: bot pauza qilindi (mijoz ${ctx.contactId})`);
         } else if (cfg.action === "set_stage" && val) {
           // 8.5: voronka bosqichini o'zgartirish
-          const { setContactStage } = await import("../db.js");
-          if (setContactStage) await setContactStage(ctx.contactId, val);
+          await setContactStage(ctx.contactId, val);
         }
         current = edges[0]?.to_node_id || null;
       } else if (node.type === "delay") {

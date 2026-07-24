@@ -151,6 +151,12 @@ export async function initDb() {
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'sent';
     ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS tag TEXT;
 
+    -- 8.5: Sotuv voronkasi (kanban) — bosqich, summa
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'new';
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage_changed_at TIMESTAMPTZ;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS deal_amount NUMERIC;
+    CREATE INDEX IF NOT EXISTS idx_contacts_stage ON contacts(stage);
+
     -- 8.2: FLOW BUILDER — vizual suhbat oqimlari
     CREATE TABLE IF NOT EXISTS flows (
       id            SERIAL PRIMARY KEY,

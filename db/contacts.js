@@ -188,6 +188,72 @@ export async function addContactTags(contactId, newTags) {
   );
 }
 
+// ------------------------------------------------------------
+//  8.5: SOTUV VORONKASI (kanban)
+// ------------------------------------------------------------
+export const STAGES = ["new", "interested", "negotiation", "won", "lost"];
+
+export async function setContactStage(contactId, stage) {
+  if (!STAGES.includes(stage)) return false;
+  await pool.query(
+    `UPDATE contacts SET stage = $2, stage_changed_at = now() WHERE id = $1 AND stage <> $2`,
+    [contactId, stage]
+  );
+  return true;
+}
+
+// Teg orqali avto-harakat: faqat OLDINGA suradi (won/lost'dan qaytarmaydi)
+export async function advanceContactStage(contactId, stage) {
+  if (!STAGES.includes(stage)) return false;
+  const idx = STAGES.indexOf(stage);
+  await pool.query(
+    `UPDATE contacts SET stage = $2, stage_changed_at = now()
+      WHERE id = $1
+        AND array_position($3::text[], stage) < $4
+        AND stage NOT IN ('won','lost')`,
+    [contactId, stage, STAGES, idx + 1]
+  );
+  return true;
+}
+
+export async function setDealAmount(contactId, amount) {
+  await pool.query(`UPDATE contacts SET deal_amount = $2 WHERE id = $1`, [
+    contactId,
+    amount,
+  ]);
+}
+
+// Kanban uchun kontaktlar (bosqich bo'yicha, har biri oxirgi xabari bilan)
+export async function listPipelineContacts(limit = 400) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.name, c.ig_user_id, c.tags, c.stage, c.stage_changed_at,
+            c.deal_amount, c.last_seen, c.sentiment, p.name AS project_name,
+            (SELECT text FROM messages m WHERE m.contact_id = c.id
+              ORDER BY created_at DESC LIMIT 1) AS last_text
+       FROM contacts c
+       JOIN projects p ON p.id = c.project_id
+      WHERE NOT c.archived
+      ORDER BY c.last_seen DESC
+      LIMIT $1`,
+    [limit]
+  );
+  return rows;
+}
+
+// Voronka statistikasi: har bosqichda nechta, jami summa, o'rtacha turish vaqti
+export async function pipelineStats() {
+  const { rows } = await pool.query(
+    `SELECT stage,
+            COUNT(*)::int AS n,
+            COALESCE(SUM(deal_amount), 0)::float AS total,
+            COALESCE(AVG(EXTRACT(EPOCH FROM (now() - stage_changed_at)) / 86400), 0)::float AS avg_days
+       FROM contacts
+      WHERE NOT archived
+      GROUP BY stage`
+  );
+  return rows;
+}
+
 // 8.2: Bitta tegni olib tashlash (flow "amal" node'i uchun)
 export async function removeContactTag(contactId, tag) {
   await pool.query(`UPDATE contacts SET tags = array_remove(tags, $2) WHERE id = $1`, [

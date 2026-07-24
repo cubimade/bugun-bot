@@ -51,6 +51,7 @@ import settingsRouter from "./api-settings.js";
 import diagnosticsRouter from "./api-diagnostics.js";
 import automationRouter from "./api-automation.js";
 import flowsRouter from "./api-flows.js";
+import pipelineRouter from "./api-pipeline.js";
 
 const router = express.Router();
 
@@ -61,6 +62,7 @@ router.use(settingsRouter);
 router.use(diagnosticsRouter);
 router.use(automationRouter);
 router.use(flowsRouter);
+router.use(pipelineRouter);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;

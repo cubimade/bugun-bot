@@ -51,6 +51,7 @@ export const NAV_ITEMS = [
   { key: "contacts", label: "Kontaktlar", href: "/dashboard/contacts", icon: "contacts" },
   { key: "insights", label: "Tahlil", href: "/dashboard/insights", icon: "insights" },
   { key: "flows", label: "Oqimlar", href: "/dashboard/flows", icon: "flow" },
+  { key: "pipeline", label: "Voronka", href: "/dashboard/pipeline", icon: "pipeline" },
   { key: "broadcast", label: "Broadcast", href: "/dashboard/broadcast", icon: "broadcast" },
   { key: "knowledge", label: "Bilim bazasi", href: "/dashboard/knowledge", icon: "knowledge" },
   { key: "keywords", label: "Kalit so'zlar", href: "/dashboard/keywords", icon: "key" },

@@ -9,7 +9,18 @@ import {
   getActiveTagRules,
   matchTagRules,
   addContactTags,
+  advanceContactStage,
 } from "../db.js";
+
+// 8.5: teg → voronka bosqichi (teg qo'yilganda avtomatik harakat).
+// Faqat oldinga suradi — won/lost'dan qaytarmaydi.
+const TAG_TO_STAGE = {
+  qiziqqan: "interested",
+  lead: "interested",
+  issiq: "negotiation",
+  sotildi: "won",
+  "yo'qotildi": "lost",
+};
 
 const TTL_MS = 60 * 1000;
 const KEYWORD_CACHE = new Map(); // projectId -> { at, rules }
@@ -52,6 +63,14 @@ export function autoTag(contactId, projectId, text) {
     if (tags.length) {
       await addContactTags(contactId, tags);
       console.log(`🏷 Avto-teg (mijoz ${contactId}): ${tags.join(", ")}`);
+      // 8.5: teg voronka bosqichiga mos bo'lsa — bosqichni suramiz
+      for (const t of tags) {
+        const stage = TAG_TO_STAGE[t.toLowerCase()];
+        if (stage) {
+          await advanceContactStage(contactId, stage);
+          console.log(`📋 Voronka: mijoz ${contactId} → ${stage} ("${t}" tegi orqali)`);
+        }
+      }
     }
   })().catch((err) => console.error("⚠️ Avto-teg xatoligi:", err.message));
 }

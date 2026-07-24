@@ -1,6 +1,6 @@
 {
   "name": "bugun-bot",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "description": "Instagram AI chat-bot - Claude API bilan ishlaydi",
   "type": "module",
   "main": "index.js",

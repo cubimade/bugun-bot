@@ -26,6 +26,9 @@ const SETTING_KEYS = [
   "followup_text",
   "media_image_reply", // 7.6
   "media_audio_reply",
+  "greeting_buttons_enabled", // 8.1
+  "greeting_buttons_text",
+  "greeting_buttons", // JSON: [{title, reply}]
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -50,6 +53,9 @@ router.get("/api/settings", protect, async (req, res, next) => {
         followup_text: state.SETTINGS.followup_text ?? "",
         media_image_reply: state.SETTINGS.media_image_reply ?? "",
         media_audio_reply: state.SETTINGS.media_audio_reply ?? "",
+        greeting_buttons_enabled: state.SETTINGS.greeting_buttons_enabled ?? "false",
+        greeting_buttons_text: state.SETTINGS.greeting_buttons_text ?? "",
+        greeting_buttons: state.SETTINGS.greeting_buttons ?? "[]",
       },
     });
   } catch (err) {

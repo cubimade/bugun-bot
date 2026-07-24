@@ -83,6 +83,40 @@ export async function sendInstagramMessage(recipientId, text, token = IG_TOKEN) 
   }
 }
 
+// 8.1: Tugmali xabar (quick replies) — Instagram maksimum 13 ta tugma,
+// har tugma sarlavhasi 20 belgigacha. buttons: [{ title, payload }]
+export async function sendButtons(recipientId, text, buttons, token = IG_TOKEN) {
+  const quickReplies = (buttons || [])
+    .filter((b) => b && (b.title || "").trim())
+    .slice(0, 13)
+    .map((b) => ({
+      content_type: "text",
+      title: String(b.title).trim().slice(0, 20),
+      payload: String(b.payload ?? b.title).slice(0, 1000),
+    }));
+  // Tugma yo'q bo'lsa — oddiy matn sifatida yuboramiz (yiqilmaslik uchun)
+  if (!quickReplies.length) return sendInstagramMessage(recipientId, text, token);
+  try {
+    const data = await igPost(
+      `${BASE}/me/messages`,
+      {
+        recipient: { id: recipientId },
+        message: { text: String(text || "").slice(0, 1000), quick_replies: quickReplies },
+      },
+      token
+    );
+    if (data.error) {
+      console.error("⚠️ Tugmali xabar xatoligi:", JSON.stringify(data.error));
+      return { ok: false, error: data.error.message || "Instagram xatoligi" };
+    }
+    console.log(`✅ Tugmali xabar yuborildi (${quickReplies.length} tugma)`);
+    return { ok: true };
+  } catch (err) {
+    console.error("⚠️ Tugmali xabarda xatolik:", err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
 // Rasm (media) yuborish — kalit so'z javobidagi media_url uchun (7.4)
 export async function sendInstagramImage(recipientId, imageUrl, token = IG_TOKEN) {
   try {

@@ -24,6 +24,7 @@ import {
   sendInstagramMessage,
   replyToComment,
   sendPrivateReply,
+  sendButtons,
 } from "../instagram.js";
 import {
   getOrCreateContact,
@@ -216,6 +217,13 @@ async function handleDirectMessage(event, projectId, token) {
     return;
   }
 
+  // 8.1: Tugma bosildi (quick reply) — payload bo'yicha javob beramiz
+  const quickPayload = event.message?.quick_reply?.payload || null;
+  if (quickPayload) {
+    const handled = await handleQuickReplyPayload(senderId, contactId, quickPayload, token);
+    if (handled) return;
+  }
+
   // 7.4: Kalit so'z qoidasi — mos kelsa tayyor javob (AI chaqirilmaydi, tejamkor!)
   const kwRule = matchKeywordRule(await keywordRulesFor(projectId), userText);
   if (kwRule) {
@@ -237,6 +245,33 @@ async function handleDirectMessage(event, projectId, token) {
 
   // Bu mijozning birinchi xabari? (tarixда faqat shu xabar bo'lsa — yangi)
   const isNewContact = history.length <= 1;
+
+  // 8.1: Yangi mijozga salomlashish tugmalari (sozlamalarda yoqilgan bo'lsa)
+  // AI chaqirilmaydi — tayyor salom + tugmalar (Narxlar/Xizmatlar/Bog'lanish)
+  if (isNewContact && state.SETTINGS.greeting_buttons_enabled === "true") {
+    const gButtons = parseGreetingButtons();
+    if (gButtons.length) {
+      const greetText =
+        (state.SETTINGS.greeting_buttons_text || "").trim() ||
+        state.SETTINGS.greeting_message ||
+        "Assalomu alaykum! 👋 Sizga qanday yordam bera olamiz? Quyidagi tugmalardan tanlang:";
+      const btns = gButtons.map((b, i) => ({ title: b.title, payload: `gbtn:${i}` }));
+      const result = await sendButtons(senderId, greetText, btns, token);
+      if (result.ok) {
+        if (contactId) {
+          try {
+            await saveMessage(contactId, "assistant", greetText + " " + gButtons.map((b) => `[${b.title}]`).join(" "));
+          } catch (dbErr) {
+            console.error("⚠️ Saqlashda xatolik:", dbErr.message);
+          }
+        }
+        console.log("👋 Yangi mijozga salomlashish tugmalari yuborildi");
+        return;
+      }
+      // Tugma yuborilmasa — oddiy AI oqimi davom etadi (mijoz javobsiz qolmasin)
+      console.warn("⚠️ Salomlashish tugmalari yuborilmadi — AI javob beradi:", result.error);
+    }
+  }
 
   // Agar tarix bo'lmasa (DB o'chiq), joriy xabarning o'zini beramiz
   if (history.length === 0) {
@@ -338,6 +373,41 @@ async function handleDirectMessage(event, projectId, token) {
       }
     })().catch((err) => console.error("⚠️ Sentiment saqlashda xatolik:", err.message));
   }
+}
+
+// ============================================================
+//  8.1: TUGMALI JAVOBLAR — sozlamalardagi salomlashish tugmalari
+// ============================================================
+// settings.greeting_buttons — JSON: [{ "title": "Narxlar", "reply": "..." }]
+function parseGreetingButtons() {
+  try {
+    const arr = JSON.parse(state.SETTINGS.greeting_buttons || "[]");
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((b) => b && (b.title || "").trim() && (b.reply || "").trim());
+  } catch {
+    return [];
+  }
+}
+
+// Tugma bosilganda payload bo'yicha javob. true = qayta ishlandi.
+async function handleQuickReplyPayload(senderId, contactId, payload, token) {
+  // gbtn:<idx> — salomlashish tugmasi
+  if (payload.startsWith("gbtn:")) {
+    const idx = parseInt(payload.slice(5), 10);
+    const btn = parseGreetingButtons()[idx];
+    if (!btn) return false; // sozlama o'zgargan — oddiy oqim davom etadi
+    console.log(`🔘 Salomlashish tugmasi bosildi: "${btn.title}"`);
+    await sendInstagramMessage(senderId, btn.reply, token);
+    if (contactId) {
+      try {
+        await saveMessage(contactId, "assistant", btn.reply);
+      } catch (dbErr) {
+        console.error("⚠️ Saqlashda xatolik:", dbErr.message);
+      }
+    }
+    return true;
+  }
+  return false;
 }
 
 // ============================================================

@@ -42,6 +42,23 @@ export function renderSettingsPage() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px">🔘 Salomlashish tugmalari</h3>
+      <p class="small muted" style="margin-bottom:14px">Yoqilsa — yangi mijozning birinchi xabariga AI o'rniga tayyor salom + tugmalar yuboriladi (masalan: Narxlar / Xizmatlar / Bog'lanish). Tugma bosilganda mos javob boradi. Tugma sarlavhasi 20 belgigacha.</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <label class="switch"><input type="checkbox" id="gbEnabled" onchange="$('gbFields').style.opacity=this.checked?'1':'.45'"><span class="slider"></span></label>
+        <div><strong class="small">Tugmalar yoqilgan</strong>
+        <div class="small muted">O'chirilsa — yangi mijozga odatdagidek AI javob beradi</div></div>
+      </div>
+      <div id="gbFields">
+        <label class="lbl">Salom matni (tugmalar bilan birga yuboriladi)</label>
+        <textarea class="input" id="gbText" rows="2" maxlength="500" placeholder="Assalomu alaykum! 👋 Sizga qanday yordam bera olamiz? Quyidagi tugmalardan tanlang:" style="margin-bottom:12px"></textarea>
+        <div id="gbList" style="display:grid;gap:10px;margin-bottom:12px"></div>
+        <button class="btn btn-sm" onclick="addGbRow()" style="margin-bottom:14px">➕ Tugma qo'shish (maks 13)</button>
+      </div>
+      <button class="btn btn-primary" onclick="saveGreetingButtons(this)">${ICONS.check} Saqlash</button>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px">🧠 AI sozlamalari</h3>
       <p class="small muted" style="margin-bottom:16px">Bot ikki modelni aqlli almashtiradi — xarajat va sifat muvozanati.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px" class="ai-cols">
@@ -130,7 +147,7 @@ export function renderSettingsPage() {
     .slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: .25s; }
     .switch input:checked + .slider { background: var(--grad); border-color: transparent; }
     .switch input:checked + .slider:before { transform: translateX(20px); background: #fff; }
-    @media (max-width: 600px) { .ai-cols { grid-template-columns: 1fr !important; } .tr-cols { grid-template-columns: 1fr !important; } }
+    @media (max-width: 600px) { .ai-cols { grid-template-columns: 1fr !important; } .tr-cols { grid-template-columns: 1fr !important; } .gb-cols { grid-template-columns: 1fr !important; } }
   </style>`;
 
   const script = `
@@ -152,7 +169,51 @@ async function loadSettings() {
     $("fuWait").value = s.followup_wait_hours || "12";
     $("fuMax").value = s.followup_max || "1";
     $("fuText").value = s.followup_text || "";
+    $("gbEnabled").checked = s.greeting_buttons_enabled === "true";
+    $("gbFields").style.opacity = $("gbEnabled").checked ? "1" : ".45";
+    $("gbText").value = s.greeting_buttons_text || "";
+    try { GB_ROWS = JSON.parse(s.greeting_buttons || "[]"); } catch (e) { GB_ROWS = []; }
+    if (!Array.isArray(GB_ROWS)) GB_ROWS = [];
+    renderGbRows();
   } catch (e) { toast("Sozlamalar yuklanmadi: " + e.message, false); }
+}
+// 8.1: Salomlashish tugmalari boshqaruvi
+let GB_ROWS = [];
+function renderGbRows() {
+  if (!GB_ROWS.length) {
+    $("gbList").innerHTML = '<span class="small muted">Hali tugma yo\\'q — "Tugma qo\\'shish" ni bosing</span>';
+    return;
+  }
+  $("gbList").innerHTML = GB_ROWS.map((b, i) => \`
+    <div style="display:grid;grid-template-columns:150px 1fr auto;gap:8px;align-items:start" class="gb-cols">
+      <input class="input" maxlength="20" placeholder="Tugma (maks 20)" value="\${esc(b.title || "")}"
+        oninput="GB_ROWS[\${i}].title=this.value">
+      <textarea class="input" rows="2" maxlength="900" placeholder="Bosilganda yuboriladigan javob"
+        oninput="GB_ROWS[\${i}].reply=this.value">\${esc(b.reply || "")}</textarea>
+      <button class="btn btn-sm" onclick="GB_ROWS.splice(\${i},1);renderGbRows()" title="O'chirish">🗑</button>
+    </div>\`).join("");
+}
+function addGbRow() {
+  if (GB_ROWS.length >= 13) return toast("Maksimum 13 ta tugma", false);
+  GB_ROWS.push({ title: "", reply: "" });
+  renderGbRows();
+}
+async function saveGreetingButtons(btn) {
+  const clean = GB_ROWS.map((b) => ({ title: (b.title || "").trim().slice(0, 20), reply: (b.reply || "").trim() }))
+    .filter((b) => b.title && b.reply);
+  if ($("gbEnabled").checked && !clean.length) return toast("Kamida bitta to'liq tugma kiriting (sarlavha + javob)", false);
+  btn.disabled = true;
+  try {
+    await postJson("/api/settings", {
+      greeting_buttons_enabled: String($("gbEnabled").checked),
+      greeting_buttons_text: $("gbText").value.trim(),
+      greeting_buttons: JSON.stringify(clean),
+    });
+    GB_ROWS = clean;
+    renderGbRows();
+    toast("Salomlashish tugmalari saqlandi ✓");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
 }
 async function saveBotSettings(btn) {
   btn.disabled = true;

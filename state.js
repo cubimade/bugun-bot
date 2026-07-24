@@ -10,6 +10,7 @@ import {
   getOrCreateProject,
   listAccountsWithTokens,
   getAllSettings,
+  seedDefaultTagRules,
 } from "./db.js";
 
 export const state = {
@@ -100,6 +101,15 @@ export async function setupDatabase() {
   await reloadSettings();
   if (Object.keys(state.SETTINGS).length) {
     console.log(`⚙️ ${Object.keys(state.SETTINGS).length} ta sozlama database'dan yuklandi.`);
+  }
+
+  // 7.8: standart avto-teg qoidalari (faqat jadval bo'sh bo'lsa)
+  if (state.DB_READY) {
+    try {
+      await seedDefaultTagRules();
+    } catch (err) {
+      console.error("⚠️ Standart teg qoidalarini qo'shishda xatolik:", err.message);
+    }
   }
 }
 

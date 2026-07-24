@@ -37,6 +37,9 @@ import {
   matchKeywordRule,
   incrementKeywordHit,
   resetFollowupCount,
+  getActiveTagRules,
+  matchTagRules,
+  addContactTags,
 } from "../db.js";
 import { sendInstagramImage } from "../instagram.js";
 import { state, ACCOUNTS_MAP, resolveAccount, workHoursOverrides } from "../state.js";
@@ -142,6 +145,33 @@ async function keywordRulesFor(projectId) {
   }
 }
 
+// --- 7.8: Avto-teg qoidalari keshi (60 soniya) va qo'llash (fonda) ---
+const TAG_RULES_CACHE = new Map(); // projectId -> { at, rules }
+async function tagRulesFor(projectId) {
+  if (!state.DB_READY) return [];
+  const key = String(projectId ?? "null");
+  const hit = TAG_RULES_CACHE.get(key);
+  if (hit && Date.now() - hit.at < 60 * 1000) return hit.rules;
+  try {
+    const rules = await getActiveTagRules(projectId);
+    TAG_RULES_CACHE.set(key, { at: Date.now(), rules });
+    return rules;
+  } catch (err) {
+    return [];
+  }
+}
+
+function autoTag(contactId, projectId, text) {
+  if (!contactId) return;
+  (async () => {
+    const tags = matchTagRules(await tagRulesFor(projectId), text);
+    if (tags.length) {
+      await addContactTags(contactId, tags);
+      console.log(`🏷 Avto-teg (mijoz ${contactId}): ${tags.join(", ")}`);
+    }
+  })().catch((err) => console.error("⚠️ Avto-teg xatoligi:", err.message));
+}
+
 // --- Rate limiting (spam himoyasi) — xotirada, senderId bo'yicha ---
 const rateMap = new Map();
 function isRateLimited(senderId) {
@@ -206,6 +236,8 @@ async function handleDirectMessage(event, projectId, token) {
       await saveMessage(contactId, "user", userText, false, msgSource);
       // 7.5: mijoz javob berdi — follow-up hisoblagichi nolga
       resetFollowupCount(contactId).catch(() => {});
+      // 7.8: avto-teglash (fonda — javobni kechiktirmaydi)
+      autoTag(contactId, projectId, userText);
 
       // C1: Bot pauza (operator rejimi) tekshiruvi
       if (contact.bot_paused) {

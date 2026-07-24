@@ -177,6 +177,17 @@ export async function setContactTags(contactId, tags) {
   ]);
 }
 
+// 7.8: Yangi teglarni mavjudlariga qo'shish (takrorsiz, bitta so'rovda)
+export async function addContactTags(contactId, newTags) {
+  if (!newTags?.length) return;
+  await pool.query(
+    `UPDATE contacts
+        SET tags = ARRAY(SELECT DISTINCT unnest(tags || $2::text[]))
+      WHERE id = $1`,
+    [contactId, newTags]
+  );
+}
+
 export async function listAllTags() {
   const { rows } = await pool.query(
     `SELECT DISTINCT unnest(tags) AS tag FROM contacts ORDER BY 1`

@@ -106,6 +106,17 @@ export function renderSettingsPage() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px">🏷 Avto-teglash qoidalari</h3>
+      <p class="small muted" style="margin-bottom:14px">Mijoz xabarida so'z uchrasa — kontaktga avtomatik teg qo'yiladi (masalan "narx" → qiziqqan). Inbox va Kontaktlarda teg bo'yicha filtrlash mumkin.</p>
+      <div id="trList"><div class="skeleton" style="height:44px"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-top:14px;border-top:1px solid var(--border);padding-top:14px" class="tr-cols">
+        <input class="input" id="trWord" placeholder="So'z (masalan: narx)" maxlength="100">
+        <input class="input" id="trTag" placeholder="Teg (masalan: qiziqqan)" maxlength="30">
+        <button class="btn btn-primary" onclick="addTagRule(this)">${ICONS.plus}</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px">🖥 Tizim</h3>
       <p class="small muted" style="margin-bottom:16px">Server va database holati.</p>
       <div id="sysInfo"><div class="skeleton" style="height:100px"></div></div>
@@ -119,7 +130,7 @@ export function renderSettingsPage() {
     .slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: .25s; }
     .switch input:checked + .slider { background: var(--grad); border-color: transparent; }
     .switch input:checked + .slider:before { transform: translateX(20px); background: #fff; }
-    @media (max-width: 600px) { .ai-cols { grid-template-columns: 1fr !important; } }
+    @media (max-width: 600px) { .ai-cols { grid-template-columns: 1fr !important; } .tr-cols { grid-template-columns: 1fr !important; } }
   </style>`;
 
   const script = `
@@ -181,6 +192,56 @@ async function saveAiSettings(btn) {
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }
+// 7.8: Avto-teg qoidalari boshqaruvi
+let TAG_RULES = [];
+async function loadTagRules() {
+  try {
+    const { rules } = await api("/api/tag-rules");
+    TAG_RULES = rules || [];
+    renderTagRules();
+  } catch (e) { $("trList").innerHTML = '<span class="small muted">Yuklanmadi: ' + esc(e.message) + "</span>"; }
+}
+function renderTagRules() {
+  if (!TAG_RULES.length) { $("trList").innerHTML = '<span class="small muted">Hali qoida yo\\'q</span>'; return; }
+  $("trList").innerHTML = TAG_RULES.map((r) => \`
+    <div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);\${r.is_active ? "" : "opacity:.5"}">
+      <span class="small" style="flex:1;min-width:0">"<strong>\${esc(r.keyword)}</strong>" → <span class="badge b-indigo">\${esc(r.tag_name)}</span>
+        <span class="muted">\${r.project_name ? "· " + esc(r.project_name) : ""}</span></span>
+      <button class="btn btn-sm" onclick="toggleTagRule(\${r.id}, \${!r.is_active})" title="\${r.is_active ? "To'xtatish" : "Yoqish"}">\${r.is_active ? "⏸" : "▶️"}</button>
+      <button class="btn btn-sm" onclick="delTagRule(\${r.id})" title="O'chirish">🗑</button>
+    </div>\`).join("");
+}
+async function addTagRule(btn) {
+  const keyword = $("trWord").value.trim();
+  const tag_name = $("trTag").value.trim();
+  if (!keyword || !tag_name) return toast("So'z va teg majburiy", false);
+  btn.disabled = true;
+  try {
+    await postJson("/api/tag-rules", { keyword, tag_name });
+    $("trWord").value = ""; $("trTag").value = "";
+    toast("Qoida qo'shildi ✓");
+    loadTagRules();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+async function toggleTagRule(id, val) {
+  try {
+    await postJson("/api/tag-rules/" + id, { is_active: val });
+    const r = TAG_RULES.find((x) => x.id === id);
+    if (r) r.is_active = val;
+    renderTagRules();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function delTagRule(id) {
+  try {
+    await api("/api/tag-rules/" + id, { method: "DELETE" });
+    TAG_RULES = TAG_RULES.filter((x) => x.id !== id);
+    renderTagRules();
+    toast("Qoida o'chirildi");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+loadTagRules();
+
 function fmtUptime(s) {
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
   return (d ? d + " kun " : "") + (h ? h + " soat " : "") + m + " daqiqa";

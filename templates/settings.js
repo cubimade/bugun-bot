@@ -192,6 +192,21 @@ export function renderSettingsPage() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px">🔔 Telegram bildirishnomalar (admin)</h3>
+      <p class="small muted" style="margin-bottom:14px">Muhim hodisalar Telegram'ingizga boradi. Telegram bot ulangan bo'lishi va chat ID kiritilishi kerak (@userinfobot orqali bilib oling).</p>
+      <label class="lbl">Telegram chat ID</label>
+      <input class="input" id="ntChat" maxlength="30" placeholder="123456789" style="margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px" class="ai-cols">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer" class="small"><input type="checkbox" id="ntHuman"> 🙋 "Odam kerak" suhbat</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer" class="small"><input type="checkbox" id="ntNegative"> 😟 Salbiy kayfiyat</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer" class="small"><input type="checkbox" id="ntBooking"> 📅 Yangi bron</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer" class="small"><input type="checkbox" id="ntPayment"> 💰 To'lov qilindi</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer" class="small"><input type="checkbox" id="ntDown"> ⚠️ Tizim muammosi</label>
+      </div>
+      <button class="btn btn-primary" onclick="saveNotify(this)">${ICONS.check} Saqlash</button>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px">📬 Haftalik hisobot (Telegram)</h3>
       <p class="small muted" style="margin-bottom:14px">Har dushanba ~09:00 da asosiy ko'rsatkichlar (xabarlar, yangi mijozlar, daromad, segmentlar + AI xulosa) Telegram'ingizga boradi. Telegram bot ulangan bo'lishi kerak. Chat ID'ni bilish uchun Telegram'da <strong>@userinfobot</strong> ga yozing.</p>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
@@ -258,7 +273,29 @@ async function loadSettings() {
     $("lmMedia").value = s.lead_magnet_media || "";
     $("repEnabled").checked = s.report_telegram_enabled === "true";
     $("repChat").value = s.report_tg_chat_id || "";
+    $("ntChat").value = s.notify_tg_chat_id || "";
+    $("ntHuman").checked = s.notify_human === "true";
+    $("ntNegative").checked = s.notify_negative === "true";
+    $("ntBooking").checked = s.notify_booking === "true";
+    $("ntPayment").checked = s.notify_payment === "true";
+    $("ntDown").checked = s.notify_down === "true";
   } catch (e) { toast("Sozlamalar yuklanmadi: " + e.message, false); }
+}
+// 12.3: bildirishnoma sozlamalari
+async function saveNotify(btn) {
+  btn.disabled = true;
+  try {
+    await postJson("/api/settings", {
+      notify_tg_chat_id: $("ntChat").value.trim(),
+      notify_human: String($("ntHuman").checked),
+      notify_negative: String($("ntNegative").checked),
+      notify_booking: String($("ntBooking").checked),
+      notify_payment: String($("ntPayment").checked),
+      notify_down: String($("ntDown").checked),
+    });
+    toast("Bildirishnoma sozlamalari saqlandi ✓");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
 }
 // 11.7: haftalik hisobot sozlamalari
 async function saveReport(btn) {

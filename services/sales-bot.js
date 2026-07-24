@@ -30,6 +30,7 @@ import {
   asksCancelBooking,
   extractAddress,
 } from "./booking.js";
+import { notifyAdmin } from "./notify.js";
 
 // ctx: { contactId, senderId, projectId, platform, token, send }
 async function saveBot(ctx, text, source = "dm") {
@@ -97,6 +98,7 @@ export async function handleSalesPayload(ctx, payload) {
       await send.text(senderId, confirmText);
       await saveBot(ctx, confirmText, "booking");
       console.log(`📅 Yangi bron: mijoz ${ctx.contactId}, ${new Date(ts).toISOString()}`);
+      notifyAdmin("booking", `📅 Yangi bron!\n${ctx.name || ctx.igUserId} — ${fmtLocal(new Date(ts))}`).catch(() => {});
       return true;
     } catch (err) {
       console.error("⚠️ Bron yaratishda xatolik:", err.message);

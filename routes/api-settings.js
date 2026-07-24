@@ -48,6 +48,14 @@ const SETTING_KEYS = [
   "report_telegram_enabled", // 11.7
   "report_tg_chat_id",
   "report_last_week",
+  "notify_tg_chat_id", // 12.3
+  "notify_human",
+  "notify_negative",
+  "notify_booking",
+  "notify_payment",
+  "notify_down",
+  "bad_words", // 12.5 (vergul bilan)
+  "brand_name", // 12.6
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -90,6 +98,14 @@ router.get("/api/settings", protect, async (req, res, next) => {
         monthly_cost: state.SETTINGS.monthly_cost ?? "",
         report_telegram_enabled: state.SETTINGS.report_telegram_enabled ?? "false",
         report_tg_chat_id: state.SETTINGS.report_tg_chat_id ?? "",
+        notify_tg_chat_id: state.SETTINGS.notify_tg_chat_id ?? "",
+        notify_human: state.SETTINGS.notify_human ?? "false",
+        notify_negative: state.SETTINGS.notify_negative ?? "false",
+        notify_booking: state.SETTINGS.notify_booking ?? "false",
+        notify_payment: state.SETTINGS.notify_payment ?? "false",
+        notify_down: state.SETTINGS.notify_down ?? "false",
+        bad_words: state.SETTINGS.bad_words ?? "",
+        brand_name: state.SETTINGS.brand_name ?? "",
         greeting_buttons_enabled: state.SETTINGS.greeting_buttons_enabled ?? "false",
         greeting_buttons_text: state.SETTINGS.greeting_buttons_text ?? "",
         greeting_buttons: state.SETTINGS.greeting_buttons ?? "[]",

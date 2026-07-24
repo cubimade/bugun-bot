@@ -37,6 +37,7 @@ import { getTelegramFileUrl } from "./telegram.js";
 import { listPortfolioMedia, addContactTags } from "../db.js";
 import { handleSalesPayload, handleSalesIntents } from "./sales-bot.js";
 import { getActiveAbTest, setContactAbVariant } from "../db.js";
+import { notifyAdmin } from "./notify.js";
 
 // 11.5: faol A/B test keshi (60s) — har xabarda DB so'ramaslik uchun
 const AB_CACHE = new Map(); // "projectId:type" -> { at, test }
@@ -308,6 +309,7 @@ export async function processIncomingText(msg) {
     try {
       await setNeedsHuman(contactId, true);
       console.log("🙋 'Odam kerak' deb belgilandi (dashboard'da ko'rinadi)");
+      notifyAdmin("human", `🙋 Operator kerak!\n${contactName || senderId}: "${userText.slice(0, 150)}"\n→ Inbox'ni oching`).catch(() => {});
     } catch (dbErr) {
       console.error("⚠️ needs_human belgilashda xatolik:", dbErr.message);
     }
@@ -389,7 +391,10 @@ export async function processIncomingText(msg) {
       const s = await getSentiment(userTexts);
       if (s) {
         await setContactSentiment(contactId, s);
-        if (s === "negative") console.log(`😟 Salbiy kayfiyat aniqlandi (mijoz ${contactId})`);
+        if (s === "negative") {
+          console.log(`😟 Salbiy kayfiyat aniqlandi (mijoz ${contactId})`);
+          notifyAdmin("negative", `😟 Salbiy kayfiyat: ${contactName || senderId}\nOxirgi xabar: "${userText.slice(0, 150)}"`).catch(() => {});
+        }
       }
     })().catch((err) => console.error("⚠️ Sentiment saqlashda xatolik:", err.message));
 

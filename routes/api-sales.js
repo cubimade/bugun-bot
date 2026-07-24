@@ -192,6 +192,8 @@ router.post("/api/payments/:id/status", protect, async (req, res, next) => {
     if (status === "paid" && r?.contact_id) {
       await advanceContactStage(r.contact_id, "won");
       console.log(`💰 To'lov tasdiqlandi — mijoz ${r.contact_id} "Sotildi" bosqichiga o'tdi`);
+      const { notifyAdmin } = await import("../services/notify.js");
+      notifyAdmin("payment", `💰 To'lov tasdiqlandi! Mijoz #${r.contact_id} "Sotildi" bosqichiga o'tdi.`).catch(() => {});
     }
     res.json({ ok: true });
   } catch (err) {

@@ -21,6 +21,7 @@ import {
   renderMediaPage,
   renderBookingsPage,
   renderSalesPage,
+  renderAbTestsPage,
 } from "../templates.js";
 
 const router = express.Router();
@@ -39,6 +40,7 @@ router.get("/dashboard/pipeline", protect, (req, res) => res.send(renderPipeline
 router.get("/dashboard/media", protect, (req, res) => res.send(renderMediaPage()));
 router.get("/dashboard/bookings", protect, (req, res) => res.send(renderBookingsPage()));
 router.get("/dashboard/sales", protect, (req, res) => res.send(renderSalesPage()));
+router.get("/dashboard/ab-tests", protect, (req, res) => res.send(renderAbTestsPage()));
 router.get("/dashboard/broadcast", protect, (req, res) => res.send(renderBroadcastPage()));
 router.get("/dashboard/knowledge", protect, (req, res) => res.send(renderKnowledgePage()));
 router.get("/dashboard/keywords", protect, (req, res) => res.send(renderKeywordsPage()));

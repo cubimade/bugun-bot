@@ -43,6 +43,7 @@ export const ICONS = {
   media: I('<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/>'),
   calendar: I('<rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
   card: I('<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/><path d="M6 15h4"/>'),
+  flask: I('<path d="M10 2v6L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/>'),
 };
 
 // ------------------------------------------------------------
@@ -53,6 +54,7 @@ export const NAV_ITEMS = [
   { key: "inbox", label: "Suhbatlar", href: "/dashboard/inbox", icon: "inbox" },
   { key: "contacts", label: "Kontaktlar", href: "/dashboard/contacts", icon: "contacts" },
   { key: "insights", label: "Tahlil", href: "/dashboard/insights", icon: "insights" },
+  { key: "abtests", label: "A/B test", href: "/dashboard/ab-tests", icon: "flask" },
   { key: "flows", label: "Oqimlar", href: "/dashboard/flows", icon: "flow" },
   { key: "pipeline", label: "Voronka", href: "/dashboard/pipeline", icon: "pipeline" },
   { key: "bookings", label: "Bronlar", href: "/dashboard/bookings", icon: "calendar" },

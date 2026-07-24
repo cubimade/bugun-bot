@@ -18,3 +18,4 @@ export { renderPipelinePage } from "./templates/pipeline.js";
 export { renderMediaPage } from "./templates/media.js";
 export { renderBookingsPage } from "./templates/bookings.js";
 export { renderSalesPage } from "./templates/sales.js";
+export { renderAbTestsPage } from "./templates/abtests.js";

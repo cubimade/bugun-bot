@@ -24,9 +24,18 @@ Bu hujjat botni noldan deploy qilish, sozlash va boshqarishni tushuntiradi (o'zb
    ```
 
 ### Agar avtomatik deploy ishlamasa
-Ba'zan GitHub → Railway webhook kechikadi. Yechim:
-- Bo'sh commit push qiling: `git commit --allow-empty -m "deploy" && git push`, so'ng ~2-5 daqiqa kuting.
-- Yoki Railway dashboardida xizmatni ochib, qo'lda **Deploy** bosing.
+Ba'zan GitHub → Railway webhook kechikadi/buziladi. Ishonchli yo'l — CLI:
+```bash
+npm i -g @railway/cli
+railway login          # bir marta
+railway link           # repo papkasida, bir marta
+railway up --detach    # har deploy'da (lokal koddan build qiladi)
+```
+Yoki Railway dashboardida xizmatni ochib, qo'lda **Deploy** bosing.
+
+### Telegram bot ulash (v9+)
+Dashboard → Akkauntlar → "✈️ Telegram bot" → BotFather'dan token → kiritng.
+Webhook avtomatik o'rnatiladi (`/webhook/telegram/:projectId`, secret bilan).
 
 ---
 
@@ -57,6 +66,14 @@ Ixtiyoriy:
 | `WORK_START` / `WORK_END` | `9` / `21` | Ish soatlari (UTC+5) |
 | `RATE_LIMIT_MAX` | `8` | 1 daqiqada maks xabar |
 | `IG_ACCOUNTS` | — | Ko'p akkaunt (JSON, pastda) |
+| `ELEVENLABS_API_KEY` | — | Ovozli xabarni matnga o'girish (STT). Bo'lmasa bot "matn bilan yozing" deydi |
+| `TZ_OFFSET` | `5` | Vaqt zonasi (Toshkent UTC+5) — bron va statistika uchun |
+
+> **Kirish (v12):** `/login` sahifasi — jamoa a'zolari email+parol bilan,
+> siz esa asosiy `DASHBOARD_PASSWORD` bilan (email shart emas) kirasiz.
+> Eski usul — brauzer Basic Auth so'rovi/curl — ham to'liq ishlaydi.
+> Birinchi ishga tushishda owner avtomatik yaratiladi
+> (email: elbeshmurodov@gmail.com, parol: DASHBOARD_PASSWORD qiymati).
 
 To'liq ro'yxat: `.env.example` fayliga qarang.
 

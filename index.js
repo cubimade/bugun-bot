@@ -20,6 +20,7 @@
 // ============================================================
 
 import express from "express";
+import compression from "compression";
 
 import { PORT } from "./config.js";
 import { setupDatabase } from "./state.js";
@@ -32,6 +33,7 @@ import dashboardRouter from "./routes/dashboard.js";
 import publicRouter from "./routes/public.js";
 
 const APP = express();
+APP.use(compression()); // B5: gzip — HTML/JSON javoblar kichrayadi
 APP.use(express.json());
 // Statik fayllar (dizayn CSS/JS) — 1 kun keshlanadi, ?v= bilan yangilanadi
 APP.use(express.static("public", { maxAge: "1d" }));

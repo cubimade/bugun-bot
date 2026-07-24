@@ -38,7 +38,7 @@ export async function markContactRead(contactId) {
 // ------------------------------------------------------------
 //  Suhbatlar (dashboard uchun) — mijozlar ro'yxati
 // ------------------------------------------------------------
-export async function listContacts(limit = 50) {
+export async function listContacts(limit = 50, offset = 0) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.last_seen, c.needs_human,
             c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
@@ -49,10 +49,16 @@ export async function listContacts(limit = 50) {
        FROM contacts c
        JOIN projects p ON p.id = c.project_id
       ORDER BY c.last_seen DESC
-      LIMIT $1`,
-    [limit]
+      LIMIT $1 OFFSET $2`,
+    [limit, offset]
   );
   return rows;
+}
+
+// Jami kontaktlar soni (pagination uchun)
+export async function countContacts() {
+  const { rows } = await pool.query(`SELECT COUNT(*)::int AS n FROM contacts`);
+  return rows[0].n;
 }
 
 // Mijozni "jonli operator kerak" deb belgilash (yoki bekor qilish)

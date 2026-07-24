@@ -60,6 +60,9 @@ export function renderInboxPage() {
         <div class="filters" id="filters"></div>
       </div>
       <div class="conv-items" id="convItems">${'<div class="skeleton" style="height:58px;margin:8px 10px"></div>'.repeat(5)}</div>
+      <div style="text-align:center;padding:8px">
+        <button class="btn btn-sm" id="loadMore" style="display:none" onclick="loadMore()">⬇ Ko'proq yuklash</button>
+      </div>
     </div>
     <div class="chat-pane" id="chatPane">
       <div id="chatEmpty" class="empty" style="margin:auto"><span class="emoji">💬</span>Suhbatni tanlang<br><span class="small muted">Chapdagi ro'yxatdan mijozni bosing</span></div>
@@ -83,16 +86,31 @@ let SELECTED = Number(new URLSearchParams(location.search).get("contact")) || nu
 let CURRENT = null; // ochiq suhbat kontakti
 
 let SAVED_REPLIES = [];
+let TOTAL = 0;
+const PAGE = 50;
 async function loadData() {
   try {
-    const [c, t] = await Promise.all([api("/api/contacts?limit=300"), api("/api/tags")]);
-    CONTACTS = c.contacts; ALL_TAGS = t.tags || [];
+    const [c, t] = await Promise.all([api("/api/contacts?limit=" + PAGE), api("/api/tags")]);
+    CONTACTS = c.contacts; TOTAL = c.total ?? c.contacts.length; ALL_TAGS = t.tags || [];
     renderFilters(); renderList();
     if (SELECTED) openChat(SELECTED, true);
   } catch (e) {
     $("convItems").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message);
   }
   try { SAVED_REPLIES = (await api("/api/saved-replies")).replies || []; } catch (e) { /* jim */ }
+}
+// B2: pagination — keyingi 50 suhbatni qo'shib yuklash
+async function loadMore() {
+  const btn = $("loadMore");
+  btn.disabled = true;
+  try {
+    const c = await api("/api/contacts?limit=" + PAGE + "&offset=" + CONTACTS.length);
+    const bor = new Set(CONTACTS.map((x) => x.id));
+    CONTACTS = CONTACTS.concat((c.contacts || []).filter((x) => !bor.has(x.id)));
+    TOTAL = c.total ?? TOTAL;
+    renderList();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
 }
 
 // C2: Tezkor javoblar — bir bosishda tayyor matn
@@ -161,6 +179,11 @@ function renderList() {
     !q || String(c.name || "").toLowerCase().includes(q) ||
     String(c.ig_user_id).includes(q) || String(c.last_text || "").toLowerCase().includes(q)
   );
+  const more = $("loadMore");
+  if (more) {
+    more.style.display = CONTACTS.length < TOTAL ? "" : "none";
+    more.textContent = "⬇ Ko'proq yuklash (" + CONTACTS.length + "/" + TOTAL + ")";
+  }
   if (!items.length) { $("convItems").innerHTML = emptyState("💬", q ? "Topilmadi" : "Hali suhbatlar yo'q — bot birinchi xabarni kutmoqda"); return; }
   $("convItems").innerHTML = items.map((c) => \`
     <div class="conv-item \${c.needs_human ? "human" : ""} \${c.id === SELECTED ? "sel" : ""}" onclick="openChat(\${c.id})">
@@ -310,9 +333,11 @@ async function removeTag(t) {
 // Real-vaqt his: har 15 soniyada yangilanish, yangi xabar yumshoq highlight bilan
 setInterval(async () => {
   try {
-    const { contacts } = await api("/api/contacts?limit=300");
+    // Yuklangan oynani yangilaymiz (pagination saqlanadi)
+    const r = await api("/api/contacts?limit=" + Math.max(CONTACTS.length, PAGE));
     const openUnread = SELECTED ? (CONTACTS.find((c) => c.id === SELECTED)?.unread || 0) : 0;
-    CONTACTS = contacts;
+    CONTACTS = r.contacts;
+    TOTAL = r.total ?? TOTAL;
     if (SELECTED) {
       const cur = CONTACTS.find((c) => c.id === SELECTED);
       if (cur && cur.unread > openUnread) {

@@ -23,6 +23,7 @@ import {
   listProjects,
   deleteProject,
   listContacts,
+  countContacts,
   getContact,
   getContactMessages,
   markContactRead,
@@ -88,8 +89,14 @@ router.delete("/api/accounts/:projectId", protect, async (req, res, next) => {
 router.get("/api/contacts", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    const limit = Math.min(Number(req.query.limit) || 100, 300);
-    res.json({ contacts: await listContacts(limit) });
+    // B2: pagination — limit + offset, jami soni bilan ("Ko'proq yuklash" uchun)
+    const limit = Math.min(Number(req.query.limit) || 50, 300);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const [contacts, total] = await Promise.all([
+      listContacts(limit, offset),
+      countContacts(),
+    ]);
+    res.json({ contacts, total, limit, offset });
   } catch (err) {
     next(err);
   }

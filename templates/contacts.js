@@ -26,22 +26,39 @@ export function renderContactsPage() {
       <tbody id="rows"><tr><td colspan="6">${'<div class="skeleton" style="height:44px;margin:6px 0"></div>'.repeat(4)}</td></tr></tbody>
     </table>
   </div>
-  <style></style>
+  <div style="text-align:center;margin-top:14px">
+    <button class="btn" id="loadMore" style="display:none" onclick="loadMore()">⬇ Ko'proq yuklash</button>
+  </div>
   ${DRAWER_HTML}`;
 
   const script = `
 let CONTACTS = [];
 let ALL_TAGS = [];
 let EDITING = null;
+let TOTAL = 0;
+const PAGE = 50;
 
 async function loadData() {
   try {
-    const [c, t] = await Promise.all([api("/api/contacts?limit=300"), api("/api/tags")]);
-    CONTACTS = c.contacts; ALL_TAGS = t.tags || [];
+    const [c, t] = await Promise.all([api("/api/contacts?limit=" + PAGE), api("/api/tags")]);
+    CONTACTS = c.contacts; TOTAL = c.total ?? c.contacts.length; ALL_TAGS = t.tags || [];
     fillFilters(); renderTable();
   } catch (e) {
     $("rows").innerHTML = \`<tr><td colspan="6">\${emptyState("⚠️", "Yuklashda xatolik: " + e.message)}</td></tr>\`;
   }
+}
+// B2: pagination — keyingi 50 tani qo'shib yuklash
+async function loadMore() {
+  const btn = $("loadMore");
+  btn.disabled = true; btn.textContent = "Yuklanmoqda...";
+  try {
+    const c = await api("/api/contacts?limit=" + PAGE + "&offset=" + CONTACTS.length);
+    const bor = new Set(CONTACTS.map((x) => x.id));
+    CONTACTS = CONTACTS.concat((c.contacts || []).filter((x) => !bor.has(x.id)));
+    TOTAL = c.total ?? TOTAL;
+    fillFilters(); renderTable();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false; btn.textContent = "⬇ Ko'proq yuklash";
 }
 function fillFilters() {
   $("tagFilter").innerHTML = '<option value="">Barcha teglar</option>' +
@@ -62,7 +79,12 @@ function filtered() {
 }
 function renderTable() {
   const items = filtered();
-  document.querySelector(".page-head h1").textContent = "Kontaktlar · " + CONTACTS.length + " ta";
+  document.querySelector(".page-head h1").textContent = "Kontaktlar · " + TOTAL + " ta";
+  const more = $("loadMore");
+  if (more) {
+    more.style.display = CONTACTS.length < TOTAL ? "" : "none";
+    more.textContent = "⬇ Ko'proq yuklash (" + CONTACTS.length + "/" + TOTAL + ")";
+  }
   if (!items.length) {
     $("rows").innerHTML = \`<tr><td colspan="6">\${emptyState("👥", CONTACTS.length ? "Filtrga mos kontakt topilmadi" : "Hali kontaktlar yo'q — birinchi mijoz yozganda shu yerda ko'rinadi")}</td></tr>\`;
     return;

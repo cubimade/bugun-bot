@@ -52,6 +52,29 @@ APP.use(dashboardRouter);
 APP.use(publicRouter);
 
 // ============================================================
+//  E5: 404 — topilmagan sahifa (barcha marshrutlardan keyin)
+// ============================================================
+APP.use((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "Endpoint topilmadi" });
+  }
+  res.status(404).send(`<!DOCTYPE html>
+<html lang="uz" data-theme="dark"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 — Bugun Bot</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/app.css">
+<script>(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark"){t="dark"}document.documentElement.setAttribute("data-theme",t)})()</script>
+</head><body style="display:flex;align-items:center;justify-content:center;min-height:100vh">
+<div class="card" style="text-align:center;padding:48px 40px;max-width:420px">
+  <div style="font-size:56px;margin-bottom:12px">🤖❓</div>
+  <h1 style="font-size:26px;margin-bottom:8px">404 — Sahifa topilmadi</h1>
+  <p class="muted" style="margin-bottom:22px">Bunday manzil yo'q yoki ko'chirilgan bo'lishi mumkin.</p>
+  <a class="btn btn-primary" href="/dashboard">← Boshqaruv paneliga qaytish</a>
+</div></body></html>`);
+});
+
+// ============================================================
 //  MARKAZLASHTIRILGAN XATO BOSHQARUVI
 // ============================================================
 // Express marshrutlaridagi kutilmagan xatolar shu yerga tushadi.

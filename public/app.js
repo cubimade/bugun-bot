@@ -248,11 +248,20 @@ document.addEventListener("click", (e) => {
   const box = $("topSearch");
   if (box && !box.contains(e.target)) $("searchDrop")?.classList.remove("show");
 });
-// E2: "/" — qidiruvga fokus (matn maydonida emasligida)
+// E2: klaviatura yorliqlari — "/" yoki Ctrl+K: qidiruv, Esc: hammasi yopiladi
 document.addEventListener("keydown", (e) => {
   if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "")) {
     e.preventDefault();
     $("globalSearch")?.focus();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    $("globalSearch")?.focus();
+  }
+  if (e.key === "Escape") {
+    $("searchDrop")?.classList.remove("show");
+    $("notifDrop")?.classList.remove("show");
+    if (typeof closeProfile === "function") closeProfile();
   }
 });
 

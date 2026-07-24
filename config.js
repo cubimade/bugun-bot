@@ -93,7 +93,12 @@ export const AUTO_DM_ON_COMMENT =
 // "id" — akkauntning Instagram biznes IDsi (webhook'dagi entry.id).
 export function parseAccounts() {
   try {
-    if (process.env.IG_ACCOUNTS) return JSON.parse(process.env.IG_ACCOUNTS);
+    if (process.env.IG_ACCOUNTS) {
+      const parsed = JSON.parse(process.env.IG_ACCOUNTS);
+      // Massiv bo'lmasa (masalan bitta obyekt qo'yilsa) — server yiqilmasin
+      if (Array.isArray(parsed)) return parsed;
+      console.error("⚠️ IG_ACCOUNTS massiv emas — [{...},{...}] ko'rinishida bo'lishi kerak. E'tiborsiz qoldirildi.");
+    }
   } catch (err) {
     console.error("⚠️ IG_ACCOUNTS JSON o'qishda xatolik:", err.message);
   }

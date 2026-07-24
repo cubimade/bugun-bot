@@ -78,8 +78,9 @@ async function submitAccount() {
   const btn = $("acBtn");
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
-    await postJson("/api/accounts", { name, ig_account_id, token });
-    toast("Akkaunt qo'shildi ✓");
+    const r = await postJson("/api/accounts", { name, ig_account_id, token });
+    toast("Akkaunt qo'shildi ✓" + (r.username ? " — @" + r.username : ""));
+    if (r.warning) setTimeout(() => toast("⚠️ " + r.warning, false), 600);
     closeModal(); loadAccounts();
   } catch (e) { toast("Xatolik: " + e.message, false); btn.disabled = false; btn.textContent = "Qo'shish"; }
 }

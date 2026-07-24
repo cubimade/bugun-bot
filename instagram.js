@@ -20,6 +20,27 @@ async function igPost(url, body, token) {
   return response.json();
 }
 
+// Token tekshiruvi — akkaunt qo'shishda token haqiqatan ishlashini tasdiqlaydi.
+// ok: true (ishlaydi) | false (Instagram rad etdi) | null (tarmoq xatosi — aniqlanmadi)
+export async function verifyToken(token) {
+  try {
+    const r = await fetch(`${BASE}/me?fields=user_id,username`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await r.json();
+    if (data.error) {
+      return { ok: false, error: data.error.message || "Token noto'g'ri" };
+    }
+    return {
+      ok: true,
+      userId: String(data.user_id || data.id || ""),
+      username: data.username || "",
+    };
+  } catch (err) {
+    return { ok: null, error: err.message };
+  }
+}
+
 // DM (shaxsiy xabar) yuborish.
 // Natija: { ok: true } yoki { ok: false, error: "..." } — dashboard'dagi
 // qo'lda javob va broadcast muvaffaqiyatni bilishi uchun.

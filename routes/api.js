@@ -16,7 +16,7 @@ import {
   requireDb,
 } from "../state.js";
 import { IG_TOKEN } from "../config.js";
-import { sendInstagramMessage } from "../instagram.js";
+import { sendInstagramMessage, verifyToken } from "../instagram.js";
 import {
   listProjects,
   deleteProject,
@@ -415,13 +415,33 @@ router.post("/api/accounts", protect, async (req, res, next) => {
     if (token.length > 500) {
       return res.status(400).json({ error: "Token juda uzun" });
     }
+
+    // Tokenni Instagram'da jonli tekshiramiz — o'lik token saqlanmasin
+    const check = await verifyToken(token);
+    if (check.ok === false) {
+      return res.status(400).json({ error: "Token ishlamadi — Instagram javobi: " + check.error });
+    }
+    // ok === null (tarmoq xatosi) — tekshirib bo'lmadi, baribir saqlaymiz
+    let warning = null;
+    if (check.ok && check.userId && check.userId !== ig_account_id) {
+      warning =
+        `Diqqat: token boshqa akkauntga tegishli ko'rinadi ` +
+        `(token akkaunti: ${check.userId}, siz kiritgan ID: ${ig_account_id}). ` +
+        `Webhook xabarlari kiritilgan ID bo'yicha yo'naltiriladi — ID noto'g'ri bo'lsa bot javob bermaydi.`;
+    }
+
     const projectId = await registerAccount({
-      name,
+      name: name || (check.username ? "@" + check.username : ""),
       igAccountId: ig_account_id,
       token,
     });
-    console.log(`➕ Yangi akkaunt qo'shildi: ${ig_account_id} (loyiha ${projectId})`);
-    res.json({ ok: true, projectId });
+    console.log(
+      `➕ Yangi akkaunt qo'shildi: ${ig_account_id}` +
+        (check.username ? ` (@${check.username})` : "") +
+        ` (loyiha ${projectId})` +
+        (warning ? " — ⚠️ ID mos emas" : "")
+    );
+    res.json({ ok: true, projectId, username: check.username || null, warning });
   } catch (err) {
     next(err);
   }

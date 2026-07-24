@@ -50,6 +50,7 @@ import broadcastRouter from "./api-broadcast.js";
 import settingsRouter from "./api-settings.js";
 import diagnosticsRouter from "./api-diagnostics.js";
 import automationRouter from "./api-automation.js";
+import flowsRouter from "./api-flows.js";
 
 const router = express.Router();
 
@@ -59,6 +60,7 @@ router.use(broadcastRouter);
 router.use(settingsRouter);
 router.use(diagnosticsRouter);
 router.use(automationRouter);
+router.use(flowsRouter);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;

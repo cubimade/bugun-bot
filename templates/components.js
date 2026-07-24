@@ -38,6 +38,8 @@ export const ICONS = {
   insights: I('<path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/>'),
   sparkle: I('<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/>'),
   key: I('<circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4"/><path d="M18 5l2 2"/><path d="M15 8l2 2"/>'),
+  flow: I('<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M5 8.5v2a3 3 0 0 0 3 3h1.5"/><path d="M19 8.5v2a3 3 0 0 1-3 3h-1.5"/><path d="M12 13.5v2"/>'),
+  pipeline: I('<rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="10" rx="1.5"/><rect x="17" y="4" width="5" height="7" rx="1.5"/>'),
 };
 
 // ------------------------------------------------------------
@@ -48,6 +50,7 @@ export const NAV_ITEMS = [
   { key: "inbox", label: "Suhbatlar", href: "/dashboard/inbox", icon: "inbox" },
   { key: "contacts", label: "Kontaktlar", href: "/dashboard/contacts", icon: "contacts" },
   { key: "insights", label: "Tahlil", href: "/dashboard/insights", icon: "insights" },
+  { key: "flows", label: "Oqimlar", href: "/dashboard/flows", icon: "flow" },
   { key: "broadcast", label: "Broadcast", href: "/dashboard/broadcast", icon: "broadcast" },
   { key: "knowledge", label: "Bilim bazasi", href: "/dashboard/knowledge", icon: "knowledge" },
   { key: "keywords", label: "Kalit so'zlar", href: "/dashboard/keywords", icon: "key" },

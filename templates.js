@@ -13,3 +13,4 @@ export { renderKeywordsPage } from "./templates/keywords.js";
 export { renderAccountsPage } from "./templates/accounts.js";
 export { renderSettingsPage } from "./templates/settings.js";
 export { renderInsightsPage } from "./templates/insights.js";
+export { renderFlowsPage, renderFlowEditorPage } from "./templates/flows.js";

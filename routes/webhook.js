@@ -8,6 +8,7 @@ import crypto from "crypto";
 
 import {
   VERIFY_TOKEN,
+  APP_SECRET,
   AUTO_DM_ON_COMMENT,
   buildSystemPrompt,
   buildCommentSystemPrompt,
@@ -39,11 +40,10 @@ const router = express.Router();
 
 // ============================================================
 //  C2: WEBHOOK IMZOSI — Meta X-Hub-Signature-256 yuboradi.
-//  APP_SECRET (Meta ilova "App Secret") bilan HMAC-SHA256 tekshiriladi —
-//  soxta so'rovlar botga kira olmaydi. Env yo'q bo'lsa — tekshirilmaydi
-//  (startupda ogohlantiriladi, Railway'ga APP_SECRET qo'shish kerak).
+//  APP_SECRET (config.js dan, Meta ilova "App Secret") bilan HMAC-SHA256
+//  tekshiriladi — soxta so'rovlar botga kira olmaydi. Env yo'q bo'lsa —
+//  tekshirilmaydi (startupda ogohlantiriladi, Railway'ga qo'shish kerak).
 // ============================================================
-const APP_SECRET = process.env.APP_SECRET || "";
 if (!APP_SECRET) {
   console.warn("⚠️ APP_SECRET env yo'q — webhook imzosi tekshirilmaydi. Railway'ga APP_SECRET (Meta App Secret) qo'shing.");
 }

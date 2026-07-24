@@ -11,6 +11,9 @@ export const PORT = process.env.PORT || 3000;
 export const IG_TOKEN = process.env.IG_ACCESS_TOKEN; // asosiy (fallback) token
 export const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 export const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+// Meta App Secret — webhook imzosini (X-Hub-Signature-256) tekshirish uchun.
+// trim(): nusxalashda tushib qolgan probel/qator belgilarini kesadi.
+export const APP_SECRET = (process.env.APP_SECRET || "").trim();
 
 // --- Claude modellari ---
 export const MODEL_HAIKU = "claude-haiku-4-5-20251001"; // arzon, tez — oddiy savollar

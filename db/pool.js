@@ -88,6 +88,9 @@ export async function initDb() {
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS rating SMALLINT; -- 1=👍, -1=👎, NULL=baholanmagan
 
+    -- 7-bosqich (7.3): xabar manbasi — dm | story_reply | comment | followup
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'dm';
+
     -- Tezkor javoblar (saved replies)
     CREATE TABLE IF NOT EXISTS saved_replies (
       id          SERIAL PRIMARY KEY,

@@ -162,6 +162,7 @@ function renderFilters() {
     { k: "human", label: "🙋 Odam kerak" },
     { k: "negative", label: "😟 Salbiy" },
     { k: "paused", label: "🔕 Pauzada" },
+    { k: "story", label: "📸 Story javoblari" },
     { k: "archived", label: "🗄 Arxiv" },
     ...ALL_TAGS.map((t) => ({ k: "tag:" + t, label: "🏷 " + t })),
   ];
@@ -177,6 +178,7 @@ function matchesFilter(c) {
   if (FILTER === "human") return c.needs_human;
   if (FILTER === "negative") return c.sentiment === "negative";
   if (FILTER === "paused") return c.bot_paused;
+  if (FILTER === "story") return c.has_story;
   if (FILTER.startsWith("tag:")) return (c.tags || []).includes(FILTER.slice(4));
   return true;
 }
@@ -201,6 +203,7 @@ function renderList() {
           \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
           \${c.bot_paused ? '<span title="Bot pauzada — operator gaplashadi">🔕</span>' : ""}
           \${c.sentiment === "negative" ? '<span title="Salbiy kayfiyat — tez aralashing!">😟</span>' : ""}
+          \${c.has_story ? '<span title="Story\\'ga javob yozgan">📸</span>' : ""}
         </div>
         <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(c.last_text || "—")}</div>
       </div>
@@ -280,9 +283,12 @@ function renderMessages(messages, highlightNew) {
         <button class="rate-btn\${m.rating === 1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === 1 ? 0 : 1})" title="Yaxshi javob">👍</button>
         <button class="rate-btn\${m.rating === -1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === -1 ? 0 : -1})" title="Yomon javob">👎</button>
       </div>\` : "";
+    const srcTag = m.source === "story_reply" ? '<div class="op-tag" style="color:var(--accent-2)">📸 Story javobi</div>'
+      : m.source === "comment" ? '<div class="op-tag">💬 Komment</div>'
+      : m.source === "followup" ? '<div class="op-tag" style="color:var(--warning)">⏰ Follow-up</div>' : "";
     return \`
     <div class="bubble-row \${m.role === "assistant" ? "from-bot" : "from-user"}\${fresh ? " fresh" : ""}">
-      <div class="bubble\${op ? " from-op" : ""}">\${op ? '<div class="op-tag">👤 Operator</div>' : ""}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div>\${rate}</div>
+      <div class="bubble\${op ? " from-op" : ""}">\${op ? '<div class="op-tag">👤 Operator</div>' : srcTag}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div>\${rate}</div>
     </div>\`;
   }).join("");
   MSG_COUNT = messages.length;

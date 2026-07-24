@@ -6,10 +6,10 @@ import { pool } from "./pool.js";
 // ------------------------------------------------------------
 //  Xabarni saqlash
 // ------------------------------------------------------------
-export async function saveMessage(contactId, role, text, isOperator = false) {
+export async function saveMessage(contactId, role, text, isOperator = false, source = "dm") {
   await pool.query(
-    `INSERT INTO messages (contact_id, role, text, is_operator) VALUES ($1, $2, $3, $4)`,
-    [contactId, role, text, isOperator]
+    `INSERT INTO messages (contact_id, role, text, is_operator, source) VALUES ($1, $2, $3, $4, $5)`,
+    [contactId, role, text, isOperator, source]
   );
   // Mijoz xabari — o'qilmagan hisoblagichni oshiramiz (inbox belgisi uchun)
   if (role === "user") {
@@ -40,7 +40,7 @@ export async function getConversationHistory(contactId, limit = 20) {
 
 export async function getContactMessages(contactId) {
   const { rows } = await pool.query(
-    `SELECT id, role, text, created_at, is_operator, rating
+    `SELECT id, role, text, created_at, is_operator, rating, source
        FROM messages WHERE contact_id = $1
       ORDER BY created_at ASC`,
     [contactId]

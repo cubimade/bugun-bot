@@ -270,6 +270,24 @@ export async function getHeatmapData(period) {
 }
 
 // ------------------------------------------------------------
+//  7.3: Mijoz manbalari — dm / story_reply / comment bo'yicha
+//  nechta mijoz yozgani (davr ichida, distinct kontakt)
+// ------------------------------------------------------------
+export async function getSourceBreakdown(period) {
+  const p = normalizePeriod(period);
+  const M = periodCond(p, "m.created_at");
+  const { rows } = await pool.query(
+    `SELECT m.source, COUNT(DISTINCT m.contact_id)::int AS n
+       FROM messages m
+      WHERE m.role = 'user' AND ${M}
+      GROUP BY m.source`
+  );
+  const out = { dm: 0, story_reply: 0, comment: 0 };
+  for (const r of rows) out[r.source] = (out[r.source] || 0) + r.n;
+  return out;
+}
+
+// ------------------------------------------------------------
 //  C3: Akkauntlar taqqoslashi — mijoz/xabar soni, faoldan pastga
 // ------------------------------------------------------------
 export async function getAccountsComparison(period) {

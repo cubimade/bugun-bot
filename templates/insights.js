@@ -59,6 +59,13 @@ export function renderInsightsPage() {
       </div>
       <div id="accBars"><div class="skeleton" style="height:220px"></div></div>
     </div>
+    <div class="card">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <h3>📥 Mijozlar qayerdan kelyapti?</h3>
+        <span class="small muted">DM · story · komment</span>
+      </div>
+      <div id="srcDonut"><div class="skeleton" style="height:180px"></div></div>
+    </div>
   </div>
 
   <div class="card glass-featured" style="margin-top:16px">
@@ -136,11 +143,49 @@ async function loadAnalytics() {
     renderHeatmap(a.heatmap || []);
     renderFunnel(a.funnel || {});
     renderAccBars(a.accounts || []);
+    renderSources(a.sources || {});
   } catch (e) {
     $("heatmap").innerHTML = emptyState("🕒", "Yuklanmadi: " + e.message);
     $("funnel").innerHTML = emptyState("🔻", "Yuklanmadi");
     $("accBars").innerHTML = emptyState("📱", "Yuklanmadi");
+    $("srcDonut").innerHTML = emptyState("📥", "Yuklanmadi");
   }
+}
+
+// 7.3: mijoz manbalari donut — dm / story / komment
+function renderSources(src) {
+  const items = [
+    { k: "dm", lbl: "To'g'ridan-to'g'ri DM", c: "var(--accent)", n: src.dm || 0 },
+    { k: "story_reply", lbl: "📸 Story javoblari", c: "var(--accent-2)", n: src.story_reply || 0 },
+    { k: "comment", lbl: "💬 Kommentdan kelgan", c: "var(--accent-3)", n: src.comment || 0 },
+  ];
+  const total = items.reduce((s, x) => s + x.n, 0);
+  if (!total) { $("srcDonut").innerHTML = emptyState("📥", "Ma'lumot yig'ilmoqda — bu davrda mijoz yo'q"); return; }
+  const R = 52, CX = 70, CY = 70, CIRC = 2 * Math.PI * R;
+  let off = 0;
+  let segs = "";
+  items.forEach(function (x) {
+    if (!x.n) return;
+    const frac = x.n / total;
+    segs += '<circle cx="' + CX + '" cy="' + CY + '" r="' + R + '" fill="none" stroke="' + x.c +
+      '" stroke-width="17" stroke-dasharray="' + (frac * CIRC - 2).toFixed(1) + " " + (CIRC - frac * CIRC + 2).toFixed(1) +
+      '" stroke-dashoffset="' + (-off * CIRC).toFixed(1) + '" transform="rotate(-90 ' + CX + " " + CY + ')">' +
+      "<title>" + x.lbl + ": " + x.n + " (" + Math.round(frac * 100) + "%)</title></circle>";
+    off += frac;
+  });
+  $("srcDonut").innerHTML =
+    '<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">' +
+    '<svg viewBox="0 0 140 140" width="140" style="flex-shrink:0">' + segs +
+    '<text x="' + CX + '" y="' + (CY - 2) + '" text-anchor="middle" style="fill:var(--text-1);font-size:22px;font-weight:700">' + total + "</text>" +
+    '<text x="' + CX + '" y="' + (CY + 15) + '" text-anchor="middle" style="fill:var(--text-3);font-size:9px">mijoz</text></svg>' +
+    '<div style="display:grid;gap:8px;min-width:170px">' +
+    items.map(function (x) {
+      return '<div style="display:flex;align-items:center;gap:8px" class="small">' +
+        '<span style="width:10px;height:10px;border-radius:3px;background:' + x.c + ';flex-shrink:0"></span>' +
+        '<span style="flex:1">' + x.lbl + "</span><strong>" + x.n + "</strong>" +
+        '<span class="muted">' + Math.round((x.n / total) * 100) + "%</span></div>";
+    }).join("") +
+    "</div></div>";
 }
 
 // C2: 7 kun × 24 soat heatmap

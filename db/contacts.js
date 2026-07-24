@@ -46,7 +46,9 @@ export async function listContacts(limit = 50, offset = 0) {
             p.name AS project_name,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
-              ORDER BY created_at DESC LIMIT 1) AS last_text
+              ORDER BY created_at DESC LIMIT 1) AS last_text,
+            EXISTS (SELECT 1 FROM messages m WHERE m.contact_id = c.id
+                      AND m.source = 'story_reply') AS has_story
        FROM contacts c
        JOIN projects p ON p.id = c.project_id
       ORDER BY c.last_seen DESC

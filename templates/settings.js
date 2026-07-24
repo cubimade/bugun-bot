@@ -31,7 +31,9 @@ export function renderSettingsPage() {
       <label class="lbl">Ish vaqtidan tashqari xabar</label>
       <textarea class="input" id="offMsg" rows="2" maxlength="500" style="margin-bottom:14px"></textarea>
       <label class="lbl">Salomlashish uslubi (birinchi xabarda, ixtiyoriy)</label>
-      <input class="input" id="greetMsg" maxlength="300" placeholder="Masalan: Assalomu alaykum! BUGUN MEDIA'ga xush kelibsiz 👋" style="margin-bottom:16px">
+      <input class="input" id="greetMsg" maxlength="300" placeholder="Masalan: Assalomu alaykum! BUGUN MEDIA'ga xush kelibsiz 👋" style="margin-bottom:14px">
+      <label class="lbl">📸 Story javobiga salomlashish (ixtiyoriy)</label>
+      <input class="input" id="storyGreet" maxlength="300" placeholder="Masalan: Story'imga javob berganingiz uchun rahmat! 🙌" style="margin-bottom:16px">
       <button class="btn btn-primary" onclick="saveBotSettings(this)">${ICONS.check} Saqlash</button>
     </div>
 
@@ -95,6 +97,7 @@ async function loadSettings() {
     $("whEnd").value = String(parseInt(s.work_end, 10) || 21);
     $("offMsg").value = s.off_hours_message || "";
     $("greetMsg").value = s.greeting_message || "";
+    $("storyGreet").value = s.story_reply_greeting || "";
     $("replyLen").value = s.reply_length || "orta";
   } catch (e) { toast("Sozlamalar yuklanmadi: " + e.message, false); }
 }
@@ -107,6 +110,7 @@ async function saveBotSettings(btn) {
       work_end: $("whEnd").value,
       off_hours_message: $("offMsg").value.trim(),
       greeting_message: $("greetMsg").value.trim(),
+      story_reply_greeting: $("storyGreet").value.trim(),
     });
     toast("Bot sozlamalari saqlandi ✓");
   } catch (e) { toast("Xatolik: " + e.message, false); }

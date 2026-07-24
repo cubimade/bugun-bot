@@ -19,6 +19,7 @@ const SETTING_KEYS = [
   "off_hours_message",
   "greeting_message",
   "reply_length",
+  "story_reply_greeting", // 7.3
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -36,6 +37,7 @@ router.get("/api/settings", protect, async (req, res, next) => {
         off_hours_message: state.SETTINGS.off_hours_message ?? OFF_HOURS_MESSAGE,
         greeting_message: state.SETTINGS.greeting_message ?? "",
         reply_length: state.SETTINGS.reply_length ?? "orta",
+        story_reply_greeting: state.SETTINGS.story_reply_greeting ?? "",
       },
     });
   } catch (err) {

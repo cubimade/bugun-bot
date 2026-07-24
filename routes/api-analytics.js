@@ -14,6 +14,7 @@ import {
   getAccountsComparison,
   getFunnelData,
   getMetrics,
+  getSourceBreakdown,
   listContactsForExport,
   getDailyDigest,
   getRecentUserMessages,
@@ -55,13 +56,14 @@ router.get("/api/analytics", protect, async (req, res, next) => {
   try {
     const period = normalizePeriod(req.query.period);
     const data = await cachedAnalytics("analytics:" + period, async () => {
-      const [donut, heatmap, accounts, funnel] = await Promise.all([
+      const [donut, heatmap, accounts, funnel, sources] = await Promise.all([
         getDonutData(period),
         getHeatmapData(period),
         getAccountsComparison(period),
         getFunnelData(period),
+        getSourceBreakdown(period),
       ]);
-      return { donut, heatmap, accounts, funnel };
+      return { donut, heatmap, accounts, funnel, sources };
     });
     res.json({ period, ...data });
   } catch (err) {

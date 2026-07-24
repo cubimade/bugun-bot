@@ -153,6 +153,11 @@ async function handleDirectMessage(event, projectId, token) {
     return;
   }
 
+  // 7.3: Story reply — mijoz story'ga javob yozdi (eng katta oqim manbai!)
+  const isStoryReply = Boolean(event.message?.reply_to?.story);
+  const msgSource = isStoryReply ? "story_reply" : "dm";
+  if (isStoryReply) console.log(`📸 Story reply (${senderId}): ${userText}`);
+
   // 1) Spam himoyasi — juda ko'p yozsa, jim o'tkazamiz (xarajatni tejaymiz)
   if (isRateLimited(senderId)) {
     console.log(`🚦 Rate limit: ${senderId} juda ko'p yozdi — o'tkazamiz`);
@@ -169,7 +174,7 @@ async function handleDirectMessage(event, projectId, token) {
     try {
       const contact = await getOrCreateContact(projectId, senderId);
       contactId = contact.id;
-      await saveMessage(contactId, "user", userText);
+      await saveMessage(contactId, "user", userText, false, msgSource);
 
       // C1: Bot pauza (operator rejimi) tekshiruvi
       if (contact.bot_paused) {
@@ -241,6 +246,15 @@ async function handleDirectMessage(event, projectId, token) {
 
   // System prompt: bilim bazasi + (yangi mijoz salomi) + (odam kerak eslatmasi)
   let systemPrompt = buildSystemPrompt(knowledge);
+  // 7.3: Story reply konteksti — bot minnatdorchilik bilan boshlaydi
+  if (isStoryReply) {
+    systemPrompt +=
+      "\n\nEslatma: mijoz STORY'ga javob yozdi. Javobni story uchun qisqa minnatdorchilik bilan boshla" +
+      (state.SETTINGS.story_reply_greeting
+        ? ` (ushbu uslubda: "${state.SETTINGS.story_reply_greeting}")`
+        : ' (masalan: "Story\'imga javob berganingiz uchun rahmat! 🙌")') +
+      ", so'ng savoliga javob ber.";
+  }
   if (isNewContact) {
     systemPrompt +=
       "\n\nEslatma: bu mijozning birinchi xabari — iliq salomlash va o'zingni qisqa tanishtir.";

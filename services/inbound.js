@@ -33,7 +33,7 @@ import { detectLanguage, languageInstruction } from "./lang.js";
 import { setContactLanguage } from "../db.js";
 import { sttAvailable, transcribeAudio } from "./stt.js";
 import { getTelegramFileUrl } from "./telegram.js";
-import { listPortfolioMedia } from "../db.js";
+import { listPortfolioMedia, addContactTags } from "../db.js";
 
 // 9.5: "ishlaringizni ko'rsating" so'rovini aniqlash
 const PORTFOLIO_WORDS = [
@@ -172,6 +172,35 @@ export async function processIncomingText(msg) {
     }
     incrementKeywordHit(kwRule.id).catch(() => {});
     return;
+  }
+
+  // 9.6: Lead magnit — kalit so'z yozilsa fayl + "lead" tegi
+  if (state.SETTINGS.lead_magnet_enabled === "true") {
+    const lmKeywords = (state.SETTINGS.lead_magnet_keyword || "")
+      .split(",").map((k) => k.trim().toLowerCase()).filter(Boolean);
+    const low = userText.toLowerCase();
+    if (lmKeywords.length && lmKeywords.some((k) => low.includes(k))) {
+      const fileUrl = (state.SETTINGS.lead_magnet_media || "").trim();
+      const lmText = (state.SETTINGS.lead_magnet_text || "").trim() ||
+        "Mana va'da qilingan material! 🎁 Savollaringiz bo'lsa, bemalol yozing 😊";
+      try {
+        if (fileUrl) {
+          const r = await send.file(senderId, fileUrl, lmText);
+          if (!r.ok) throw new Error(r.error || "Fayl yuborilmadi");
+        } else {
+          await send.text(senderId, lmText);
+        }
+        if (contactId) {
+          await saveMessage(contactId, "assistant", `🎁 [lead magnit] ${lmText}`, false, "lead_magnet").catch(() => {});
+          addContactTags(contactId, ["lead"]).catch(() => {});
+        }
+        console.log(`🎁 Lead magnit yuborildi (mijoz ${contactId})`);
+        return;
+      } catch (err) {
+        console.error("⚠️ Lead magnit xatoligi:", err.message);
+        // Yuborilmasa — oddiy oqim davom etadi (mijoz javobsiz qolmasin)
+      }
+    }
   }
 
   const isNewContact = history.length <= 1;

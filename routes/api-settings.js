@@ -32,6 +32,10 @@ const SETTING_KEYS = [
   "greeting_buttons_enabled", // 8.1
   "greeting_buttons_text",
   "greeting_buttons", // JSON: [{title, reply}]
+  "lead_magnet_enabled", // 9.6
+  "lead_magnet_keyword",
+  "lead_magnet_text",
+  "lead_magnet_media",
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -59,6 +63,10 @@ router.get("/api/settings", protect, async (req, res, next) => {
         sales_mode: state.SETTINGS.sales_mode ?? "false",
         supported_languages: state.SETTINGS.supported_languages ?? "uz,ru,en",
         default_language: state.SETTINGS.default_language ?? "uz",
+        lead_magnet_enabled: state.SETTINGS.lead_magnet_enabled ?? "false",
+        lead_magnet_keyword: state.SETTINGS.lead_magnet_keyword ?? "",
+        lead_magnet_text: state.SETTINGS.lead_magnet_text ?? "",
+        lead_magnet_media: state.SETTINGS.lead_magnet_media ?? "",
         greeting_buttons_enabled: state.SETTINGS.greeting_buttons_enabled ?? "false",
         greeting_buttons_text: state.SETTINGS.greeting_buttons_text ?? "",
         greeting_buttons: state.SETTINGS.greeting_buttons ?? "[]",
@@ -84,6 +92,22 @@ router.post("/api/settings", protect, async (req, res, next) => {
     await reloadSettings();
     console.log(`⚙️ Sozlamalar yangilandi: ${Object.keys(toSave).join(", ")}`);
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 9.6: Lead magnit statistikasi — nechta yuborilgan, nechtasi mijozga aylangan
+router.get("/api/lead-magnet/stats", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const [sent, converted] = await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE source = 'lead_magnet'`),
+      pool.query(
+        `SELECT COUNT(*)::int AS n FROM contacts WHERE 'lead' = ANY(tags) AND stage = 'won'`
+      ),
+    ]);
+    res.json({ sent: sent.rows[0].n, converted: converted.rows[0].n });
   } catch (err) {
     next(err);
   }

@@ -129,6 +129,28 @@ export function renderSettingsPage() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px">🎁 Lead magnit</h3>
+      <p class="small muted" style="margin-bottom:14px">Mijoz kalit so'z yozsa (masalan "PDF") — bot faylni yuboradi va kontaktga "lead" tegi qo'yiladi. Telegram'da fayl, Instagram'da rasm/havola bo'lib boradi.</p>
+      <div id="lmStats" class="small muted" style="margin-bottom:12px"></div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <label class="switch"><input type="checkbox" id="lmEnabled" onchange="$('lmFields').style.opacity=this.checked?'1':'.45'"><span class="slider"></span></label>
+        <div><strong class="small">Lead magnit yoqilgan</strong></div>
+      </div>
+      <div id="lmFields">
+        <label class="lbl">Kalit so'zlar (vergul bilan)</label>
+        <input class="input" id="lmKeyword" maxlength="200" placeholder="PDF, qo'llanma, checklist" style="margin-bottom:12px">
+        <label class="lbl">Xabar matni (fayl bilan birga)</label>
+        <textarea class="input" id="lmText" rows="2" maxlength="500" placeholder="Mana va'da qilingan material! 🎁" style="margin-bottom:12px"></textarea>
+        <label class="lbl">Fayl URL (media kutubxonadan yoki tashqi https://)</label>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input class="input" id="lmMedia" maxlength="500" placeholder="https://...">
+          <button class="btn btn-sm" onclick="pickLmMedia()">📎</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveLeadMagnet(this)">${ICONS.check} Saqlash</button>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px">⚡ Tezkor javoblar</h3>
       <p class="small muted" style="margin-bottom:14px">Inbox'da bir bosishda qo'yiladigan tayyor javoblar (masalan "Narxlar haqida", "Aloqa ma'lumoti").</p>
       <div id="qrList"><div class="skeleton" style="height:44px"></div></div>
@@ -197,8 +219,48 @@ async function loadSettings() {
     try { GB_ROWS = JSON.parse(s.greeting_buttons || "[]"); } catch (e) { GB_ROWS = []; }
     if (!Array.isArray(GB_ROWS)) GB_ROWS = [];
     renderGbRows();
+    $("lmEnabled").checked = s.lead_magnet_enabled === "true";
+    $("lmFields").style.opacity = $("lmEnabled").checked ? "1" : ".45";
+    $("lmKeyword").value = s.lead_magnet_keyword || "";
+    $("lmText").value = s.lead_magnet_text || "";
+    $("lmMedia").value = s.lead_magnet_media || "";
   } catch (e) { toast("Sozlamalar yuklanmadi: " + e.message, false); }
 }
+// 9.6: Lead magnit
+async function loadLmStats() {
+  try {
+    const s = await api("/api/lead-magnet/stats");
+    $("lmStats").innerHTML = "📊 Yuborilgan: <strong>" + s.sent + "</strong> ta · Mijozga aylangan (lead + sotildi): <strong>" + s.converted + "</strong> ta";
+  } catch (e) { /* jim */ }
+}
+async function pickLmMedia() {
+  try {
+    const { media } = await api("/api/media");
+    if (!media.length) return toast("Kutubxona bo'sh — Media sahifasida fayl yuklang", false);
+    openModal("📎 Fayl tanlash", '<div style="display:grid;gap:8px;max-height:55vh;overflow-y:auto">' +
+      media.map(function (m) {
+        return '<button class="btn" style="justify-content:flex-start" onclick="$(\\'lmMedia\\').value=location.origin+\\'/media/' + m.id + '\\';closeModal();toast(\\'Fayl tanlandi ✓\\')">' +
+          (m.type === "image" ? "🖼" : m.type === "video" ? "🎬" : "📄") + " " + esc(m.name) + "</button>";
+      }).join("") + "</div>");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function saveLeadMagnet(btn) {
+  if ($("lmEnabled").checked && !$("lmKeyword").value.trim()) {
+    return toast("Kamida bitta kalit so'z kiriting", false);
+  }
+  btn.disabled = true;
+  try {
+    await postJson("/api/settings", {
+      lead_magnet_enabled: String($("lmEnabled").checked),
+      lead_magnet_keyword: $("lmKeyword").value.trim(),
+      lead_magnet_text: $("lmText").value.trim(),
+      lead_magnet_media: $("lmMedia").value.trim(),
+    });
+    toast("Lead magnit saqlandi ✓");
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+  btn.disabled = false;
+}
+loadLmStats();
 // 8.1: Salomlashish tugmalari boshqaruvi
 let GB_ROWS = [];
 function renderGbRows() {

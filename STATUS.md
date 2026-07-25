@@ -105,5 +105,4 @@ Light/Dark, perf-lite rejimlar ishlaydi.
    templates/settings.js (792), templates/flows.js (633), routes/api.js
    (610), services/inbound.js (590), templates/inbox.js (547),
    templates/insights.js (521).
-5. **files/ papka va files.zip** — ildizdagi ROADMAP'larning aynan nusxasi,
-   o'chirish mumkin (git'da saqlanadi).
+5. ~~files/ papka va files.zip~~ — ✅ o'chirildi (2026-07-25, commit `64047ea`).

@@ -760,6 +760,11 @@ async function loadApiKeys() {
     }).join("") : '<span class="small muted">Hali kalit yo\\'q</span>';
   } catch (e) { /* jim */ }
 }
+async function delApiKey(id) {
+  if (!confirm("API kalit o'chirilsinmi? Uni ishlatayotgan integratsiyalar to'xtaydi.")) return;
+  try { await api("/api/api-keys/" + id, { method: "DELETE" }); loadApiKeys(); toast("Kalit o'chirildi"); }
+  catch (e) { toast("Xatolik: " + e.message, false); }
+}
 async function addApiKey(btn) {
   btn.disabled = true;
   try {

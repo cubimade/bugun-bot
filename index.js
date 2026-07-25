@@ -43,10 +43,12 @@ import dashboardRouter from "./routes/dashboard.js";
 import publicRouter from "./routes/public.js";
 
 const APP = express();
-// Railway proxy ortida ishlaymiz: faqat ENG YAQIN proxy'ga ishonamiz.
-// Busiz req.ip soxta X-Forwarded-For bilan almashtirilib, rate limit
-// (jumladan /api/login brute-force himoyasi) chetlab o'tilardi.
-APP.set("trust proxy", 1);
+// Railway proxy ortida ishlaymiz. XFF zanjiri: "client-ip, railway-edge-ip"
+// — ya'ni ikkita ishonchli hop. trust proxy=2 bo'lganda req.ip haqiqiy mijoz
+// IP'sini beradi; hujumchi soxta XFF qo'shsa u zanjir boshiga tushadi va
+// e'tiborga olinmaydi. (trust proxy=1 bo'lsa hamma bitta edge IP ostida
+// birlashib, rate limit amalda ishlamay qolardi.)
+APP.set("trust proxy", 2);
 APP.use(compression()); // B5: gzip — HTML/JSON javoblar kichrayadi
 // C2: rawBody — webhook imzosini (X-Hub-Signature-256) tekshirish uchun kerak
 // limit 8mb — media kutubxona yuklashi (base64) uchun (9.5)

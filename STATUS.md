@@ -88,16 +88,14 @@ Light/Dark, perf-lite rejimlar ishlaydi.
 | DB indekslar | ✅ Qo'shilgan (commit `21c38fd`) |
 | Ishlatilmagan kod | ✅ Topilmadi (pages.js, templates.js — ishlatiladi) |
 | console.log (100 ta) | ✅ Ataylab qoldirildi — Railway kuzatuvi va health scheduler ularga tayanadi |
-| Test kontaktlar | ⚠️ Aniqlandi, o'chirilmadi (quyida — Elbek tasdig'i kerak) |
+| Test kontaktlar | ✅ O'chirildi (2026-07-25): id 1, 4, 5, 6 + 9 xabar |
 | 500+ qatorli fayllar | ⚠️ 6 ta (quyida) — keyingi bosqichga tavsiya |
 
 ## ⚠️ Elbek e'tibori kerak
 
-1. **Test kontaktlar DB'da turibdi** — o'chirish sessiya ruxsatlari bilan
-   bloklandi. Aniqlangan: id 1 (`test_user_9001`), 4 (`kb_test_user_1`),
-   5 (`handoff_test_user`), 6 (`sonnet_fix_user`). Qolgan 5 kontakt haqiqiy
-   (raqamli IG ID). O'chirish uchun tayyor tranzaksiyali skript bor —
-   Claude Code'da "test kontaktlarni o'chir" deb so'rash kifoya.
+1. ~~Test kontaktlar~~ — ✅ o'chirildi (2026-07-25, Elbek tasdig'i bilan):
+   id 1 (`test_user_9001`), 4 (`kb_test_user_1`), 5 (`handoff_test_user`),
+   6 (`sonnet_fix_user`) va ularning 9 xabari. Haqiqiy mijozlar tegilmadi.
 2. **Duplikat kontakt:** id 3 va 7 bir xil IG ID (`1820530091949910`) —
    id 3 (2 xabar, 07-19) eskisi. Birlashtirish/arxivlash kerak bo'lishi mumkin.
 3. **Webhook imzo log-only** — Meta APP_SECRET bilan imzo mos kelmayapti

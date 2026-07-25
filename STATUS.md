@@ -101,8 +101,9 @@ Light/Dark, perf-lite rejimlar ishlaydi.
 3. **Webhook imzo log-only** — Meta APP_SECRET bilan imzo mos kelmayapti
    (ehtimol app secret noto'g'ri app'dan). Imzo mos kelguncha bloklash
    yoqilmasligi kerak, aks holda bot to'xtaydi.
-4. **500+ qatorli fayllar** (bo'lish keyingi bosqichga tavsiya):
-   templates/settings.js (792), templates/flows.js (633), routes/api.js
-   (610), services/inbound.js (590), templates/inbox.js (547),
-   templates/insights.js (521).
+4. ~~500+ qatorli fayllar~~ — ✅ barchasi bo'lindi (2026-07-25): settings.js
+   → 4 fayl, flows.js → 3 fayl, api.js → 3 fayl (119 marshrut aynan
+   saqlandi), inbound.js → 3 fayl, inbox.js → 2 fayl, insights.js → 2 fayl.
+   Har template sahifa chiqishi SHA-256 hash bilan baytma-bayt tasdiqlandi.
+   Endi loyihada 500+ qatorli fayl yo'q.
 5. ~~files/ papka va files.zip~~ — ✅ o'chirildi (2026-07-25, commit `64047ea`).

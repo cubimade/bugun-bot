@@ -3,8 +3,9 @@
 //  Analitika va broadcast alohida fayllarda (500 qator qoidasi):
 //    api-analytics.js — stats, diagrammalar, metrikalar, AI, eksport
 //    api-broadcast.js — ommaviy xabar va scheduler
-//  Bu faylda: akkauntlar, kontaktlar, teglar, javoblar, bilim bazasi,
-//  sozlamalar, tizim holati.
+//    api-contacts.js  — kontaktlar, suhbat, teglar, pauza (13-audit)
+//    api-reply.js     — operator javoblari, tezkor javoblar (13-audit)
+//  Bu faylda: akkauntlar (IG + Telegram), bilim bazasi, tizim.
 // ============================================================
 import express from "express";
 
@@ -17,7 +18,6 @@ import {
 } from "../state.js";
 import { IG_TOKEN } from "../config.js";
 import { verifyToken } from "../instagram.js";
-import { senderFor } from "../services/channels.js";
 import {
   verifyBotToken,
   setTelegramWebhook,
@@ -26,32 +26,9 @@ import {
 import {
   listProjects,
   deleteProject,
-  listContacts,
-  countContacts,
-  searchAll,
-  listNeedsHuman,
-  setContactArchived,
-  rateMessage,
-  deleteContact,
-  pool,
-  getContact,
-  getContactMessages,
-  markContactRead,
-  listAllTags,
-  setContactTags,
-  setNeedsHuman,
-  getContactAccount,
-  saveMessage,
-  setBotPaused,
-  stopContactFlows,
-  setContactNote,
-  listSavedReplies,
-  insertSavedReply,
-  deleteSavedReply,
   getProjectKnowledge,
   setProjectKnowledge,
   createTelegramProject,
-  getMediaMeta,
   logAudit,
 } from "../db.js";
 import { getRecentErrors } from "../logger.js";
@@ -67,6 +44,8 @@ import salesRouter from "./api-sales.js";
 import analytics2Router from "./api-analytics2.js";
 import usersRouter from "./api-users.js";
 import integrationsRouter from "./api-integrations.js";
+import contactsRouter from "./api-contacts.js";
+import replyRouter from "./api-reply.js";
 
 const router = express.Router();
 
@@ -83,6 +62,8 @@ router.use(salesRouter);
 router.use(analytics2Router);
 router.use(usersRouter);
 router.use(integrationsRouter);
+router.use(contactsRouter);
+router.use(replyRouter);
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -119,366 +100,9 @@ router.delete("/api/accounts/:projectId", protect, async (req, res, next) => {
   }
 });
 
-router.get("/api/contacts", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    // B2: pagination — limit + offset, jami soni bilan ("Ko'proq yuklash" uchun)
-    const limit = Math.min(Number(req.query.limit) || 50, 300);
-    const offset = Math.max(Number(req.query.offset) || 0, 0);
-    // 12.1: operator faqat o'ziga biriktirilgan akkauntlarni ko'radi
-    const scope =
-      req.user?.role === "operator" && (req.user.project_ids || []).length
-        ? req.user.project_ids
-        : null;
-    const [contacts, total] = await Promise.all([
-      listContacts(limit, offset, scope),
-      countContacts(),
-    ]);
-    res.json({ contacts, total, limit, offset });
-  } catch (err) {
-    next(err);
-  }
-});
-
 // Oxirgi xatolar (muammolarni tez topish uchun)
 router.get("/api/errors", protect, (req, res) => {
   res.json({ errors: getRecentErrors() });
-});
-
-// --- D1: Global qidiruv — kontakt ismi/ID va xabar matni bo'yicha ---
-router.get("/api/search", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const q = String(req.query.q || "").trim().slice(0, 100);
-    if (q.length < 2) return res.json({ contacts: [], messages: [] });
-    res.json(await searchAll(q));
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- D2: Bildirishnomalar — yangi "odam kerak" suhbatlar ---
-router.get("/api/notifications", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const items = await listNeedsHuman(20);
-    res.json({ count: items.length, items });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- D4: Suhbatni arxivlash / chiqarish ---
-router.post("/api/contacts/:id/archive", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.params.id);
-    const value = Boolean(req.body?.value);
-    await setContactArchived(contactId, value);
-    res.json({ ok: true, value });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- F2: Kontaktni butunlay o'chirish (GDPR) — xabarlar ham o'chadi ---
-router.delete("/api/contacts/:id", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const id = await deleteContact(Number(req.params.id));
-    if (!id) return res.status(404).json({ error: "Mijoz topilmadi" });
-    console.log(`🗑 Kontakt butunlay o'chirildi (GDPR): ${id}`);
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- F3: To'liq ma'lumot eksporti (barcha kontakt + suhbatlar JSON) ---
-router.get("/api/export/full.json", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const [projects, contacts, messages] = await Promise.all([
-      pool.query(`SELECT id, name, ig_account_id, knowledge_base, created_at FROM projects`),
-      pool.query(`SELECT * FROM contacts ORDER BY id`),
-      pool.query(`SELECT * FROM messages ORDER BY contact_id, created_at`),
-    ]);
-    const stamp = new Date().toISOString().slice(0, 10);
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="bugun-bot-export-${stamp}.json"`);
-    res.send(JSON.stringify({
-      exportedAt: new Date().toISOString(),
-      projects: projects.rows,
-      contacts: contacts.rows,
-      messages: messages.rows,
-    }));
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- D5: Bot javobini baholash (👍/👎) ---
-router.post("/api/messages/:id/rate", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const messageId = Number(req.params.id);
-    const value = Number(req.body?.value);
-    if (![1, -1, 0].includes(value)) {
-      return res.status(400).json({ error: "value 1, -1 yoki 0 bo'lishi kerak" });
-    }
-    await rateMessage(messageId, value);
-    res.json({ ok: true, value });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.get("/api/conversation/:contactId", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.params.contactId);
-    const contact = await getContact(contactId);
-    if (!contact) return res.status(404).json({ error: "Mijoz topilmadi" });
-    // 12.1: operator ko'lami — faqat biriktirilgan akkaunt mijozlari
-    if (
-      req.user?.role === "operator" &&
-      (req.user.project_ids || []).length &&
-      !req.user.project_ids.includes(contact.project_id)
-    ) {
-      return res.status(403).json({ error: "Bu suhbat sizga ochiq emas" });
-    }
-    const messages = await getContactMessages(contactId);
-    await markContactRead(contactId); // suhbat ochildi — o'qildi deb belgilaymiz
-    res.json({ contact, messages });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- Teglar ---
-router.get("/api/tags", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    res.json({ tags: await listAllTags() });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post("/api/contacts/:id/tags", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.params.id);
-    let tags = Array.isArray(req.body?.tags) ? req.body.tags : [];
-    // Tozalash: satr, bo'sh emas, 30 belgigacha, ko'pi bilan 15 ta, takrorsiz
-    tags = [...new Set(
-      tags
-        .map((t) => String(t).trim().slice(0, 30))
-        .filter(Boolean)
-    )].slice(0, 15);
-    await setContactTags(contactId, tags);
-    res.json({ ok: true, tags });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- "Odam kerak" holatini boshqarish (hal qilindi deb belgilash) ---
-router.post("/api/contacts/:id/needs-human", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.params.id);
-    const value = Boolean(req.body?.value);
-    await setNeedsHuman(contactId, value);
-    res.json({ ok: true, value });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- C4: Kontakt profili (drawer uchun — xabarlarsiz, yengil) ---
-router.get("/api/contacts/:id/profile", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contact = await getContact(Number(req.params.id));
-    if (!contact) return res.status(404).json({ error: "Mijoz topilmadi" });
-    res.json({ contact });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- C1: Bot pauza (operator rejimi) — qo'lda yoqish/o'chirish ---
-router.post("/api/contacts/:id/pause", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.params.id);
-    const value = Boolean(req.body?.value);
-    // Qo'lda pauza — muddatsiz (operator o'zi qayta yoqadi)
-    await setBotPaused(contactId, value, null);
-    // 8.7: operator aralashdi — faol flow to'xtatiladi (to'qnashuv bo'lmasin)
-    if (value) await stopContactFlows(contactId).catch(() => {});
-    console.log(`${value ? "🔕 Bot pauza qilindi" : "▶️ Bot qayta yoqildi"} (mijoz ${contactId})`);
-    res.json({ ok: true, value });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- C4: Mijoz izohi (nota) — mini-CRM ---
-router.post("/api/contacts/:id/note", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.params.id);
-    const note = String(req.body?.note ?? "").slice(0, 2000);
-    await setContactNote(contactId, note);
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- C2: Tezkor javoblar (saved replies) ---
-router.get("/api/saved-replies", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    res.json({ replies: await listSavedReplies() });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post("/api/saved-replies", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const title = String(req.body?.title || "").trim().slice(0, 80);
-    const text = String(req.body?.text || "").trim().slice(0, 1000);
-    if (!title || !text) {
-      return res.status(400).json({ error: "title va text majburiy" });
-    }
-    const id = await insertSavedReply(title, text);
-    res.json({ ok: true, id });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.delete("/api/saved-replies/:id", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    await deleteSavedReply(Number(req.params.id));
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- Qo'lda javob yuborish (operator bot o'rniga yozadi) ---
-router.post("/api/reply", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.body?.contactId);
-    const text = String(req.body?.text || "").trim();
-    if (!contactId || !text) {
-      return res.status(400).json({ error: "contactId va text majburiy" });
-    }
-    if (text.length > 1000) {
-      return res.status(400).json({ error: "Xabar juda uzun (1000 belgigacha)" });
-    }
-
-    const acct = await getContactAccount(contactId);
-    if (!acct) return res.status(404).json({ error: "Mijoz topilmadi" });
-
-    // Token: loyihadagi token → xotira xaritasi → asosiy (fallback) token
-    const token =
-      acct.access_token ||
-      ACCOUNTS_MAP.get(String(acct.ig_account_id || ""))?.token ||
-      IG_TOKEN;
-    if (!token) {
-      return res.status(400).json({ error: "Bu akkaunt uchun token topilmadi" });
-    }
-
-    // 9.1: platformaga mos yuborish (Instagram yoki Telegram)
-    const send = senderFor(acct.platform || "instagram", token);
-    const result = await send.text(acct.ig_user_id, text);
-    if (!result.ok) {
-      return res.status(502).json({ error: (acct.platform === "telegram" ? "Telegram: " : "Instagram: ") + result.error });
-    }
-
-    await saveMessage(contactId, "assistant", text, true); // operator belgisi bilan
-    await setNeedsHuman(contactId, false); // operator javob berdi — hal qilindi
-
-    // AVTO-PAUZA: operator qo'lda yozdi — bot 30 daqiqa jim turadi,
-    // muddat tugagach o'zi qayta yoqiladi (ChatPlace'dan aqlliroq).
-    const pausedUntil = new Date(Date.now() + 30 * 60 * 1000);
-    await setBotPaused(contactId, true, pausedUntil);
-    // 8.7: operator suhbatni oldi — faol flow to'xtatiladi
-    await stopContactFlows(contactId).catch(() => {});
-
-    console.log(`👤 Operator javobi yuborildi (mijoz ${contactId}) — bot 30 daqiqa pauzada`);
-    res.json({ ok: true, botPausedUntil: pausedUntil.toISOString() });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- 9.5: Media yuborish (inbox'dan kutubxona fayli) ---
-router.post("/api/reply-media", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const contactId = Number(req.body?.contactId);
-    const mediaId = Number(req.body?.mediaId);
-    if (!contactId || !mediaId) {
-      return res.status(400).json({ error: "contactId va mediaId majburiy" });
-    }
-    const [acct, media] = await Promise.all([
-      getContactAccount(contactId),
-      getMediaMeta(mediaId),
-    ]);
-    if (!acct) return res.status(404).json({ error: "Mijoz topilmadi" });
-    if (!media) return res.status(404).json({ error: "Fayl topilmadi" });
-
-    const token =
-      acct.access_token ||
-      ACCOUNTS_MAP.get(String(acct.ig_account_id || ""))?.token ||
-      IG_TOKEN;
-    if (!token) return res.status(400).json({ error: "Bu akkaunt uchun token topilmadi" });
-
-    const host = process.env.RAILWAY_PUBLIC_DOMAIN || req.get("host");
-    const url = `https://${host}/media/${media.id}`;
-    const send = senderFor(acct.platform || "instagram", token);
-    const result = media.type === "image"
-      ? await send.image(acct.ig_user_id, url)
-      : await send.file(acct.ig_user_id, url, media.name);
-    if (!result.ok) {
-      return res.status(502).json({ error: "Yuborilmadi: " + result.error });
-    }
-    await saveMessage(contactId, "assistant", `📎 [${media.name}]`, true);
-    console.log(`📎 Media yuborildi (mijoz ${contactId}): ${media.name}`);
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- 12.5: Duplikat kontaktlar (bir xil telefon/email, AI profildan) ---
-router.get("/api/duplicates", protect, async (req, res, next) => {
-  if (!requireDb(req, res)) return;
-  try {
-    const { rows } = await pool.query(
-      `SELECT COALESCE(NULLIF(profile->>'telefon',''), profile->>'email') AS key,
-              json_agg(json_build_object('id', id, 'name', name, 'ig_user_id', ig_user_id)) AS contacts
-         FROM contacts
-        WHERE (NULLIF(profile->>'telefon','') IS NOT NULL OR NULLIF(profile->>'email','') IS NOT NULL)
-          AND NOT archived
-        GROUP BY 1
-       HAVING COUNT(*) > 1
-        LIMIT 20`
-    );
-    res.json({ duplicates: rows });
-  } catch (err) {
-    next(err);
-  }
 });
 
 // --- Bilim bazasi (o'qish/yozish) ---

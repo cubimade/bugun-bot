@@ -173,6 +173,12 @@ router.get("/api/system", protect, async (req, res) => {
     startedAt: STARTED_AT.toISOString(),
     uptimeSec: Math.floor(process.uptime()),
     models: { haiku: "Haiku 4.5 (oddiy savollar)", sonnet: "Sonnet 5 (murakkab savollar)" },
+    // Proxy diagnostikasi — rate limit IP bo'yicha to'g'ri ishlayotganini tekshirish uchun
+    proxy: {
+      clientIp: req.ip,
+      forwardedFor: String(req.headers["x-forwarded-for"] || ""),
+      trustProxy: req.app.get("trust proxy"),
+    },
   });
 });
 

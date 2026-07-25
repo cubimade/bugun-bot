@@ -39,7 +39,6 @@ if (!APP_SECRET) {
 }
 
 function verifySignature(req) {
-  return true; // VAQTINCHA o'chirildi — bot ishlashi uchun (APP_SECRET/Meta imzo muammosi hal bo'lgach bu qatorni olib tashlang)
   if (!APP_SECRET) return true;
   const sig = req.get("x-hub-signature-256") || "";
   if (!sig.startsWith("sha256=") || !req.rawBody) return false;
@@ -73,12 +72,23 @@ router.get("/webhook", (req, res) => {
 // ============================================================
 //  WEBHOOK — XABAR/KOMMENT QABUL QILISH
 // ============================================================
+// Imzo holati faqat o'zgarganda loglanadi (har so'rovda spam bo'lmasin)
+let SIG_LAST_STATE = null; // null | "ok" | "bad"
+
 router.post("/webhook", async (req, res) => {
-  // VAQTINCHA izohga olindi — imzo tekshiruvi o'chirilgan (yuqoridagi verifySignature ham return true)
-  // if (!verifySignature(req)) {
-  //   console.warn("🚫 Webhook imzosi noto'g'ri — so'rov rad etildi");
-  //   return res.sendStatus(403);
-  // }
+  // Imzo LOG-ONLY rejimda: tekshiriladi va loglanadi, lekin noto'g'ri bo'lsa ham
+  // so'rov BLOKLANMAYDI — ishonchlilik birinchi (bot DM'larga javob beraveradi).
+  if (verifySignature(req)) {
+    if (SIG_LAST_STATE !== "ok") {
+      console.log("✅ Webhook imzosi to'g'ri — APP_SECRET Meta bilan mos");
+      SIG_LAST_STATE = "ok";
+    }
+  } else {
+    if (SIG_LAST_STATE !== "bad") {
+      console.warn("⚠️ Webhook imzosi MOS KELMADI (log-only rejim) — so'rov baribir qayta ishlanadi. APP_SECRET'ni Meta App Secret bilan solishtiring.");
+      SIG_LAST_STATE = "bad";
+    }
+  }
   res.status(200).send("EVENT_RECEIVED"); // Meta'ga darhol javob (talab)
 
   try {

@@ -41,12 +41,28 @@ if (!APP_SECRET) {
 function verifySignature(req) {
   if (!APP_SECRET) return true;
   const sig = req.get("x-hub-signature-256") || "";
-  if (!sig.startsWith("sha256=") || !req.rawBody) return false;
+  // 13-audit VAQTINCHALIK diagnostika: qaysi bosqich yiqilayotganini ko'rsatadi
+  // (secret loglanmaydi; imzo prefiksi maxfiy emas). Imzo mos kelgach olib tashlanadi.
+  if (!sig.startsWith("sha256=")) {
+    console.warn(`🔎 Imzo diagnostika: X-Hub-Signature-256 header yo'q yoki formati boshqa (bor: "${sig.slice(0, 12)}")`);
+    return false;
+  }
+  if (!req.rawBody) {
+    console.warn("🔎 Imzo diagnostika: rawBody yo'q — express.json verify ishlamagan");
+    return false;
+  }
   const expected =
     "sha256=" +
     crypto.createHmac("sha256", APP_SECRET).update(req.rawBody).digest("hex");
   try {
-    return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+    const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+    if (!ok) {
+      console.warn(
+        `🔎 Imzo diagnostika: kelgan=${sig.slice(7, 17)}… kutilgan=${expected.slice(7, 17)}… ` +
+        `body=${req.rawBody.length} bayt — APP_SECRET boshqa app'niki bo'lishi mumkin`
+      );
+    }
+    return ok;
   } catch {
     return false;
   }

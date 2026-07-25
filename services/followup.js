@@ -23,10 +23,21 @@ function applyVars(text, c) {
     .replaceAll("{akkaunt}", c.project_name || "");
 }
 
+let FOLLOWUP_RUNNING = false; // tick ustma-ust tushmasin (takroriy xabar himoyasi)
+
 export async function runFollowupPass() {
   if (!state.DB_READY) return;
   if (state.SETTINGS.followup_enabled !== "true") return;
+  if (FOLLOWUP_RUNNING) return;
+  FOLLOWUP_RUNNING = true;
+  try {
+    await followupPassBody();
+  } finally {
+    FOLLOWUP_RUNNING = false;
+  }
+}
 
+async function followupPassBody() {
   const waitHours = Math.min(Math.max(parseInt(state.SETTINGS.followup_wait_hours, 10) || 12, 1), 72);
   const maxCount = Math.min(Math.max(parseInt(state.SETTINGS.followup_max, 10) || 1, 1), 3);
   const text = (state.SETTINGS.followup_text || "").trim() || DEFAULT_TEXT;
@@ -69,10 +80,12 @@ export async function runFollowupPass() {
       }
       const msg = applyVars(textToUse, c);
       try {
+        // AVVAL belgilaymiz: parallel tick/instance bo'lsa ham mijozga TAKRORIY
+        // xabar ketmaydi (yuborilmay qolsa bitta imkoniyat yo'qoladi — spamdan arzon xato)
+        await markFollowupSent(c.id);
         const result = await senderFor(c.platform || "instagram", token).text(c.ig_user_id, msg);
         if (result.ok) {
           await saveMessage(c.id, "assistant", msg, false, "followup");
-          await markFollowupSent(c.id);
           console.log(`⏰ Follow-up yuborildi (mijoz ${c.id})`);
         } else {
           console.error(`⚠️ Follow-up yuborilmadi (mijoz ${c.id}): ${result.error}`);

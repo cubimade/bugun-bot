@@ -15,34 +15,46 @@ let dbWasDown = false;
 export async function runHealthPass() {
   passCount++;
 
-  // 1) Database
-  try {
-    if (state.DB_READY) {
+  // 1) Database — DB_READY bayrog'idan MUSTAQIL ping: boot'da ulanmagan yoki
+  // keyin uzilgan bo'lsa ham sezamiz; tiklanganda bayroqni qayta yoqamiz
+  // (aks holda barcha scheduler'lar abadiy jim no-op bo'lib qolardi).
+  if (process.env.DATABASE_URL) {
+    try {
       await pool.query("SELECT 1");
+      if (!state.DB_READY) {
+        const { initDb } = await import("../db/pool.js");
+        await initDb(); // idempotent (IF NOT EXISTS)
+        state.DB_READY = true;
+        console.log("✅ Health: database tiklandi — DB_READY qayta yoqildi");
+      }
       if (dbWasDown) {
         console.log("✅ Health: database tiklandi");
         notifyAdmin("down", "✅ Database qayta ulandi — tizim normal ishlayapti.").catch(() => {});
         dbWasDown = false;
       }
+    } catch (err) {
+      console.error("⚠️ Health: database ishlamayapti:", err.message);
+      if (!dbWasDown) {
+        dbWasDown = true;
+        notifyAdmin("down", `⚠️ MUAMMO: database'ga ulanib bo'lmayapti!\n${err.message}`).catch(() => {});
+      }
+      return;
     }
-  } catch (err) {
-    console.error("⚠️ Health: database ishlamayapti:", err.message);
-    if (!dbWasDown) {
-      dbWasDown = true;
-      notifyAdmin("down", `⚠️ MUAMMO: database'ga ulanib bo'lmayapti!\n${err.message}`).catch(() => {});
-    }
-    return;
   }
 
-  // 2) Instagram token — har 6-tekshiruvda (≈soatiga bir)
+  // 2) Instagram token — har 6-tekshiruvda (≈soatiga bir), xatoga chidamli
   if (passCount % 6 === 0) {
-    const token = IG_TOKEN || [...ACCOUNTS_MAP.values()][0]?.token;
-    if (token) {
-      const r = await verifyToken(token);
-      if (r.ok === false) {
-        console.error("⚠️ Health: Instagram token ishlamayapti:", r.error);
-        notifyAdmin("down", `⚠️ MUAMMO: Instagram token ishlamayapti (muddati tugagan bo'lishi mumkin)!\n${r.error}\n→ Akkauntlar sahifasida yangi token kiriting.`).catch(() => {});
+    try {
+      const token = IG_TOKEN || [...ACCOUNTS_MAP.values()][0]?.token;
+      if (token) {
+        const r = await verifyToken(token);
+        if (r.ok === false) {
+          console.error("⚠️ Health: Instagram token ishlamayapti:", r.error);
+          notifyAdmin("down", `⚠️ MUAMMO: Instagram token ishlamayapti (muddati tugagan bo'lishi mumkin)!\n${r.error}\n→ Akkauntlar sahifasida yangi token kiriting.`).catch(() => {});
+        }
       }
+    } catch (err) {
+      console.error("⚠️ Health: token tekshiruvi xatoligi:", err.message);
     }
   }
 }

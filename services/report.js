@@ -10,7 +10,6 @@ import {
   getFinance,
   segmentCounts,
   saveSettings,
-  listAccountsWithTokens,
 } from "../db.js";
 import { getWhatsChanged } from "../claude.js";
 import { sendTelegramMessage } from "./telegram.js";
@@ -72,7 +71,6 @@ export async function runWeeklyReportPass() {
 
   try {
     // Telegram bot tokeni — birinchi telegram loyihadan
-    const projects = await listAccountsWithTokens();
     const { pool } = await import("../db/pool.js");
     const { rows } = await pool.query(
       `SELECT access_token FROM projects WHERE platform = 'telegram' AND access_token IS NOT NULL LIMIT 1`

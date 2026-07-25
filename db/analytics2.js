@@ -59,14 +59,18 @@ export async function getFinance(avgCheck = 0) {
 //  sovuq: qolganlar (yozgan, lekin qiziqmagan)
 // ------------------------------------------------------------
 export async function recomputeSegments() {
+  // Faqat qiymati O'ZGARADIGAN qatorlar yoziladi — butun jadvalga lock qo'ymaslik
+  // uchun (aks holda scheduler paytida webhook yozuvlari kutib qolardi)
   const { rowCount } = await pool.query(
-    `UPDATE contacts SET segment = CASE
-        WHEN stage = 'won' THEN 'vip'
-        WHEN last_seen >= now() - interval '7 days' THEN 'faol'
-        WHEN last_seen < now() - interval '30 days' THEN 'uxlagan'
-        ELSE 'sovuq'
-      END
-      WHERE NOT archived`
+    `UPDATE contacts SET segment = calc.seg
+       FROM (SELECT id, CASE
+               WHEN stage = 'won' THEN 'vip'
+               WHEN last_seen >= now() - interval '7 days' THEN 'faol'
+               WHEN last_seen < now() - interval '30 days' THEN 'uxlagan'
+               ELSE 'sovuq'
+             END AS seg
+             FROM contacts WHERE NOT archived) calc
+      WHERE contacts.id = calc.id AND contacts.segment IS DISTINCT FROM calc.seg`
   );
   return rowCount;
 }

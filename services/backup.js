@@ -23,14 +23,16 @@ export async function runBackup() {
     const file = path.join(BACKUP_DIR, `backup-${today10()}.json`);
     if (fs.existsSync(file)) return; // bugungisi bor
 
+    // LIMIT — jadval o'sganda xotira portlamasin (to'liq nusxa Railway Postgres
+    // backup zimmasida; bu JSON — tezkor "oxirgi holat" nusxasi xolos)
     const [projects, contacts, messages, savedReplies, settings, broadcasts] =
       await Promise.all([
         pool.query(`SELECT id, name, ig_account_id, knowledge_base, created_at FROM projects`),
-        pool.query(`SELECT * FROM contacts`),
-        pool.query(`SELECT * FROM messages`),
+        pool.query(`SELECT * FROM contacts ORDER BY id DESC LIMIT 50000`),
+        pool.query(`SELECT * FROM messages ORDER BY id DESC LIMIT 50000`),
         pool.query(`SELECT * FROM saved_replies`),
         pool.query(`SELECT * FROM settings`),
-        pool.query(`SELECT * FROM broadcasts`),
+        pool.query(`SELECT * FROM broadcasts ORDER BY id DESC LIMIT 5000`),
       ]);
 
     const data = {

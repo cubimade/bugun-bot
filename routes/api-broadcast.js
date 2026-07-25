@@ -176,9 +176,13 @@ router.delete("/api/broadcasts/:id", protect, async (req, res, next) => {
 // ============================================================
 //  C3: BROADCAST SCHEDULER — har daqiqada vaqti kelganlarni yuboradi
 // ============================================================
+let BROADCAST_RUNNING = false; // uzun broadcast paytida yangi tick parallel kirmasin
+
 export function startBroadcastScheduler() {
   setInterval(async () => {
     if (!state.DB_READY) return;
+    if (BROADCAST_RUNNING) return;
+    BROADCAST_RUNNING = true;
     try {
       const due = await claimDueBroadcasts();
       for (const b of due) {
@@ -225,6 +229,8 @@ export function startBroadcastScheduler() {
       }
     } catch (err) {
       console.error("⚠️ Broadcast scheduler xatoligi:", err.message);
+    } finally {
+      BROADCAST_RUNNING = false;
     }
   }, 60 * 1000);
 }

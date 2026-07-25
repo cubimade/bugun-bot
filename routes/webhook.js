@@ -25,7 +25,7 @@ import {
 } from "../db.js";
 import { keywordRulesFor } from "../services/rules.js";
 import { tryStartFlow } from "../services/flow-engine.js";
-import { processIncomingText, processIncomingMedia } from "../services/inbound.js";
+import { processIncomingText, processIncomingMedia, isRateLimited } from "../services/inbound.js";
 import { state, ACCOUNTS_MAP, resolveAccount } from "../state.js";
 
 const router = express.Router();
@@ -187,6 +187,11 @@ async function handleComment(entry, value, projectId, token) {
     }
     if (fromId && accountId && fromId === accountId) {
       console.log("↩️ Bu botning o'z kommenti — o'tkazamiz");
+      return;
+    }
+    // 13-audit (C): komment spam himoyasi — DM'dagi kabi rate limit
+    if (fromId && isRateLimited(`comment:${fromId}`)) {
+      console.log(`🚦 Rate limit: ${fromId} juda ko'p komment yozdi — o'tkazamiz`);
       return;
     }
     console.log(`💬 Yangi komment (@${username || fromId}): ${commentText}`);

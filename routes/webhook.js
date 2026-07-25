@@ -36,6 +36,13 @@ const router = express.Router();
 // ============================================================
 if (!APP_SECRET) {
   console.warn("⚠️ APP_SECRET env yo'q — webhook imzosi tekshirilmaydi. Railway'ga APP_SECRET (Meta App Secret) qo'shing.");
+} else {
+  // 13-audit diagnostika: qaysi secret jonli ekanini aniqlash uchun xavfsiz
+  // fingerprint (secretning o'zi emas — sha256 hashining 8 belgisi).
+  console.log(
+    "🔐 APP_SECRET faol, fingerprint: " +
+    crypto.createHash("sha256").update(APP_SECRET).digest("hex").slice(0, 8)
+  );
 }
 
 function verifySignature(req) {

@@ -96,8 +96,8 @@ Light/Dark, perf-lite rejimlar ishlaydi.
 1. ~~Test kontaktlar~~ — ✅ o'chirildi (2026-07-25, Elbek tasdig'i bilan):
    id 1 (`test_user_9001`), 4 (`kb_test_user_1`), 5 (`handoff_test_user`),
    6 (`sonnet_fix_user`) va ularning 9 xabari. Haqiqiy mijozlar tegilmadi.
-2. **Duplikat kontakt:** id 3 va 7 bir xil IG ID (`1820530091949910`) —
-   id 3 (2 xabar, 07-19) eskisi. Birlashtirish/arxivlash kerak bo'lishi mumkin.
+2. ~~Duplikat kontakt~~ — ✅ birlashtirildi (2026-07-25): id 3 ning 2 xabari
+   id 7 ga ko'chirildi (endi 18 xabar, first_seen 07-19), id 3 o'chirildi.
 3. **Webhook imzo log-only** — Meta APP_SECRET bilan imzo mos kelmayapti
    (ehtimol app secret noto'g'ri app'dan). Imzo mos kelguncha bloklash
    yoqilmasligi kerak, aks holda bot to'xtaydi.

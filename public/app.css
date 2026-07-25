@@ -263,6 +263,20 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
   .content { padding: 18px 16px 48px; }
   h1 { font-size: 21px; }
   #toasts { left: 16px; right: 16px; top: 64px; }
+  /* Barmoq bilan bosish uchun yetarli o'lcham (~44px) va o'qiladigan matn.
+     16px input — iOS Safari'da fokusda sahifani zumlab yubormaydi. */
+  .btn { min-height: 42px; padding: 10px 16px; }
+  .btn-sm { min-height: 38px; padding: 8px 13px; font-size: 13.5px; }
+  .input, select.input, textarea.input { min-height: 42px; font-size: 16px; }
+  .seg button { min-height: 38px; padding: 8px 14px; }
+  .notif-btn, .theme-btn { min-width: 40px; min-height: 40px; }
+  .modal { max-height: 92vh; }
+  .modal-x { min-width: 38px; min-height: 38px; }
+  .rate-btn { min-width: 32px; min-height: 30px; font-size: 14px; opacity: .7; }
+  .tbl th, .tbl td { padding: 12px 12px; }
+  /* Kichik ekranda 11px matnlar o'qilmaydi */
+  .small, small { font-size: 12.5px; }
+  .stat-ctx { font-size: 12px; }
 }
 
 /* ===== Kontakt profili (drawer) ===== */

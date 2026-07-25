@@ -404,6 +404,14 @@ export async function initDb() {
     -- 6-bosqich (B1): tez-tez ishlatiladigan tartiblash uchun
     CREATE INDEX IF NOT EXISTS idx_messages_created_desc ON messages(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_contacts_lastseen ON contacts(last_seen DESC);
+    -- 13-bosqich (audit): follow-up LATERAL so'rovi har kontakt uchun
+    -- "oxirgi xabar" ni qidiradi — (contact_id, role, created_at DESC) indeksi
+    -- bu ikkala LATERAL'ni ham indeksdan o'qishga imkon beradi
+    CREATE INDEX IF NOT EXISTS idx_messages_contact_role_created
+      ON messages(contact_id, role, created_at DESC);
+    -- Follow-up/segment filtrlari faol (arxivlanmagan) kontaktlar bo'yicha
+    CREATE INDEX IF NOT EXISTS idx_contacts_active_followup
+      ON contacts(followup_sent_count) WHERE NOT archived AND NOT bot_paused;
   `);
 
   console.log("✅ Database jadvallar tayyor (projects, contacts, messages).");

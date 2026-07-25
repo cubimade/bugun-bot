@@ -190,7 +190,13 @@ router.post("/api/v1/contacts", apiKeyAuth, async (req, res) => {
   const b = req.body || {};
   const projectId = Number(b.project_id) || state.DEFAULT_PROJECT_ID;
   const externalId = String(b.external_id || "ext:" + Date.now()).slice(0, 100);
-  if (!projectId) return res.status(400).json({ error: "project_id kerak" });
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    return res.status(400).json({ error: "project_id kerak" });
+  }
+  // Mavjud bo'lmagan loyihaga kontakt yaratilmasin (FK xatosi 500 bermasin)
+  const { listProjects } = await import("../db.js");
+  const exists = (await listProjects()).some((p) => p.id === projectId);
+  if (!exists) return res.status(404).json({ error: "Bunday loyiha yo'q" });
   const contact = await getOrCreateContact(projectId, externalId, String(b.name || "").slice(0, 100) || null);
   if (Array.isArray(b.tags) && b.tags.length) {
     const { addContactTags } = await import("../db.js");

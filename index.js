@@ -43,6 +43,10 @@ import dashboardRouter from "./routes/dashboard.js";
 import publicRouter from "./routes/public.js";
 
 const APP = express();
+// Railway proxy ortida ishlaymiz: faqat ENG YAQIN proxy'ga ishonamiz.
+// Busiz req.ip soxta X-Forwarded-For bilan almashtirilib, rate limit
+// (jumladan /api/login brute-force himoyasi) chetlab o'tilardi.
+APP.set("trust proxy", 1);
 APP.use(compression()); // B5: gzip — HTML/JSON javoblar kichrayadi
 // C2: rawBody — webhook imzosini (X-Hub-Signature-256) tekshirish uchun kerak
 // limit 8mb — media kutubxona yuklashi (base64) uchun (9.5)
@@ -56,6 +60,8 @@ APP.use(express.static("public", { maxAge: "1d" }));
 // ============================================================
 APP.use("/webhook", rateLimit({ max: 300, name: "webhook" }));
 APP.use("/api", rateLimit({ max: 120, name: "api" }));
+// Login — parol topishga urinishga qarshi qat'iyroq cheklov (daqiqasiga 10)
+APP.use("/api/login", rateLimit({ max: 10, name: "login" }));
 APP.use(webhookRouter);
 APP.use(webhookTelegramRouter);
 APP.use(authRouter); // 12.1: /login, /api/login, /api/logout, /api/me
@@ -90,11 +96,19 @@ APP.use((req, res) => {
 //  MARKAZLASHTIRILGAN XATO BOSHQARUVI
 // ============================================================
 // Express marshrutlaridagi kutilmagan xatolar shu yerga tushadi.
+// Postgres "noto'g'ri kirish sintaksisi" (22P02) — bu foydalanuvchi xatosi
+// (masalan /api/contacts/abc → NaN), 500 emas 400 qaytaramiz.
+const PG_INPUT_ERRORS = new Set(["22P02", "22003", "22001"]);
 APP.use((err, req, res, next) => {
-  recordError("route", err);
-  if (!res.headersSent) {
-    res.status(500).send("<h1>Xatolik</h1><p>Ichki xatolik yuz berdi.</p>");
+  const isBadInput = PG_INPUT_ERRORS.has(err?.code);
+  if (!isBadInput) recordError("route", err);
+  if (res.headersSent) return;
+  const status = isBadInput ? 400 : 500;
+  const msg = isBadInput ? "Noto'g'ri so'rov ma'lumoti" : "Ichki xatolik yuz berdi.";
+  if ((req.originalUrl || req.url || "").startsWith("/api/")) {
+    return res.status(status).json({ error: msg });
   }
+  res.status(status).send(`<h1>Xatolik</h1><p>${msg}</p>`);
 });
 
 // Butun jarayon darajasidagi ushlanmagan xatolar — server o'chib qolmasin.

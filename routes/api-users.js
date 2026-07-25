@@ -51,7 +51,7 @@ router.get("/api/users/list-brief", protect, async (req, res, next) => {
 router.post("/api/users", protect, requireRole("owner"), async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
+    const email = String(req.body?.email || "").trim().toLowerCase().slice(0, 200);
     const name = String(req.body?.name || "").trim().slice(0, 100);
     const role = ["admin", "operator"].includes(req.body?.role) ? req.body.role : "operator";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

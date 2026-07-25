@@ -496,7 +496,9 @@ router.post("/api/knowledge/:projectId", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     const projectId = Number(req.params.projectId);
-    const text = typeof req.body?.knowledge === "string" ? req.body.knowledge : "";
+    if (!Number.isInteger(projectId)) return res.status(400).json({ error: "Noto'g'ri loyiha ID" });
+    // 200k belgi — har javobda system prompt'ga tushadi, cheksiz bo'lmasin
+    const text = (typeof req.body?.knowledge === "string" ? req.body.knowledge : "").slice(0, 200000);
     await setProjectKnowledge(projectId, text);
     console.log(`📝 Bilim bazasi yangilandi (loyiha ${projectId}, ${text.length} belgi)`);
     logAudit(req.user?.email || "owner", "knowledge_update", `loyiha #${projectId}, ${text.length} belgi`).catch(() => {});

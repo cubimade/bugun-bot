@@ -51,7 +51,7 @@ router.post("/api/broadcast", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     const projectId = Number(req.body?.projectId);
-    const tag = req.body?.tag ? String(req.body.tag) : null;
+    const tag = req.body?.tag ? String(req.body.tag).slice(0, 60) : null;
     const message = String(req.body?.message || "").trim();
     if (!projectId || !message) {
       return res.status(400).json({ error: "projectId va message majburiy" });

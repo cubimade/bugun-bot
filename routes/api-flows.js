@@ -23,6 +23,47 @@ const router = express.Router();
 
 const TRIGGER_TYPES = ["keyword", "story", "comment", "new_contact", "manual"];
 const NODE_TYPES = ["message", "buttons", "condition", "action", "delay"];
+// Flow motori config maydonlarini to'g'ridan ishlatadi (xabar yuborish, teg,
+// bosqich o'zgartirish) — shuning uchun saqlashda qat'iy tozalaymiz.
+const ACTION_KINDS = ["add_tag", "remove_tag", "handoff", "pause_bot", "set_stage", "give_promo"];
+const CONDITION_KINDS = ["has_tag", "contains", "subscribed"];
+const PIPELINE_STAGES = ["new", "interested", "negotiation", "won", "lost"];
+
+function safeUrl(v) {
+  const s = String(v || "").trim().slice(0, 500);
+  return /^https:\/\//i.test(s) ? s : "";
+}
+
+function sanitizeNodeConfig(type, raw) {
+  const c = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  if (type === "message") {
+    return { text: String(c.text || "").slice(0, 2000), media_url: safeUrl(c.media_url) };
+  }
+  if (type === "buttons") {
+    const urlBtns = (Array.isArray(c.url_buttons) ? c.url_buttons : [])
+      .slice(0, 5)
+      .map((b) => ({ title: String(b?.title || "").slice(0, 60), url: safeUrl(b?.url) }))
+      .filter((b) => b.title && b.url);
+    return { text: String(c.text || "").slice(0, 1000), url_buttons: urlBtns };
+  }
+  if (type === "condition") {
+    return {
+      kind: CONDITION_KINDS.includes(c.kind) ? c.kind : "contains",
+      value: String(c.value || "").slice(0, 200),
+    };
+  }
+  if (type === "action") {
+    const action = ACTION_KINDS.includes(c.action) ? c.action : "add_tag";
+    let value = String(c.value || "").slice(0, 100);
+    // set_stage voronka whitelist'ini chetlab o'tmasin
+    if (action === "set_stage" && !PIPELINE_STAGES.includes(value)) value = "new";
+    return { action, value };
+  }
+  if (type === "delay") {
+    return { minutes: Math.min(Math.max(parseInt(c.minutes, 10) || 5, 1), 10080) };
+  }
+  return {};
+}
 
 router.get("/api/flows", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -119,21 +160,22 @@ router.post("/api/flows/:id/graph", protect, async (req, res, next) => {
     const rawNodes = Array.isArray(req.body?.nodes) ? req.body.nodes : [];
     const rawEdges = Array.isArray(req.body?.edges) ? req.body.edges : [];
     if (rawNodes.length > 100) return res.status(400).json({ error: "Maksimum 100 ta node" });
+    if (rawEdges.length > 300) return res.status(400).json({ error: "Maksimum 300 ta bog'lanish" });
 
     const nodes = rawNodes
       .filter((n) => n && NODE_TYPES.includes(n.type))
       .map((n) => ({
-        ref: n.ref,
+        ref: String(n.ref ?? "").slice(0, 64),
         type: n.type,
-        config: typeof n.config === "object" && n.config ? n.config : {},
+        config: sanitizeNodeConfig(n.type, n.config),
         x: Number(n.x) || 0,
         y: Number(n.y) || 0,
       }));
     const edges = rawEdges
       .filter((e) => e && e.from != null && e.to != null)
       .map((e) => ({
-        from: e.from,
-        to: e.to,
+        from: String(e.from).slice(0, 64),
+        to: String(e.to).slice(0, 64),
         label: e.label != null ? String(e.label).slice(0, 60) : null,
       }));
 

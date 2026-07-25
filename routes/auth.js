@@ -6,6 +6,7 @@
 //  GET  /api/me     — joriy foydalanuvchi (rol, nav uchun)
 // ============================================================
 import express from "express";
+import crypto from "crypto";
 
 import { protect, parseCookies, invalidateSessionCache } from "../middleware/auth.js";
 import { state, requireDb } from "../state.js";
@@ -85,6 +86,19 @@ async function doLogin() {
 </script></body></html>`);
 });
 
+// Parolni doimiy vaqtda solishtirish — javob tezligidan parolni topib
+// bo'lmasin (timing attack himoyasi)
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ba.length !== bb.length) return false;
+  try {
+    return crypto.timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
 router.post("/api/login", async (req, res, next) => {
   try {
     const email = String(req.body?.email || "").trim();
@@ -102,7 +116,7 @@ router.post("/api/login", async (req, res, next) => {
 
     // 2) LEGACY: asosiy DASHBOARD_PASSWORD (email'siz ham) — owner sifatida.
     //    Bu yo'l HAR DOIM ochiq qoladi (migratsiya kafolati).
-    if (!user && dashPass && password === dashPass) {
+    if (!user && dashPass && safeEqual(password, dashPass)) {
       if (state.DB_READY) {
         await ensureOwnerUser(OWNER_EMAIL, dashPass).catch(() => {});
         user = await verifyUserLogin(OWNER_EMAIL, password);

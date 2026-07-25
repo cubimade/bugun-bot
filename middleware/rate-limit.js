@@ -6,10 +6,10 @@ const buckets = new Map();
 
 export function rateLimit({ windowMs = 60 * 1000, max = 60, name = "api" } = {}) {
   return (req, res, next) => {
-    const ip =
-      (req.headers["x-forwarded-for"] || "").split(",")[0].trim() ||
-      req.ip ||
-      "nomalum";
+    // req.ip — Express "trust proxy" sozlamasi asosida ISHONCHLI qiymat
+    // (index.js da trust proxy=1). X-Forwarded-For'ni o'zimiz o'qisak,
+    // hujumchi uni soxtalashtirib cheklovni chetlab o'tardi.
+    const ip = req.ip || "nomalum";
     const key = name + ":" + ip;
     const now = Date.now();
     let b = buckets.get(key);

@@ -143,7 +143,9 @@ router.post("/api/payments", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     const contactId = Number(req.body?.contactId);
-    const amount = Number(req.body?.amount) || null;
+    const rawAmount = Number(req.body?.amount);
+    // Manfiy yoki aql bovar qilmas summa o'tmasin (1 mlrd so'm chegara)
+    const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? Math.min(rawAmount, 1e9) : null;
     const method = String(req.body?.method || "").toLowerCase();
     const linkKey = { click: "pay_click", payme: "pay_payme", uzum: "pay_uzum" }[method];
     if (!contactId || !linkKey) {
@@ -221,8 +223,11 @@ router.post("/api/promos", protect, async (req, res, next) => {
   try {
     const code = String(req.body?.code || "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 20);
     if (code.length < 3) return res.status(400).json({ error: "Kod kamida 3 belgi (A-Z, 0-9)" });
-    const discountPercent = Number(req.body?.discount_percent) || null;
-    const discountAmount = Number(req.body?.discount_amount) || null;
+    // Diapazon: foiz 1-99, summa 1 so'm - 1 mlrd (manfiy/cheksiz o'tmasin)
+    const rawPct = Number(req.body?.discount_percent);
+    const rawAmt = Number(req.body?.discount_amount);
+    const discountPercent = Number.isFinite(rawPct) && rawPct > 0 ? Math.min(Math.round(rawPct), 99) : null;
+    const discountAmount = Number.isFinite(rawAmt) && rawAmt > 0 ? Math.min(rawAmt, 1e9) : null;
     if (!discountPercent && !discountAmount) {
       return res.status(400).json({ error: "Chegirma foizi yoki summasi kerak" });
     }

@@ -7,6 +7,9 @@ sotuv voronkasini yuritadi va biznes analitikasini ko'rsatadi.
 
 **Stack:** Node.js (Express) · PostgreSQL · Claude API (Haiku/Sonnet) · Railway
 
+**Holat:** v12.1 — 13-bosqich to'liq auditi o'tkazilgan (2026-07-25).
+Har funksiya holati: [STATUS.md](STATUS.md)
+
 ## ✨ Imkoniyatlar (v12)
 
 ### Kanallar

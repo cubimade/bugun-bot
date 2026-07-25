@@ -23,25 +23,15 @@ import {
   saveSettings,
 } from "../db.js";
 import { getLostAnalysis, getContentIdeas } from "../claude.js";
+import { swrCache } from "../services/ai-cache.js";
 import { reloadSettings } from "../state.js";
 import { buildWeeklyReportData, reportToText } from "../services/report.js";
 import { esc } from "../templates/components.js";
 
 const router = express.Router();
 
-// Kunlik AI kesh (og'ir chaqiruvlar kuniga 1 marta)
-const DAY_CACHE = new Map(); // key -> { day, data }
-function dayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-function cacheGet(key, force) {
-  const hit = DAY_CACHE.get(key);
-  if (!force && hit && hit.day === dayKey()) return hit.data;
-  return null;
-}
-function cacheSet(key, data) {
-  DAY_CACHE.set(key, { day: dayKey(), data });
-}
+// Kunlik AI kesh (og'ir chaqiruvlar kuniga 1 marta, bloklamaydi)
+const DAY_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ------------------------------------------------------------
 //  11.1: MOLIYA
@@ -92,17 +82,22 @@ router.get("/api/insights/lost", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     const force = req.query.refresh === "1";
-    const cached = cacheGet("lost", force);
-    if (cached) return res.json(cached);
-    const [funnel, samples] = await Promise.all([getFunnelDrop(), getLostSamples(25)]);
-    let ai = null;
-    if (samples.length >= 3) {
-      const text = samples.map((s) => `[${s.stage}]\n${s.convo_tail || ""}`).join("\n---\n");
-      ai = await getLostAnalysis(text);
-    }
-    const data = { funnel, lostCount: samples.length, ai };
-    cacheSet("lost", data);
-    res.json(data);
+    const r = await swrCache(
+      "insights-lost",
+      DAY_TTL_MS,
+      async () => {
+        const [funnel, samples] = await Promise.all([getFunnelDrop(), getLostSamples(25)]);
+        let ai = null;
+        if (samples.length >= 3) {
+          const text = samples.map((s) => `[${s.stage}]\n${s.convo_tail || ""}`).join("\n---\n");
+          ai = await getLostAnalysis(text);
+        }
+        return { funnel, lostCount: samples.length, ai };
+      },
+      { force }
+    );
+    if (r.pending) return res.json({ pending: true });
+    res.json({ ...r.data, cachedAt: r.cachedAt });
   } catch (err) {
     next(err);
   }
@@ -245,27 +240,32 @@ router.get("/api/insights/content", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     const force = req.query.refresh === "1";
-    const cached = cacheGet("content", force);
-    if (cached) return res.json(cached);
-    const msgs = await getRecentUserMessages(200);
-    if (msgs.length < 5) {
-      return res.json({ ai: null, bestTime: null, note: "Tahlil uchun xabar kam" });
-    }
-    const text = msgs.map((m) => m.text).join("\n");
-    const ai = await getContentIdeas(text);
-    // Eng yaxshi vaqt: xabarlar soati bo'yicha top oynasi
-    const { pool } = await import("../db/pool.js");
-    const { rows } = await pool.query(
-      `SELECT EXTRACT(HOUR FROM created_at + interval '5 hours')::int AS h, COUNT(*)::int AS n
-         FROM messages WHERE role = 'user' AND created_at >= now() - interval '30 days'
-        GROUP BY 1 ORDER BY n DESC LIMIT 1`
+    const r = await swrCache(
+      "insights-content",
+      DAY_TTL_MS,
+      async () => {
+        const msgs = await getRecentUserMessages(200);
+        if (msgs.length < 5) {
+          return { ai: null, bestTime: null, note: "Tahlil uchun xabar kam" };
+        }
+        const text = msgs.map((m) => m.text).join("\n");
+        const ai = await getContentIdeas(text);
+        // Eng yaxshi vaqt: xabarlar soati bo'yicha top oynasi
+        const { pool } = await import("../db/pool.js");
+        const { rows } = await pool.query(
+          `SELECT EXTRACT(HOUR FROM created_at + interval '5 hours')::int AS h, COUNT(*)::int AS n
+             FROM messages WHERE role = 'user' AND created_at >= now() - interval '30 days'
+            GROUP BY 1 ORDER BY n DESC LIMIT 1`
+        );
+        const topHour = rows[0]?.h;
+        const bestTime =
+          topHour != null ? `${String(topHour).padStart(2, "0")}:00-${String((topHour + 2) % 24).padStart(2, "0")}:00` : null;
+        return { ai, bestTime };
+      },
+      { force }
     );
-    const topHour = rows[0]?.h;
-    const bestTime =
-      topHour != null ? `${String(topHour).padStart(2, "0")}:00-${String((topHour + 2) % 24).padStart(2, "0")}:00` : null;
-    const data = { ai, bestTime };
-    cacheSet("content", data);
-    res.json(data);
+    if (r.pending) return res.json({ pending: true });
+    res.json({ ...r.data, cachedAt: r.cachedAt });
   } catch (err) {
     next(err);
   }

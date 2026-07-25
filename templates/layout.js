@@ -14,12 +14,15 @@ export function renderLayout({ title, active, headerAction = "", content, script
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${esc(title)} — Bugun Bot</title>
-  <script>(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.setAttribute("data-theme",t)})()</script>
+  <script>(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark"){t=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.setAttribute("data-theme",t);
+  // Kuchsiz qurilma yoki reduced-motion: og'ir effektlar (aurora, blur, glow) o'chiriladi
+  var lite=false;try{lite=(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=4)||(navigator.deviceMemory&&navigator.deviceMemory<=4)||(window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)}catch(e){}
+  if(lite)document.documentElement.classList.add("perf-lite")})()</script>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/app.css?v=${APP_VERSION}">
+  <link rel="stylesheet" href="/app.min.css?v=${APP_VERSION}">
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
@@ -67,7 +70,7 @@ export function renderLayout({ title, active, headerAction = "", content, script
   </div>
   <div id="toasts"></div>
 
-  <script src="/app.js?v=${APP_VERSION}"></script>
+  <script src="/app.min.js?v=${APP_VERSION}"></script>
   <script>${script}</script>
 </body>
 </html>`;

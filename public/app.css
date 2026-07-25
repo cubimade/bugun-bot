@@ -1,4 +1,5 @@
 /* BUGUN BOT — dizayn tizimi (ROADMAP-6 A2 da templates.js dan chiqarilgan) */
+/* DIQQAT: sahifalar app.min.css ni yuklaydi — bu faylni o'zgartirsangiz `npm run minify` yuriting! */
 /* ===== VIZUAL TIZIM v3 — Liquid Glass + Light/Dark (ROADMAP-4 v2) ===== */
 [data-theme="dark"] {
   --bg-base: #0a0b10;
@@ -82,7 +83,7 @@ small, .small { font-size: 12px; }
 ::selection { background: rgba(99,102,241,.3); }
 
 /* ---------- Layout ---------- */
-.sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; background: var(--surface-1); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; z-index: 50; transition: transform .25s ease, background .3s ease; }
+.sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; background: var(--surface-1); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; z-index: 50; transition: transform .25s ease, background .3s ease; }
 .logo { padding: 22px 20px 18px; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
 .logo .grad-text, .grad-text { background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .nav { flex: 1; padding: 6px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
@@ -102,7 +103,7 @@ small, .small { font-size: 12px; }
 .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
 
 /* Mobil top-bar */
-.topbar { display: none; position: sticky; top: 0; z-index: 40; background: var(--surface-1); backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%); border-bottom: 1px solid var(--glass-border); padding: 12px 16px; align-items: center; gap: 12px; }
+.topbar { display: none; position: sticky; top: 0; z-index: 40; background: var(--surface-1); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%); border-bottom: 1px solid var(--glass-border); padding: 12px 16px; align-items: center; gap: 12px; }
 .hamburger { background: none; border: none; color: var(--text-primary); cursor: pointer; padding: 4px; display: flex; }
 .hamburger .ic { width: 24px; height: 24px; }
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 45; opacity: 0; pointer-events: none; transition: opacity .25s; }
@@ -111,8 +112,8 @@ small, .small { font-size: 12px; }
 /* ---------- LIQUID GLASS komponentlar (A1 retsepti) ---------- */
 .glass, .card {
   background: var(--glass-bg);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
   border: 1px solid var(--glass-border);
   border-radius: 18px;
   box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); /* hairline rim-light! */
@@ -183,7 +184,7 @@ label.lbl { display: block; font-size: 13px; font-weight: 500; color: var(--text
 .dot-gray { background: #475569; }
 
 /* Jadval */
-.table-wrap { overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 18px; background: var(--glass-bg); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--glass-border); border-radius: 18px; background: var(--glass-bg); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%); box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); }
 table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 .tbl th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid var(--glass-border); background: var(--input-bg); }
 .tbl td { padding: 12px 16px; border-bottom: 1px solid var(--glass-border); vertical-align: middle; }
@@ -194,7 +195,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 /* Modal — liquid glass */
 .modal-back { position: fixed; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 100; display: none; align-items: center; justify-content: center; padding: 16px; }
 .modal-back.show { display: flex; }
-.modal { background: var(--surface-2); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border: 1px solid var(--glass-border); border-radius: 18px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; animation: fadeIn .22s ease; box-shadow: 0 24px 60px rgba(0,0,0,.35), inset 0 1px 0 var(--rim-light); }
+.modal { background: var(--surface-2); backdrop-filter: blur(12px) saturate(160%); -webkit-backdrop-filter: blur(12px) saturate(160%); border: 1px solid var(--glass-border); border-radius: 18px; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; animation: fadeIn .22s ease; box-shadow: 0 24px 60px rgba(0,0,0,.35), inset 0 1px 0 var(--rim-light); }
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--border-subtle); }
 .modal-head h3 { font-size: 16px; }
 .modal-x { background: none; border: none; color: var(--text-secondary); font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 8px; transition: color .18s ease, background .18s ease; }
@@ -203,7 +204,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 
 /* Toast — o'ng yuqoridan kirib, 3s dan keyin chiqadi */
 #toasts { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
-.toast { background: var(--surface-2); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); border: 1px solid var(--glass-border); border-left: 3px solid var(--success); border-radius: 12px; padding: 11px 16px; box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); font-size: 13px; animation: toastIn .3s cubic-bezier(.21,1.02,.73,1); max-width: 320px; }
+.toast { background: var(--surface-2); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%); border: 1px solid var(--glass-border); border-left: 3px solid var(--success); border-radius: 12px; padding: 11px 16px; box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); font-size: 13px; animation: toastIn .3s cubic-bezier(.21,1.02,.73,1); max-width: 320px; }
 .toast.err { border-left-color: var(--danger); }
 @keyframes toastIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes slideIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
@@ -267,7 +268,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 /* ===== Kontakt profili (drawer) ===== */
 .drawer-back { position: fixed; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); z-index: 90; opacity: 0; pointer-events: none; transition: opacity .25s; }
   .drawer-back.show { opacity: 1; pointer-events: auto; }
-  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100vw; background: var(--surface-3); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%); border-left: 1px solid var(--glass-border); z-index: 95; transform: translateX(100%); transition: transform .28s cubic-bezier(.22,1,.36,1); display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.3); }
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100vw; background: var(--surface-3); backdrop-filter: blur(12px) saturate(160%); -webkit-backdrop-filter: blur(12px) saturate(160%); border-left: 1px solid var(--glass-border); z-index: 95; transform: translateX(100%); transition: transform .28s cubic-bezier(.22,1,.36,1); display: flex; flex-direction: column; box-shadow: -20px 0 60px rgba(0,0,0,.3); }
   .drawer.show { transform: none; }
   .drawer-head { padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 12px; }
   .drawer-body { flex: 1; overflow-y: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -279,8 +280,8 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 .topsearch .input { padding: 8px 12px; font-size: 13px; }
 .topsearch-drop, .notif-drop {
   position: absolute; top: calc(100% + 6px); right: 0; left: auto; width: 340px; max-width: 92vw;
-  background: var(--surface-2); backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  background: var(--surface-2); backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
   border: 1px solid var(--glass-border); border-radius: 14px;
   box-shadow: var(--shadow-glass); z-index: 80; display: none;
   max-height: 60vh; overflow-y: auto; padding: 6px;
@@ -311,3 +312,19 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 .rate-btn { background: none; border: none; cursor: pointer; font-size: 12px; opacity: .45; padding: 1px 3px; border-radius: 6px; }
 .rate-btn:hover { opacity: 1; background: var(--hover-bg); }
 .rate-btn.on { opacity: 1; transform: scale(1.15); }
+
+/* ===== PERF-LITE — kuchsiz qurilma / reduced-motion (layout.js aniqlaydi) =====
+   Og'ir effektlar o'chiriladi: aurora animatsiya, backdrop blur, kursor glow,
+   stagger va hover-lift. Dizayn (ranglar, radius, soyalar) saqlanadi. */
+.perf-lite body::before { animation: none; }
+.perf-lite .glass, .perf-lite .card, .perf-lite .sidebar, .perf-lite .topbar,
+.perf-lite .modal, .perf-lite .toast, .perf-lite .table-wrap, .perf-lite .drawer,
+.perf-lite .topsearch-drop, .perf-lite .notif-drop {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: var(--fallback-bg);
+}
+.perf-lite .modal-back, .perf-lite .drawer-back { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.perf-lite .glass-glow::after { display: none; }
+.perf-lite .stagger > * { animation: none; }
+.perf-lite .content { animation: none; }
+.perf-lite .glass:hover, .perf-lite .card.hoverable:hover { transform: none; }

@@ -1,4 +1,5 @@
 // BUGUN BOT — umumiy klient JS: theme, toast, modal, sparkline, drawer (ROADMAP-6 A2)
+// DIQQAT: sahifalar app.min.js ni yuklaydi — bu faylni o'zgartirsangiz `npm run minify` yuriting!
 const $ = (id) => document.getElementById(id);
 const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
 const fmt = (d) => d ? new Date(d).toLocaleString("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -130,8 +131,15 @@ function toggleTheme() {
   updateThemeBtns();
 }
 updateThemeBtns();
-// Kursorni kuzatuvchi glow (A5) — delegation, dinamik kartalarda ham ishlaydi
+// Kursorni kuzatuvchi glow (A5) — delegation + throttle (50ms):
+// har mousemove'da emas, sekundiga ~20 marta — sekin qurilmalarda qotmaydi.
+// perf-lite rejimida (kuchsiz qurilma) umuman ishlamaydi — CSS ham o'chirilgan.
+let GLOW_LAST = 0;
 document.addEventListener("mousemove", (e) => {
+  if (document.documentElement.classList.contains("perf-lite")) return;
+  const now = Date.now();
+  if (now - GLOW_LAST < 50) return;
+  GLOW_LAST = now;
   const card = e.target.closest && e.target.closest(".glass-glow");
   if (!card) return;
   const r = card.getBoundingClientRect();

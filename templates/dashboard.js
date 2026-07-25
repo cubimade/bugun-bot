@@ -140,16 +140,26 @@ export function renderDashboardHome() {
   const script = `
 const DAY_NAMES = ["Yak", "Du", "Se", "Chor", "Pay", "Ju", "Shan"];
 
-// B1: AI kunlik xulosa (serverda 1 soat kesh)
-async function loadSummary() {
+// B1: AI kunlik xulosa (serverda 1 soat kesh; bo'sh bo'lsa AI orqa fonda tayyorlaydi)
+function applySummary(r, attempt) {
+  attempt = attempt || 0;
+  if (!r) return;
+  if (r.pending) {
+    $("summaryText").textContent = "AI xulosa tayyorlanmoqda…";
+    $("summaryMeta").textContent = "";
+    if (attempt < 10) setTimeout(function () { loadSummary(attempt + 1); }, 4000);
+    return;
+  }
+  $("summaryText").textContent = r.text;
+  const warn = r.digest && r.digest.needsHuman > 0;
+  $("aiStatus").innerHTML = warn
+    ? '<span class="ai-badge ai-warn"><span class="dot dot-amber"></span>E\\'tibor kerak</span>'
+    : '<span class="ai-badge ai-ok"><span class="dot dot-green"></span>Hammasi ishlayapti</span>';
+  $("summaryMeta").textContent = "✨ AI xulosa · yangilangan: " + fmt(r.cachedAt);
+}
+async function loadSummary(attempt) {
   try {
-    const { text, digest, cachedAt } = await api("/api/summary");
-    $("summaryText").textContent = text;
-    const warn = digest && digest.needsHuman > 0;
-    $("aiStatus").innerHTML = warn
-      ? '<span class="ai-badge ai-warn"><span class="dot dot-amber"></span>E\\'tibor kerak</span>'
-      : '<span class="ai-badge ai-ok"><span class="dot dot-green"></span>Hammasi ishlayapti</span>';
-    $("summaryMeta").textContent = "✨ AI xulosa · yangilangan: " + fmt(cachedAt);
+    applySummary(await api("/api/summary"), attempt);
   } catch (e) {
     $("summaryText").textContent = "Xulosa hozircha tayyor emas — birinchi xabarlar kelganda paydo bo'ladi.";
     $("summaryMeta").textContent = "";
@@ -158,9 +168,8 @@ async function loadSummary() {
 
 const PERIOD_SUB = { today: "bugun, soatlar bo'yicha", "7d": "oxirgi 7 kun", "30d": "oxirgi 30 kun", all: "oxirgi 30 kun" };
 
-async function loadStats() {
+function applyStats(s) {
   try {
-    const s = await api("/api/stats?period=" + PERIOD);
     $("chartSub").textContent = PERIOD_SUB[s.period] || "";
     // Grafik kartasi: davrdagi xabarlar + trend
     countUp($("todayNum"), s.messages ?? 0);
@@ -185,6 +194,14 @@ async function loadStats() {
     $("msgSpark").innerHTML = sparkline(s.sparks.msgs, "var(--accent-3)");
     if (s.needsHuman) $("humanCard").style.borderColor = "rgba(251,191,36,.45)";
     renderChart(s.series || [], s.period);
+  } catch (e) {
+    $("chart").classList.remove("skeleton");
+    $("chart").innerHTML = emptyState("📈", "Statistika yuklanmadi: " + e.message);
+  }
+}
+async function loadStats() {
+  try {
+    applyStats(await api("/api/stats?period=" + PERIOD));
   } catch (e) {
     $("chart").classList.remove("skeleton");
     $("chart").innerHTML = emptyState("📈", "Statistika yuklanmadi: " + e.message);
@@ -273,9 +290,9 @@ function renderChart(series, period) {
     svg.querySelector("#hoverDot").style.opacity = 0;
   });
 }
-async function loadConversations() {
+function applyConversations(contacts) {
   try {
-    const { contacts } = await api("/api/contacts");
+    contacts = contacts || [];
     if (!contacts.length) { $("conversations").innerHTML = emptyState("💬", "Hali suhbatlar yo'q — bot birinchi xabarni kutmoqda"); return; }
     $("conversations").innerHTML = contacts.slice(0, 5).map((c) => \`
       <a href="/dashboard/inbox?contact=\${c.id}" style="display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:12px;transition:background .15s"
@@ -292,9 +309,15 @@ async function loadConversations() {
       </a>\`).join("");
   } catch (e) { $("conversations").innerHTML = emptyState("💬", "Suhbatlar yuklanmadi"); }
 }
-async function loadAccounts() {
+async function loadConversations() {
   try {
-    const { projects } = await api("/api/projects");
+    const r = await api("/api/contacts?limit=6");
+    applyConversations(r.contacts);
+  } catch (e) { $("conversations").innerHTML = emptyState("💬", "Suhbatlar yuklanmadi"); }
+}
+function applyAccounts(projects) {
+  try {
+    projects = projects || [];
     if (!projects.length) { $("accounts").innerHTML = emptyState("📱", "Hali akkaunt yo'q"); return; }
     $("accounts").innerHTML = projects.map((p) => \`
       <div style="display:flex;align-items:center;gap:10px;padding:7px 4px">
@@ -305,6 +328,12 @@ async function loadAccounts() {
         </span>
         \${p.knowledge_base ? '<span class="badge b-green">✓</span>' : '<span class="badge b-gray">bo\\'sh</span>'}
       </div>\`).join("");
+  } catch (e) { $("accounts").innerHTML = emptyState("📱", "Yuklanmadi"); }
+}
+async function loadAccounts() {
+  try {
+    const { projects } = await api("/api/projects");
+    applyAccounts(projects);
   } catch (e) { $("accounts").innerHTML = emptyState("📱", "Yuklanmadi"); }
 }
 // C1: Donut — suhbatlar holati (sof SVG, kutubxonasiz)
@@ -352,8 +381,22 @@ function renderDonut(d) {
     "</div></div>";
 }
 
-renderPeriodSeg($("periodSeg"), () => { loadStats(); loadDonut(); });
-loadSummary(); loadStats(); loadDonut(); loadConversations(); loadAccounts();`;
+// Hammasi BITTA so'rovda — 7 ta parallel fetch o'rniga (sekin tarmoqda katta farq).
+// Xato bo'lsa eski alohida yo'llarga qaytadi (fallback).
+async function loadAll() {
+  try {
+    const d = await api("/api/dashboard-data?period=" + PERIOD);
+    applySummary(d.summary, 0);
+    applyStats(d.stats);
+    renderDonut(d.donut || {});
+    applyConversations(d.contacts && d.contacts.contacts ? d.contacts.contacts : d.contacts);
+    applyAccounts(d.projects);
+  } catch (e) {
+    loadSummary(); loadStats(); loadDonut(); loadConversations(); loadAccounts();
+  }
+}
+renderPeriodSeg($("periodSeg"), () => { loadAll(); });
+loadAll();`;
 
   return renderLayout({
     title: "Boshqaruv",

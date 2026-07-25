@@ -320,10 +320,16 @@ function renderAccBars(accounts) {
   }).join("");
 }
 
-// E4: Bu hafta nima o'zgardi
-async function loadChanged() {
+// E4: Bu hafta nima o'zgardi (bo'sh bo'lsa AI orqa fonda tayyorlaydi)
+async function loadChanged(attempt) {
+  attempt = attempt || 0;
   try {
-    const { text, cachedAt } = await api("/api/whats-changed");
+    const { text, cachedAt, pending } = await api("/api/whats-changed");
+    if (pending) {
+      $("changedText").textContent = "AI taqqoslash tayyorlanmoqda…";
+      if (attempt < 10) setTimeout(function () { loadChanged(attempt + 1); }, 4000);
+      return;
+    }
     $("changedText").textContent = text;
     $("changedMeta").textContent = "✨ AI taqqoslash · " + fmt(cachedAt);
   } catch (e) {
@@ -331,13 +337,20 @@ async function loadChanged() {
   }
 }
 
-async function loadInsights(force) {
+async function loadInsights(force, attempt) {
+  attempt = attempt || 0;
   if (force) {
     $("insBody").innerHTML = '<div class="ins-grid">' + '<div class="card skeleton" style="height:220px"></div>'.repeat(3) + "</div>";
     $("insMeta").innerHTML = '<span class="spinner" style="width:13px;height:13px"></span> tahlil qilinmoqda...';
   }
   try {
-    const { insights, sample, cachedAt } = await api("/api/insights" + (force ? "?refresh=1" : ""));
+    const { insights, sample, cachedAt, pending } = await api("/api/insights" + (force ? "?refresh=1" : ""));
+    if (pending) {
+      $("insBody").innerHTML = '<div class="ins-grid">' + '<div class="card skeleton" style="height:220px"></div>'.repeat(3) + "</div>";
+      $("insMeta").innerHTML = '<span class="spinner" style="width:13px;height:13px"></span> AI tahlil orqa fonda tayyorlanmoqda...';
+      if (attempt < 12) setTimeout(function () { loadInsights(false, attempt + 1); }, 5000);
+      return;
+    }
     if (!insights) {
       $("insBody").innerHTML = '<div class="card">' + emptyState("📈", "Hali tahlil uchun xabar yo'q — mijozlar yozganda AI tahlil paydo bo'ladi") + "</div>";
       $("insMeta").textContent = "";
@@ -429,10 +442,16 @@ async function saveFin(btn) {
   btn.disabled = false;
 }
 // ===== 11.3: Yo'qotilgan mijozlar =====
-async function loadLost(force) {
+async function loadLost(force, attempt) {
+  attempt = attempt || 0;
   if (force) $("lostBody").innerHTML = skeletonRows(3, 40);
   try {
     const r = await api("/api/insights/lost" + (force ? "?refresh=1" : ""));
+    if (r.pending) {
+      $("lostBody").innerHTML = skeletonRows(3, 40);
+      if (attempt < 12) setTimeout(function () { loadLost(false, attempt + 1); }, 5000);
+      return;
+    }
     const fn = r.funnel || {};
     const stages = [["new", "🆕 Yangi"], ["interested", "🔥 Qiziqqan"], ["negotiation", "🤝 Muzokara"], ["won", "✅ Sotildi"], ["lost", "❌ Yo'q"]];
     let html = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
@@ -467,10 +486,16 @@ async function loadForecast() {
   } catch (e) { $("fcBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message); }
 }
 // ===== 11.6: Kontent tavsiyalari =====
-async function loadContent(force) {
+async function loadContent(force, attempt) {
+  attempt = attempt || 0;
   if (force) $("contentBody").innerHTML = skeletonRows(3, 40);
   try {
     const r = await api("/api/insights/content" + (force ? "?refresh=1" : ""));
+    if (r.pending) {
+      $("contentBody").innerHTML = skeletonRows(3, 40);
+      if (attempt < 12) setTimeout(function () { loadContent(false, attempt + 1); }, 5000);
+      return;
+    }
     if (!r.ai) { $("contentBody").innerHTML = emptyState("💡", r.note || "Tahlil uchun xabar kam — mijozlar yozganda paydo bo'ladi"); return; }
     $("contentBody").innerHTML =
       (r.bestTime ? '<div class="small" style="margin-bottom:10px">🕗 Auditoriyangiz <strong>' + r.bestTime + "</strong> oralig'ida faol — post/story shu vaqtda chiqaring.</div>" : "") +

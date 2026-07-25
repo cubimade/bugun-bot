@@ -36,7 +36,7 @@ router.get("/login", (req, res) => {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kirish — Bugun Bot</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="stylesheet" href="/app.css?v=${APP_VERSION}">
+<link rel="stylesheet" href="/app.min.css?v=${APP_VERSION}">
 <script>(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark"){t="dark"}document.documentElement.setAttribute("data-theme",t)})()</script>
 </head><body style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px">
 <div class="card glow" style="width:100%;max-width:380px;padding:32px 28px">

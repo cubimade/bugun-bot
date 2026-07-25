@@ -18,8 +18,11 @@ import {
   listContactsForExport,
   getDailyDigest,
   getRecentUserMessages,
+  listContacts,
+  listProjects,
 } from "../db.js";
 import { getDailySummary, getInsights, getWhatsChanged } from "../claude.js";
+import { swrCache } from "../services/ai-cache.js";
 
 const router = express.Router();
 
@@ -34,38 +37,44 @@ export async function cachedAnalytics(key, fn) {
   return data;
 }
 
+// Stats — eski nomlar bilan moslik (contacts = faol mijozlar davrda, all'da jami)
+async function statsShaped(period) {
+  const s = await cachedAnalytics("stats:" + period, () => getStatsForPeriod(period));
+  return {
+    ...s,
+    contacts: period === "all" ? s.contactsTotal : s.contactsActive,
+    week: s.series.map((r) => ({ day: r.x, n: r.n })),
+  };
+}
+
 router.get("/api/stats", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    const period = normalizePeriod(req.query.period);
-    const s = await cachedAnalytics("stats:" + period, () => getStatsForPeriod(period));
-    // eski nomlar bilan moslik (contacts = faol mijozlar davrda, all'da jami)
-    res.json({
-      ...s,
-      contacts: period === "all" ? s.contactsTotal : s.contactsActive,
-      week: s.series.map((r) => ({ day: r.x, n: r.n })),
-    });
+    res.json(await statsShaped(normalizePeriod(req.query.period)));
   } catch (err) {
     next(err);
   }
 });
 
 // --- 5-bosqich: diagrammalar (donut, heatmap, taqqoslash, voronka) ---
+function analyticsBundle(period) {
+  return cachedAnalytics("analytics:" + period, async () => {
+    const [donut, heatmap, accounts, funnel, sources] = await Promise.all([
+      getDonutData(period),
+      getHeatmapData(period),
+      getAccountsComparison(period),
+      getFunnelData(period),
+      getSourceBreakdown(period),
+    ]);
+    return { donut, heatmap, accounts, funnel, sources };
+  });
+}
+
 router.get("/api/analytics", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     const period = normalizePeriod(req.query.period);
-    const data = await cachedAnalytics("analytics:" + period, async () => {
-      const [donut, heatmap, accounts, funnel, sources] = await Promise.all([
-        getDonutData(period),
-        getHeatmapData(period),
-        getAccountsComparison(period),
-        getFunnelData(period),
-        getSourceBreakdown(period),
-      ]);
-      return { donut, heatmap, accounts, funnel, sources };
-    });
-    res.json({ period, ...data });
+    res.json({ period, ...(await analyticsBundle(period)) });
   } catch (err) {
     next(err);
   }
@@ -82,41 +91,39 @@ router.get("/api/metrics", protect, async (req, res, next) => {
   }
 });
 
-// --- E4: "Bu hafta nima o'zgardi" (Haiku, kunlik kesh) ---
+// --- E4: "Bu hafta nima o'zgardi" (Haiku, kunlik kesh, bloklamaydi) ---
 const CHANGED_TTL_MS = 24 * 60 * 60 * 1000;
-let CHANGED_CACHE = { text: null, at: 0 };
 
 router.get("/api/whats-changed", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    const now = Date.now();
-    if (CHANGED_CACHE.text && now - CHANGED_CACHE.at < CHANGED_TTL_MS) {
-      return res.json({ text: CHANGED_CACHE.text, cachedAt: new Date(CHANGED_CACHE.at).toISOString() });
-    }
-    const [s, m] = await Promise.all([
-      getStatsForPeriod("7d"),
-      cachedAnalytics("metrics:7d", () => getMetrics("7d")),
-    ]);
-    const comparison = {
-      messages: s.messages, messagesPrev: s.prevRaw.messages,
-      activeContacts: s.contactsActive, activeContactsPrev: s.prevRaw.contactsActive,
-      newContacts: s.contactsNew, unanswered: m.unanswered, needsHuman: s.needsHuman,
-    };
-    let text = await getWhatsChanged(comparison);
-    // Haiku ba'zan markdown sarlavha qo'shadi — oddiy matnga tozalaymiz
-    text = (text || "")
-      .replace(/\*\*/g, "")
-      .replace(/^#+\s*/gm, "")
-      .replace(/^bu hafta nima o'zgardi[:\s]*/i, "")
-      .trim();
-    if (!text) {
-      const d = s.trends.messages;
-      text = `Bu hafta ${s.messages} ta xabar keldi` +
-        (d != null ? ` (o'tgan haftaga nisbatan ${d >= 0 ? "+" : ""}${d}%)` : "") +
-        `, ${s.contactsActive} mijoz faol bo'ldi, ${s.contactsNew} tasi yangi.`;
-    }
-    CHANGED_CACHE = { text, at: now };
-    res.json({ text, cachedAt: new Date(now).toISOString() });
+    const r = await swrCache("whats-changed", CHANGED_TTL_MS, async () => {
+      const [s, m] = await Promise.all([
+        getStatsForPeriod("7d"),
+        cachedAnalytics("metrics:7d", () => getMetrics("7d")),
+      ]);
+      const comparison = {
+        messages: s.messages, messagesPrev: s.prevRaw.messages,
+        activeContacts: s.contactsActive, activeContactsPrev: s.prevRaw.contactsActive,
+        newContacts: s.contactsNew, unanswered: m.unanswered, needsHuman: s.needsHuman,
+      };
+      let text = await getWhatsChanged(comparison);
+      // Haiku ba'zan markdown sarlavha qo'shadi — oddiy matnga tozalaymiz
+      text = (text || "")
+        .replace(/\*\*/g, "")
+        .replace(/^#+\s*/gm, "")
+        .replace(/^bu hafta nima o'zgardi[:\s]*/i, "")
+        .trim();
+      if (!text) {
+        const d = s.trends.messages;
+        text = `Bu hafta ${s.messages} ta xabar keldi` +
+          (d != null ? ` (o'tgan haftaga nisbatan ${d >= 0 ? "+" : ""}${d}%)` : "") +
+          `, ${s.contactsActive} mijoz faol bo'ldi, ${s.contactsNew} tasi yangi.`;
+      }
+      return { text };
+    });
+    if (r.pending) return res.json({ text: null, pending: true });
+    res.json({ text: r.data.text, cachedAt: r.cachedAt });
   } catch (err) {
     next(err);
   }
@@ -200,9 +207,8 @@ router.get("/api/export/report.csv", protect, async (req, res, next) => {
   }
 });
 
-// --- Bugungi AI xulosa (Haiku, 1 soatlik kesh — tejamkor) ---
+// --- Bugungi AI xulosa (Haiku, 1 soatlik kesh, bloklamaydi) ---
 const SUMMARY_TTL_MS = 60 * 60 * 1000;
-let SUMMARY_CACHE = { text: null, digest: null, at: 0 };
 
 function buildSummaryFallback(d) {
   const parts = [`Bugun ${d.todayMessages} ta xabar keldi`];
@@ -214,56 +220,73 @@ function buildSummaryFallback(d) {
   return text;
 }
 
+async function summaryPayload() {
+  const r = await swrCache("summary", SUMMARY_TTL_MS, async () => {
+    const digest = await getDailyDigest();
+    const text = (await getDailySummary(digest)) || buildSummaryFallback(digest);
+    return { text, digest };
+  });
+  if (r.pending) return { text: null, digest: null, pending: true };
+  return { text: r.data.text, digest: r.data.digest, cachedAt: r.cachedAt };
+}
+
 router.get("/api/summary", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    const now = Date.now();
-    if (SUMMARY_CACHE.text && now - SUMMARY_CACHE.at < SUMMARY_TTL_MS) {
-      return res.json({
-        text: SUMMARY_CACHE.text,
-        digest: SUMMARY_CACHE.digest,
-        cachedAt: new Date(SUMMARY_CACHE.at).toISOString(),
-      });
-    }
-    const digest = await getDailyDigest();
-    const text = (await getDailySummary(digest)) || buildSummaryFallback(digest);
-    SUMMARY_CACHE = { text, digest, at: now };
-    res.json({ text, digest, cachedAt: new Date(now).toISOString() });
+    res.json(await summaryPayload());
   } catch (err) {
     next(err);
   }
 });
 
-// --- D1: AI Insights (Haiku, 24 soatlik kesh — tejamkor) ---
+// --- Dashboard: hamma ma'lumot BITTA so'rovda (7 ta alohida fetch o'rniga) ---
+// summary (SWR kesh), stats, donut, oxirgi suhbatlar, akkauntlar — server ichida
+// parallel yig'iladi; sahifa bitta HTTP so'rov bilan to'liq chiziladi.
+router.get("/api/dashboard-data", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const period = normalizePeriod(req.query.period);
+    const [summary, stats, analytics, contacts, projects] = await Promise.all([
+      summaryPayload(),
+      statsShaped(period),
+      analyticsBundle(period),
+      listContacts(6, 0, null),
+      listProjects(),
+    ]);
+    res.json({ period, summary, stats, donut: analytics.donut, contacts, projects });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- D1: AI Insights (Haiku, 24 soatlik kesh, bloklamaydi) ---
 const INSIGHTS_TTL_MS = 24 * 60 * 60 * 1000;
-let INSIGHTS_CACHE = { data: null, at: 0, sample: 0 };
 
 router.get("/api/insights", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
     const force = req.query.refresh === "1";
-    const now = Date.now();
-    if (!force && INSIGHTS_CACHE.data && now - INSIGHTS_CACHE.at < INSIGHTS_TTL_MS) {
-      return res.json({
-        insights: INSIGHTS_CACHE.data,
-        sample: INSIGHTS_CACHE.sample,
-        cachedAt: new Date(INSIGHTS_CACHE.at).toISOString(),
-      });
-    }
-    const messages = await getRecentUserMessages(250);
-    if (!messages.length) {
-      return res.json({ insights: null, sample: 0, cachedAt: new Date(now).toISOString() });
-    }
-    const lines = messages
-      .map((m) => `[${m.contact_id}] ${m.name || m.ig_user_id}: ${String(m.text).slice(0, 120)}`)
-      .join("\n")
-      .slice(0, 18000);
-    const insights = await getInsights(lines);
-    if (!insights) {
+    const r = await swrCache(
+      "insights",
+      INSIGHTS_TTL_MS,
+      async () => {
+        const messages = await getRecentUserMessages(250);
+        if (!messages.length) return { insights: null, sample: 0 };
+        const lines = messages
+          .map((m) => `[${m.contact_id}] ${m.name || m.ig_user_id}: ${String(m.text).slice(0, 120)}`)
+          .join("\n")
+          .slice(0, 18000);
+        const insights = await getInsights(lines);
+        if (!insights) return null; // AI xato — keshlanmaydi, keyin qayta uriniladi
+        return { insights, sample: messages.length };
+      },
+      { force }
+    );
+    if (force && r.data == null) {
       return res.status(502).json({ error: "AI tahlilni tayyorlab bo'lmadi — birozdan keyin urinib ko'ring" });
     }
-    INSIGHTS_CACHE = { data: insights, at: now, sample: messages.length };
-    res.json({ insights, sample: messages.length, cachedAt: new Date(now).toISOString() });
+    if (r.pending) return res.json({ insights: null, sample: 0, pending: true });
+    res.json({ insights: r.data.insights, sample: r.data.sample, cachedAt: r.cachedAt });
   } catch (err) {
     next(err);
   }

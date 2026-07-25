@@ -127,6 +127,13 @@ export async function initDb() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- AI natijalar keshi (summary/insights — redeploy'da yo'qolmaydi)
+    CREATE TABLE IF NOT EXISTS ai_cache (
+      key        TEXT PRIMARY KEY,
+      data       JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- Sozlamalar (dashboard orqali boshqariladi, kalit-qiymat)
     CREATE TABLE IF NOT EXISTS settings (
       key        TEXT PRIMARY KEY,

@@ -22,6 +22,8 @@ import {
   renderBookingsPage,
   renderSalesPage,
   renderAbTestsPage,
+  renderConnectPage,
+  renderConnectInstagramPage,
 } from "../templates.js";
 
 const router = express.Router();
@@ -45,6 +47,11 @@ router.get("/dashboard/broadcast", protect, (req, res) => res.send(renderBroadca
 router.get("/dashboard/knowledge", protect, (req, res) => res.send(renderKnowledgePage()));
 router.get("/dashboard/keywords", protect, (req, res) => res.send(renderKeywordsPage()));
 router.get("/dashboard/accounts", protect, (req, res) => res.send(renderAccountsPage()));
+// 15: kanal tanlash → Instagram ulash (OAuth yoki qo'lda)
+router.get("/dashboard/connect", protect, (req, res) => res.send(renderConnectPage()));
+router.get("/dashboard/connect/instagram", protect, (req, res) =>
+  res.send(renderConnectInstagramPage())
+);
 router.get("/dashboard/settings", protect, (req, res) => res.send(renderSettingsPage()));
 
 export default router;

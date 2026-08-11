@@ -46,6 +46,7 @@ import usersRouter from "./api-users.js";
 import integrationsRouter from "./api-integrations.js";
 import contactsRouter from "./api-contacts.js";
 import replyRouter from "./api-reply.js";
+import oauthApiRouter from "./api-oauth.js";
 
 const router = express.Router();
 
@@ -64,6 +65,7 @@ router.use(usersRouter);
 router.use(integrationsRouter);
 router.use(contactsRouter);
 router.use(replyRouter);
+router.use(oauthApiRouter); // 15: OAuth holati va token uzaytirish
 
 router.get("/api/projects", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;

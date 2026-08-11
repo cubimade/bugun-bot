@@ -57,6 +57,21 @@ Tavsiya etiladi:
 | `DASHBOARD_PASSWORD` | `/dashboard` va API'ni parol bilan himoyalash (Basic Auth) |
 | `APP_SECRET` | Meta ilovaning **App Secret** qiymati — webhook imzosini (X-Hub-Signature-256) tekshirish uchun. Meta App Dashboard → Settings → Basic → App Secret. Qo'yilmasa imzo tekshirilmaydi (startupda ogohlantirish chiqadi) |
 
+### "Instagram bilan ulash" (OAuth) uchun
+
+Bu to'rttasi qo'yilmasa server ishlayveradi — faqat bir tugmali ulash o'chiq
+bo'ladi, akkauntni qo'lda token bilan qo'shish esa ishlayveradi.
+
+| O'zgaruvchi | Tavsif |
+|-------------|--------|
+| `IG_APP_ID` | **Instagram** App ID — Meta App ID EMAS! App Dashboard → Instagram → API setup with Instagram login → 3. Set up Instagram business login → Business login settings |
+| `IG_APP_SECRET` | O'sha bo'limdagi **Instagram** App Secret. `APP_SECRET` bilan almashtirmang — bular boshqa-boshqa qiymatlar |
+| `OAUTH_REDIRECT_URI` | `https://<domen>/auth/instagram/callback` — Meta panelidagi "Redirect URI" bilan **aynan** bir xil bo'lishi shart |
+| `BASE_URL` | `https://<domen>` — `OAUTH_REDIRECT_URI` berilmasa shundan yasaladi |
+
+> ⚠️ OAuth'da Meta App ID ishlatilsa `Invalid platform app` xatosi chiqadi.
+> Meta panelida Redirect URI'ni ham qo'shishni unutmang (Business login settings).
+
 Ixtiyoriy:
 
 | O'zgaruvchi | Standart | Tavsif |

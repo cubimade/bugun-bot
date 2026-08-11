@@ -340,6 +340,24 @@ export async function initDb() {
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT 'instagram';
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS tg_username TEXT;
 
+    -- 15: Instagram OAuth ("Instagram bilan ulash") — profil va token holati
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS ig_username TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS ig_name TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_source TEXT NOT NULL DEFAULT 'manual';
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_last_refreshed_at TIMESTAMPTZ;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS granted_scopes TEXT;
+    CREATE INDEX IF NOT EXISTS idx_projects_token_expires ON projects(token_expires_at);
+
+    -- OAuth CSRF himoyasi: bir martalik "state" qiymatlari (15 daqiqa yashaydi)
+    CREATE TABLE IF NOT EXISTS oauth_states (
+      state      TEXT PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      used       BOOLEAN NOT NULL DEFAULT false
+    );
+    CREATE INDEX IF NOT EXISTS idx_oauth_states_created ON oauth_states(created_at);
+
     -- 8.5: Sotuv voronkasi (kanban) — bosqich, summa
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'new';
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage_changed_at TIMESTAMPTZ;
@@ -414,6 +432,45 @@ export async function initDb() {
       ON contacts(followup_sent_count) WHERE NOT archived AND NOT bot_paused;
   `);
 
+  await ensureIgAccountUnique();
+
   console.log("✅ Database jadvallar tayyor (projects, contacts, messages).");
   return true;
+}
+
+// ------------------------------------------------------------
+//  15: ON CONFLICT (ig_account_id) ishlashi uchun UNIQUE shart kerak.
+//  Jadval boshidanoq UNIQUE bilan yaratilgan — bu faqat juda eski bazalar
+//  uchun himoya. ATAYLAB alohida so'rov va alohida try/catch: dublikat
+//  qiymatlar bo'lsa xato chiqadi, lekin butun migratsiya yiqilmasin.
+// ------------------------------------------------------------
+async function ensureIgAccountUnique() {
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+        WHERE t.relname = 'projects'
+          AND c.contype IN ('u', 'p')
+          AND pg_get_constraintdef(c.oid) LIKE '%(ig_account_id)%'
+        UNION ALL
+       SELECT 1
+         FROM pg_indexes
+        WHERE tablename = 'projects' AND indexdef LIKE '%UNIQUE%(ig_account_id)%'`
+    );
+    if (rows.length) return; // allaqachon bor
+
+    await pool.query(
+      `ALTER TABLE projects ADD CONSTRAINT projects_ig_account_id_key UNIQUE (ig_account_id)`
+    );
+    console.log("✅ projects.ig_account_id uchun UNIQUE shart qo'shildi.");
+  } catch (err) {
+    // Dublikat ig_account_id bo'lsa shu yerga tushamiz — eng yangisini
+    // qoldirib qolganini o'chirish kerak (qo'lda), aks holda OAuth upsert
+    // ishlamaydi. Server esa ishlayveradi.
+    console.error(
+      "⚠️ projects.ig_account_id UNIQUE qo'shilmadi (dublikat bo'lishi mumkin):",
+      err.message
+    );
+  }
 }

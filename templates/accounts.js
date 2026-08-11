@@ -14,6 +14,21 @@ export function renderAccountsPage() {
 
   const script = `
 let PROJECTS = [];
+// 15: OAuth sozlanganmi — "Qayta ulash" havolasini to'g'ri yo'naltirish uchun
+let OAUTH_READY = false;
+const RECONNECT_HREF = () => OAUTH_READY ? "/auth/instagram" : "/dashboard/connect/instagram";
+
+// Token muddati holati (15): 30+ kun yashil, 7–30 sariq, <7 yoki tugagan qizil.
+// token_expires_at faqat OAuth akkauntlarda bor — qo'lda tokenda muddat noma'lum.
+function tokenStatus(p) {
+  if (!p.token_expires_at) return null;
+  const days = Math.floor((new Date(p.token_expires_at).getTime() - Date.now()) / 86400000);
+  if (days <= 0) return { cls: "b-red", text: "Token tugagan — qayta ulash kerak", bad: true, days };
+  if (days < 7) return { cls: "b-red", text: "Yangilash kerak (" + days + " kun)", bad: true, days };
+  if (days <= 30) return { cls: "b-amber", text: "Tez orada tugaydi (" + days + " kun)", bad: false, days };
+  return { cls: "b-green", text: "Faol (" + days + " kun)", bad: false, days };
+}
+
 async function loadAccounts() {
   try {
     const { projects } = await api("/api/projects");
@@ -22,30 +37,64 @@ async function loadAccounts() {
       $("cards").innerHTML = \`<div class="card" style="grid-column:1/-1">\${emptyState("📱", "Hali akkaunt yo'q — birinchisini qo'shing")}</div>\`;
       return;
     }
-    $("cards").innerHTML = projects.map((p) => \`
+    $("cards").innerHTML = projects.map((p) => {
+      const isTg = p.platform === "telegram";
+      const ts = isTg ? null : tokenStatus(p);
+      const oauth = p.token_source === "oauth";
+      // Profil rasmi (OAuth bergan) yoki standart ikonka
+      const avatar = p.profile_picture_url
+        ? \`<img src="\${esc(p.profile_picture_url)}" alt="" width="40" height="40" referrerpolicy="no-referrer"
+             style="width:40px;height:40px;border-radius:12px;object-fit:cover;flex-shrink:0">\`
+        : \`<div class="stat-ic" style="background:\${isTg ? "linear-gradient(135deg,#0ea5e9,#6366f1)" : "linear-gradient(135deg,#f43f5e,#8b5cf6)"};font-size:19px">\${isTg ? "✈️" : "📸"}</div>\`;
+      const subtitle = isTg
+        ? "Telegram" + (p.tg_username ? " · @" + esc(p.tg_username) : "")
+        : (p.ig_username ? "@" + esc(p.ig_username) + " · " : "") + "ID: " + esc(p.ig_account_id || "asosiy loyiha");
+      return \`
       <div class="card hoverable glass-glow">
         <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">
-          <div class="stat-ic" style="background:\${p.platform === "telegram" ? "linear-gradient(135deg,#0ea5e9,#6366f1)" : "linear-gradient(135deg,#f43f5e,#8b5cf6)"};font-size:19px">\${p.platform === "telegram" ? "✈️" : "📸"}</div>
+          \${avatar}
           <div style="min-width:0;flex:1">
             <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
-            <span class="small muted">\${p.platform === "telegram" ? "Telegram" + (p.tg_username ? " · @" + esc(p.tg_username) : "") : "ID: " + esc(p.ig_account_id || "asosiy loyiha")}</span>
+            <span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${subtitle}</span>
           </div>
           <span title="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}" style="display:flex;align-items:center;gap:5px" class="small \${p.active ? "" : "muted"}">
             <span class="dot \${p.active ? "dot-green" : "dot-red"}"></span>\${p.active ? "faol" : "nofaol"}
           </span>
         </div>
+        \${isTg ? "" : \`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
+          <span class="badge \${oauth ? "b-green" : "b-gray"}" title="Ulanish turi">\${oauth ? "🔗 OAuth" : "✍️ Qo'lda"}</span>
+          \${ts ? \`<span class="badge \${ts.cls}" title="Token muddati">\${ts.text}</span>\` : ""}
+          \${p.token_hint ? \`<span class="badge b-gray" title="Token (faqat oxirgi 4 belgi ko'rsatiladi)">🔑 ••••\${esc(p.token_hint)}</span>\` : ""}
+        </div>\`}
         <div style="display:flex;gap:14px;margin-bottom:14px" class="small muted">
           <span>👥 \${p.contacts} mijoz</span>
           <span>💬 \${p.messages} xabar</span>
           <span>\${p.knowledge_base ? '🧠 <span style="color:#4ade80">bor</span>' : '🧠 bo\\'sh'}</span>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          \${p.platform === "telegram" ? "" : \`<button class="btn btn-sm" onclick="runDiagnostics(\${p.id})">🔍 Tekshirish</button>\`}
+          \${isTg ? "" : \`<button class="btn btn-sm" onclick="runDiagnostics(\${p.id})">🔍 Tekshirish</button>\`}
+          \${oauth ? \`<button class="btn btn-sm" id="rt\${p.id}" onclick="refreshTokenNow(\${p.id})">🔄 Tokenni uzaytirish</button>\` : ""}
+          \${ts && ts.bad ? \`<a class="btn btn-sm btn-primary" href="\${RECONNECT_HREF()}">↻ Qayta ulash</a>\` : ""}
           <a class="btn btn-sm" href="/dashboard/knowledge">🧠 Bilim bazasi</a>
           <button class="btn btn-sm btn-danger" onclick="confirmDelete(\${p.id})">🗑 O'chirish</button>
         </div>
-      </div>\`).join("");
+      </div>\`;
+    }).join("");
   } catch (e) { $("cards").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message); }
+}
+
+// 15: OAuth tokenini hozir uzaytirish (yana 60 kun)
+async function refreshTokenNow(id) {
+  const btn = $("rt" + id);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Uzaytirilmoqda...'; }
+  try {
+    const r = await postJson("/api/accounts/" + id + "/refresh-token", {});
+    toast("Token uzaytirildi ✓ — " + new Date(r.expiresAt).toLocaleDateString("uz-UZ") + " gacha");
+    loadAccounts();
+  } catch (e) {
+    toast("Uzaytirilmadi: " + e.message, false);
+    if (btn) { btn.disabled = false; btn.textContent = "🔄 Tokenni uzaytirish"; }
+  }
 }
 
 // ============================================================
@@ -287,12 +336,24 @@ async function doDelete(id) {
     closeModal(); loadAccounts();
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
-loadAccounts();`;
+// 15: OAuth sozlanganini bilib olamiz (xato bo'lsa ham sahifa ishlayveradi)
+api("/api/oauth/status").then((r) => { OAUTH_READY = !!r.configured; }).catch(() => {});
+
+loadAccounts();
+
+// 15: kanal tanlash ekranidan kelgan bo'lsak — kerakli oynani darhol ochamiz
+// (/dashboard/connect → "Telegram" yoki "qo'lda token kiritish" havolalari)
+(function openFromQuery() {
+  const what = new URLSearchParams(location.search).get("connect");
+  if (what === "telegram") addTelegramModal();
+  else if (what === "manual") addAccountModal();
+  if (what) history.replaceState(null, "", "/dashboard/accounts");
+})();`;
 
   return renderLayout({
     title: "Akkauntlar",
     active: "accounts",
-    headerAction: `<button class="btn" onclick="addTelegramModal()">✈️ Telegram bot</button> <button class="btn btn-primary" onclick="addAccountModal()">${ICONS.plus} Instagram akkaunt</button>`,
+    headerAction: `<a class="btn btn-primary" href="/dashboard/connect">${ICONS.plus} Kanal ulash</a>`,
     content,
     script,
   });

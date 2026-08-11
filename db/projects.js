@@ -28,7 +28,13 @@ export async function getOrCreateProject(name, igAccountId = null, accessToken =
      VALUES ($1, $2, $3)
      ON CONFLICT (ig_account_id) DO UPDATE
        SET name = EXCLUDED.name,
-           access_token = COALESCE(EXCLUDED.access_token, projects.access_token)
+           access_token = COALESCE(EXCLUDED.access_token, projects.access_token),
+           -- 15: qo'lda (yoki env orqali) token kiritilsa OAuth holati bekor
+           -- bo'ladi — kunlik uzaytirish qo'lda tokenni uzaytira olmaydi.
+           token_source = CASE WHEN EXCLUDED.access_token IS NOT NULL
+                               THEN 'manual' ELSE projects.token_source END,
+           token_expires_at = CASE WHEN EXCLUDED.access_token IS NOT NULL
+                                   THEN NULL ELSE projects.token_expires_at END
      RETURNING id`,
     [name, String(igAccountId), accessToken]
   );
@@ -60,7 +66,11 @@ export async function listProjects() {
   const { rows } = await pool.query(
     `SELECT p.id, p.name, p.ig_account_id, p.knowledge_base, p.created_at,
             p.platform, p.tg_username,
+            p.ig_username, p.ig_name, p.profile_picture_url,
+            p.token_source, p.token_expires_at, p.token_last_refreshed_at,
             (p.access_token IS NOT NULL) AS has_token,
+            -- Token HECH QACHON to'liq yuborilmaydi — faqat oxirgi 4 belgi
+            RIGHT(p.access_token, 4) AS token_hint,
             (SELECT COUNT(*)::int FROM contacts c WHERE c.project_id = p.id) AS contacts,
             (SELECT COUNT(*)::int FROM messages m
                JOIN contacts c ON c.id = m.contact_id

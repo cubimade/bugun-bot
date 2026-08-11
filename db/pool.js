@@ -115,6 +115,28 @@ export async function initDb() {
     ALTER TABLE keyword_rules ADD CONSTRAINT keyword_rules_match_type_check
       CHECK (match_type IN ('exact','contains','starts','regex'));
 
+    -- 16 (3.1c/d/e): kalit so'z qoidasi kuchaytirildi
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS media_urls JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS buttons JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS delay_sec INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS once_per_contact BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS work_hours_only BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS reply_count INTEGER NOT NULL DEFAULT 0;
+    -- Eski bitta media_url qiymati yangi massivga ko'chiriladi (bir marta)
+    UPDATE keyword_rules SET media_urls = to_jsonb(ARRAY[media_url])
+     WHERE media_url IS NOT NULL AND media_urls = '[]'::jsonb;
+
+    -- "Faqat bir marta" va "necha kishi javob berdi" uchun ishlash tarixi
+    CREATE TABLE IF NOT EXISTS keyword_rule_hits (
+      rule_id    INTEGER NOT NULL REFERENCES keyword_rules(id) ON DELETE CASCADE,
+      contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+      fired_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      replied    BOOLEAN NOT NULL DEFAULT false,
+      PRIMARY KEY (rule_id, contact_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_kw_hits_contact ON keyword_rule_hits(contact_id);
+
     -- 7.8: Avtomatik teglash qoidalari (so'z → teg)
     CREATE TABLE IF NOT EXISTS tag_rules (
       id          SERIAL PRIMARY KEY,

@@ -14,7 +14,15 @@ function timeAgo(d) {
 }
 async function api(path, opts) {
   const r = await fetch(path, opts);
-  if (!r.ok) { let m = "HTTP " + r.status; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
+  if (!r.ok) {
+    let m = "HTTP " + r.status, body = null;
+    try { body = await r.json(); m = body.error || m; } catch (e) {}
+    const err = new Error(m);
+    // 16: to'liq javob ham qo'shiladi (masalan flow tekshiruv xatolari ro'yxati)
+    err.body = body;
+    if (body && Array.isArray(body.problems)) err.problems = body.problems;
+    throw err;
+  }
   return r.json();
 }
 function postJson(path, body) {

@@ -363,6 +363,25 @@ function zoomBy(dz) {
 }
 
 // ---------- SAQLASH / SINASH ----------
+// 16 (3.2): tekshiruv natijalari — nima noto'g'ri va nima qilish kerak
+let FORCE_SAVE = false;
+function showFlowProblems(problems) {
+  openModal("⚠️ Saqlashdan oldin tekshiruv", \`
+    <p class="small muted" style="margin-bottom:10px">Quyidagilar flow ishga tushganda uni jimgina to'xtatib qo'yishi mumkin:</p>
+    <ul style="margin:0 0 14px 18px;line-height:1.9;font-size:13.5px">
+      \${problems.map((p) => "<li>" + esc(p) + "</li>").join("")}
+    </ul>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+      <button class="btn" onclick="closeModal()">Tuzataman</button>
+      <button class="btn btn-danger" onclick="forceSave()">Baribir saqlash</button>
+    </div>\`);
+}
+async function forceSave() {
+  FORCE_SAVE = true;
+  closeModal();
+  await saveAll(null);
+}
+
 async function saveAll(btn) {
   if (btn) btn.disabled = true;
   try {
@@ -375,11 +394,18 @@ async function saveAll(btn) {
     await postJson("/api/flows/" + FLOW_ID + "/graph", {
       nodes: NODES.map(function (n) { return { ref: n.ref, type: n.type, config: n.config, x: n.x, y: n.y }; }),
       edges: EDGES,
+      force: FORCE_SAVE,
     });
+    FORCE_SAVE = false;
     DIRTY = false;
     toast("Flow saqlandi ✓");
     await load(); // server ID'lari bilan qayta sinxron
-  } catch (e) { toast("Xatolik: " + e.message, false); }
+  } catch (e) {
+    // 16 (3.2): tekshiruv xatolari — ro'yxat qilib ko'rsatiladi, "baribir saqlash" bor
+    const problems = e.problems || (window.__lastProblems || null);
+    if (problems && problems.length) showFlowProblems(problems);
+    else toast("Xatolik: " + e.message, false);
+  }
   if (btn) btn.disabled = false;
 }
 async function testFlow() {

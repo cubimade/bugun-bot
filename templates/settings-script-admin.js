@@ -19,8 +19,8 @@ function renderTagRules() {
     <div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);\${r.is_active ? "" : "opacity:.5"}">
       <span class="small" style="flex:1;min-width:0">"<strong>\${esc(r.keyword)}</strong>" → <span class="badge b-indigo">\${esc(r.tag_name)}</span>
         <span class="muted">\${r.project_name ? "· " + esc(r.project_name) : ""}</span></span>
-      <button class="btn btn-sm" onclick="toggleTagRule(\${r.id}, \${!r.is_active})" title="\${r.is_active ? "To'xtatish" : "Yoqish"}">\${r.is_active ? "⏸" : "▶️"}</button>
-      <button class="btn btn-sm" onclick="delTagRule(\${r.id})" title="O'chirish">🗑</button>
+      <button class="btn btn-sm" onclick="toggleTagRule(\${r.id}, \${!r.is_active})" data-tip="\${r.is_active ? "To'xtatish" : "Yoqish"}">\${r.is_active ? "⏸" : "▶️"}</button>
+      <button class="btn btn-sm" onclick="delTagRule(\${r.id})" data-tip="O'chirish">🗑</button>
     </div>\`).join("");
 }
 async function addTagRule(btn) {
@@ -92,7 +92,7 @@ async function loadQuickReplies() {
           <strong class="small" style="display:block">\${esc(r.title)}</strong>
           <span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(r.text)}</span>
         </div>
-        <button class="btn btn-sm btn-danger" onclick="deleteQuickReply(\${r.id})" title="O'chirish">✕</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteQuickReply(\${r.id})" data-tip="O'chirish">✕</button>
       </div>\`).join("");
   } catch (e) { $("qrList").innerHTML = emptyState("⚡", "Yuklanmadi: " + e.message); }
 }
@@ -149,8 +149,8 @@ function renderUsers() {
         '<span class="badge ' + (u.role === "owner" ? "b-green" : u.role === "admin" ? "b-indigo" : "b-gray") + '">' + ROLE_LBL[u.role] + "</span>" +
         (u.role === "operator" ? ' <span class="muted small">' + (projs.length ? "akkauntlar: " + esc(projs.join(", ")) : "barcha akkauntlar") + "</span>" : "") +
         (u.last_login ? ' <span class="muted small">· oxirgi kirish: ' + timeAgo(u.last_login) + "</span>" : "") + "</span>" +
-      (u.role !== "owner" ? '<button class="btn btn-sm" onclick="editUserProjects(' + u.id + ')" title="Akkauntlarni biriktirish">📱</button>' : "") +
-      '<button class="btn btn-sm" onclick="resetUserPassword(' + u.id + ')" title="Parolni yangilash">🔑</button>' +
+      (u.role !== "owner" ? '<button class="btn btn-sm" onclick="editUserProjects(' + u.id + ')" data-tip="Akkauntlarni biriktirish">📱</button>' : "") +
+      '<button class="btn btn-sm" onclick="resetUserPassword(' + u.id + ')" data-tip="Parolni yangilash">🔑</button>' +
       (u.role !== "owner" ? '<button class="btn btn-sm" onclick="toggleUser(' + u.id + "," + !u.is_active + ')">' + (u.is_active ? "⏸" : "▶️") + "</button>" +
         '<button class="btn btn-sm" onclick="delUser(' + u.id + ')">🗑</button>' : "") +
     "</div>";
@@ -249,7 +249,7 @@ async function loadWebhooks() {
       return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;' + (w.is_active ? "" : "opacity:.5") + '">' +
         '<span class="small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(w.url) +
         ' <span class="muted">(' + (w.events || []).map(function (e) { return EV_LBL[e] || e; }).join(", ") + ")</span></span>" +
-        '<button class="btn btn-sm" onclick="testWebhook(' + w.id + ')" title="Test yuborish">🧪</button>' +
+        '<button class="btn btn-sm" onclick="testWebhook(' + w.id + ')" data-tip="Test yuborish">🧪</button>' +
         '<button class="btn btn-sm" onclick="toggleWebhook(' + w.id + "," + !w.is_active + ')">' + (w.is_active ? "⏸" : "▶️") + "</button>" +
         '<button class="btn btn-sm" onclick="delWebhook(' + w.id + ')">🗑</button></div>';
     }).join("") : '<span class="small muted">Hali webhook yo\\'q</span>';

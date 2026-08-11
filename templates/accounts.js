@@ -57,14 +57,14 @@ async function loadAccounts() {
             <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
             <span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${subtitle}</span>
           </div>
-          <span title="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}" style="display:flex;align-items:center;gap:5px" class="small \${p.active ? "" : "muted"}">
+          <span data-tip="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}" style="display:flex;align-items:center;gap:5px" class="small \${p.active ? "" : "muted"}">
             <span class="dot \${p.active ? "dot-green" : "dot-red"}"></span>\${p.active ? "faol" : "nofaol"}
           </span>
         </div>
         \${isTg ? "" : \`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
-          <span class="badge \${oauth ? "b-green" : "b-gray"}" title="Ulanish turi">\${oauth ? "🔗 OAuth" : "✍️ Qo'lda"}</span>
-          \${ts ? \`<span class="badge \${ts.cls}" title="Token muddati">\${ts.text}</span>\` : ""}
-          \${p.token_hint ? \`<span class="badge b-gray" title="Token (faqat oxirgi 4 belgi ko'rsatiladi)">🔑 ••••\${esc(p.token_hint)}</span>\` : ""}
+          <span class="badge \${oauth ? "b-green" : "b-gray"}" data-tip="Ulanish turi">\${oauth ? "🔗 OAuth" : "✍️ Qo'lda"}</span>
+          \${ts ? \`<span class="badge \${ts.cls}" data-tip="Token muddati">\${ts.text}</span>\` : ""}
+          \${p.token_hint ? \`<span class="badge b-gray" data-tip="Token (faqat oxirgi 4 belgi ko'rsatiladi)">🔑 ••••\${esc(p.token_hint)}</span>\` : ""}
         </div>\`}
         <div style="display:flex;gap:14px;margin-bottom:14px" class="small muted">
           <span>👥 \${p.contacts} mijoz</span>

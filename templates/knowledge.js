@@ -151,7 +151,7 @@ async function reviewKb(btn) {
           </div>
           <div style="flex:1;min-width:180px;display:flex;gap:8px;flex-wrap:wrap">
             \${Object.keys(SECTION_LABELS).map((k) =>
-              \`<span class="badge" title="\${SECTION_LABELS[k]}">\${SECTION_ICONS[(r.sections || {})[k]] || "❔"} \${SECTION_LABELS[k]}</span>\`).join("")}
+              \`<span class="badge" data-tip="\${SECTION_LABELS[k]}">\${SECTION_ICONS[(r.sections || {})[k]] || "❔"} \${SECTION_LABELS[k]}</span>\`).join("")}
           </div>
         </div>
         \${(r.tips || []).length ? \`

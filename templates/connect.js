@@ -113,7 +113,7 @@ export function renderConnectInstagramPage() {
   // Env sozlanmagan bo'lsa: tugma o'chirilgan + sabab tooltip'da
   const mainBtn = ready
     ? `<a class="btn-ig-connect" href="/auth/instagram">${IG_GLYPH} Instagram bilan davom etish</a>`
-    : `<span class="btn-ig-connect" aria-disabled="true" title="${esc(missing)} sozlanmagan">
+    : `<span class="btn-ig-connect" aria-disabled="true" data-tip="${esc(missing)} sozlanmagan">
          ${IG_GLYPH} Instagram bilan davom etish</span>
        <div class="card" style="padding:11px 13px;margin-top:11px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)">
          <div class="small"><strong>⚠️ ${esc(missing)} sozlanmagan</strong>

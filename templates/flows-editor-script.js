@@ -75,7 +75,7 @@ function renderNodes() {
     return '<div class="fnode' + (SEL === n.ref ? " sel" : "") + '" data-ref="' + n.ref + '" style="left:' + n.x + "px;top:" + n.y + 'px">' +
       '<div class="fdot-in" data-ref="' + n.ref + '"></div>' +
       '<div class="fnode-head">' + m.emoji + " " + m.label +
-        '<span class="fx" data-del="' + n.ref + '" title="O\\'chirish">✕</span></div>' +
+        '<span class="fx" data-del="' + n.ref + '" data-tip="O\\'chirish">✕</span></div>' +
       '<div class="fnode-body"><div class="fnode-sum">' + summary(n) + "</div>" + pr + "</div>" +
     "</div>";
   }).join("");

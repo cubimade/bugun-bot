@@ -95,7 +95,7 @@ function renderPeriodSeg(el, onChange) {
 function trendBadge(pct) {
   if (pct == null) return "";
   const up = pct >= 0;
-  return '<span class="trend ' + (up ? "up" : "down") + '" title="o\'tgan davrga nisbatan">' +
+  return '<span class="trend ' + (up ? "up" : "down") + '" data-tip="o\'tgan davrga nisbatan">' +
     (up ? "↑ +" : "↓ ") + pct + "%</span>";
 }
 // Sparkline — 7 kunlik mini-grafik (sof SVG, 40px, gradient)
@@ -121,7 +121,7 @@ function updateThemeBtns() {
   const t = document.documentElement.getAttribute("data-theme");
   document.querySelectorAll(".theme-btn").forEach((b) => {
     b.textContent = t === "dark" ? "\u2600\uFE0F" : "\uD83C\uDF19";
-    b.title = t === "dark" ? "Yorug' rejim" : "Tungi rejim";
+    b.setAttribute("data-tip", t === "dark" ? "Yorug' rejim" : "Tungi rejim");
   });
 }
 function toggleTheme() {
@@ -131,21 +131,47 @@ function toggleTheme() {
   updateThemeBtns();
 }
 updateThemeBtns();
-// Kursorni kuzatuvchi glow (A5) — delegation + throttle (50ms):
-// har mousemove'da emas, sekundiga ~20 marta — sekin qurilmalarda qotmaydi.
-// perf-lite rejimida (kuchsiz qurilma) umuman ishlamaydi — CSS ham o'chirilgan.
-let GLOW_LAST = 0;
-document.addEventListener("mousemove", (e) => {
-  if (document.documentElement.classList.contains("perf-lite")) return;
-  const now = Date.now();
-  if (now - GLOW_LAST < 50) return;
-  GLOW_LAST = now;
-  const card = e.target.closest && e.target.closest(".glass-glow");
-  if (!card) return;
-  const r = card.getBoundingClientRect();
-  card.style.setProperty("--mx", (e.clientX - r.left) + "px");
-  card.style.setProperty("--my", (e.clientY - r.top) + "px");
+// ===== Tooltip (ROADMAP-16 1.2) =====
+// Kursorni kuzatuvchi ko'k glow OLIB TASHLANDI (foydalanuvchi "keraksiz" dedi).
+// O'rniga: brauzerning native title tooltip'i o'rniga o'z bubble'imiz.
+// Elementlarda title= emas, data-tip= ishlatiladi.
+let TIP_EL = null;
+function hideTip() {
+  if (TIP_EL) TIP_EL.classList.remove("show");
+}
+function showTip(target) {
+  const text = target.getAttribute("data-tip");
+  if (!text) return;
+  if (!TIP_EL) {
+    TIP_EL = document.createElement("div");
+    TIP_EL.className = "tip-bubble";
+    document.body.appendChild(TIP_EL);
+  }
+  TIP_EL.textContent = text;
+  TIP_EL.classList.add("show");
+  // Joylashuv: element ustida markazda, ekrandan chiqib ketmasin
+  const r = target.getBoundingClientRect();
+  const b = TIP_EL.getBoundingClientRect();
+  let left = r.left + r.width / 2 - b.width / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - b.width - 8));
+  let top = r.top - b.height - 8;
+  if (top < 8) top = r.bottom + 8; // joy bo'lmasa — ostiga
+  TIP_EL.style.left = Math.round(left) + "px";
+  TIP_EL.style.top = Math.round(top) + "px";
+}
+document.addEventListener("mouseover", (e) => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (t) showTip(t);
 });
+document.addEventListener("mouseout", (e) => {
+  if (e.target.closest && e.target.closest("[data-tip]")) hideTip();
+});
+document.addEventListener("focusin", (e) => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (t) showTip(t);
+});
+document.addEventListener("focusout", hideTip);
+window.addEventListener("scroll", hideTip, true);
 
 // ===== Kontakt profili (drawer) =====
 let PROFILE = null;
@@ -199,7 +225,7 @@ function renderProfile() {
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px">
       <a class="btn btn-primary" href="/dashboard/inbox?contact=${c.id}" style="flex:1;min-width:150px">💬 Suhbatga o'tish</a>
       <button class="btn" onclick="toggleProfilePause()">${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
-      <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" title="Butunlay o'chirish (GDPR)">🗑</button>
+      <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" data-tip="Butunlay o'chirish (GDPR)">🗑</button>
     </div>`;
 }
 // 10.6: AI yig'gan mijoz profili (drawer'da)

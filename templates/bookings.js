@@ -144,9 +144,9 @@ function renderBookings() {
           ' · <span class="muted">' + b.duration_min + " daq · " + esc(b.project_name || "") + "</span>" +
         "</span>" +
         '<span style="display:flex;gap:5px">' +
-          (b.status !== "confirmed" && b.status !== "done" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'confirmed\\')" title="Tasdiqlash">✅</button>' : "") +
-          (b.status !== "done" && b.status !== "cancelled" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'done\\')" title="Bo\\'ldi">🏁</button>' : "") +
-          (b.status !== "cancelled" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'cancelled\\')" title="Bekor qilish">❌</button>' : "") +
+          (b.status !== "confirmed" && b.status !== "done" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'confirmed\\')" data-tip="Tasdiqlash">✅</button>' : "") +
+          (b.status !== "done" && b.status !== "cancelled" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'done\\')" data-tip="Bo\\'ldi">🏁</button>' : "") +
+          (b.status !== "cancelled" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'cancelled\\')" data-tip="Bekor qilish">❌</button>' : "") +
         "</span>" +
       "</div></div>";
   }).join("");

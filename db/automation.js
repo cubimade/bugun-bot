@@ -40,6 +40,21 @@ export async function insertKeywordRule({ projectId, keyword, matchType, replyTe
   return rows[0].id;
 }
 
+// ROADMAP-16 (1.1): shu kalit so'z shu akkaunt uchun allaqachon bormi?
+// Bazada UNIQUE cheklov YO'Q — dublikat jimgina qo'shilib, ikkita bir xil
+// qoida bir-birini "bosib" turardi. Endi oldindan tekshiramiz va
+// foydalanuvchiga aniq sabab aytamiz.
+export async function keywordRuleExists(projectId, keyword) {
+  const { rows } = await pool.query(
+    `SELECT id FROM keyword_rules
+      WHERE lower(keyword) = lower($1)
+        AND project_id IS NOT DISTINCT FROM $2
+      LIMIT 1`,
+    [keyword, projectId || null]
+  );
+  return rows.length > 0;
+}
+
 export async function updateKeywordRule(id, { keyword, matchType, replyText, mediaUrl, isActive }) {
   await pool.query(
     `UPDATE keyword_rules
@@ -62,13 +77,35 @@ export async function incrementKeywordHit(id) {
 }
 
 // Matnga mos qoidani topish (exact ustuvor, keyin uzun keyword'lar)
+// ROADMAP-16 (3.1b): 4 ta moslik turi — exact | contains | starts | regex.
+// Xato regex bot ishini TO'XTATMASLIGI kerak — try/catch bilan o'tkazib yuboriladi.
 export function matchKeywordRule(rules, text) {
-  const t = String(text || "").trim().toLowerCase();
+  const raw = String(text || "").trim();
+  const t = raw.toLowerCase();
   if (!t) return null;
   for (const r of rules) {
-    const k = r.keyword.trim().toLowerCase();
+    const k = String(r.keyword || "").trim();
     if (!k) continue;
-    if (r.match_type === "exact" ? t === k : t.includes(k)) return r;
+    const low = k.toLowerCase();
+    let hit = false;
+    switch (r.match_type) {
+      case "exact":
+        hit = t === low;
+        break;
+      case "starts":
+        hit = t.startsWith(low);
+        break;
+      case "regex":
+        try {
+          hit = new RegExp(k, "i").test(raw);
+        } catch {
+          hit = false; // buzuq regex — qoida shunchaki ishlamaydi, bot yiqilmaydi
+        }
+        break;
+      default: // "contains"
+        hit = t.includes(low);
+    }
+    if (hit) return r;
   }
   return null;
 }

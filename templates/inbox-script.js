@@ -249,13 +249,13 @@ function renderList() {
       \${avatar(c.name || c.ig_user_id, 40)}
       <div style="min-width:0;flex:1">
         <div style="display:flex;align-items:center;gap:6px">
-          <span title="\${c.platform === "telegram" ? "Telegram" : "Instagram"}" style="font-size:11px">\${c.platform === "telegram" ? "✈️" : "📷"}</span>
+          <span data-tip="\${c.platform === "telegram" ? "Telegram" : "Instagram"}" style="font-size:11px">\${c.platform === "telegram" ? "✈️" : "📷"}</span>
           <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">\${esc(c.name || c.ig_user_id)}</strong>
-          \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
-          \${c.bot_paused ? '<span title="Bot pauzada — operator gaplashadi">🔕</span>' : ""}
-          \${c.sentiment === "negative" ? '<span title="Salbiy kayfiyat — tez aralashing!">😟</span>' : ""}
-          \${c.has_story ? '<span title="Story\\'ga javob yozgan">📸</span>' : ""}
-          \${c.language && c.language !== "uz" ? '<span title="Mijoz tili">' + (c.language === "ru" ? "🇷🇺" : "🇬🇧") + "</span>" : ""}
+          \${c.needs_human ? '<span data-tip="Odam kerak">🙋</span>' : ""}
+          \${c.bot_paused ? '<span data-tip="Bot pauzada — operator gaplashadi">🔕</span>' : ""}
+          \${c.sentiment === "negative" ? '<span data-tip="Salbiy kayfiyat — tez aralashing!">😟</span>' : ""}
+          \${c.has_story ? '<span data-tip="Story\\'ga javob yozgan">📸</span>' : ""}
+          \${c.language && c.language !== "uz" ? '<span data-tip="Mijoz tili">' + (c.language === "ru" ? "🇷🇺" : "🇬🇧") + "</span>" : ""}
         </div>
         <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(c.last_text || "—")}</div>
       </div>
@@ -296,20 +296,20 @@ function renderChatHead() {
         \${c.needs_human ? '<span class="badge b-amber">🙋 odam kerak</span>' : ""}
         \${c.bot_paused ? '<span class="badge b-amber">🔕 bot pauzada</span>' : ""}
         \${sentimentBadge(c.sentiment)}
-        \${c.language ? '<span class="badge b-gray" title="Mijoz tili">' + (c.language === "ru" ? "🇷🇺 RU" : c.language === "en" ? "🇬🇧 EN" : "🇺🇿 UZ") + "</span>" : ""}
+        \${c.language ? '<span class="badge b-gray" data-tip="Mijoz tili">' + (c.language === "ru" ? "🇷🇺 RU" : c.language === "en" ? "🇬🇧 EN" : "🇺🇿 UZ") + "</span>" : ""}
       </div>
       <div class="small muted" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         \${esc(c.project_name || "")} · ID: \${esc(c.ig_user_id)}
         <span id="tagBadges">\${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join(" ")}</span>
       </div>
     </div>
-    <button class="btn btn-sm" onclick="togglePause()" title="\${c.bot_paused ? "Bot bu suhbatda yana javob beradi" : "Bot bu suhbatda javob bermaydi — siz gaplashasiz"}">\${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
+    <button class="btn btn-sm" onclick="togglePause()" data-tip="\${c.bot_paused ? "Bot bu suhbatda yana javob beradi" : "Bot bu suhbatda javob bermaydi — siz gaplashasiz"}">\${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
     <button class="btn btn-sm" onclick="openProfile(SELECTED)">👤 Profil</button>
-    <button class="btn btn-sm" onclick="openTagEditor()" title="Teg qo'shish">🏷</button>
-    <button class="btn btn-sm" onclick="openAssign()" title="Operatorga biriktirish">👤➕</button>
-    <button class="btn btn-sm" onclick="openInternalNotes()" title="Ichki izohlar (mijoz ko'rmaydi)" style="background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)">📝</button>
-    <button class="btn btn-sm" onclick="toggleArchive()" title="\${c.archived ? "Arxivdan chiqarish" : "Inbox'dan yashirish (o'chirilmaydi)"}">\${c.archived ? "📤 Chiqarish" : "🗄 Arxivlash"}</button>
-    \${c.needs_human ? '<button class="btn btn-sm" onclick="resolveHuman()" title="Hal qilindi deb belgilash">✓ Hal qilindi</button>' : ""}\`;
+    <button class="btn btn-sm" onclick="openTagEditor()" data-tip="Teg qo'shish">🏷</button>
+    <button class="btn btn-sm" onclick="openAssign()" data-tip="Operatorga biriktirish">👤➕</button>
+    <button class="btn btn-sm" onclick="openInternalNotes()" data-tip="Ichki izohlar (mijoz ko'rmaydi)" style="background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.4)">📝</button>
+    <button class="btn btn-sm" onclick="toggleArchive()" data-tip="\${c.archived ? "Arxivdan chiqarish" : "Inbox'dan yashirish (o'chirilmaydi)"}">\${c.archived ? "📤 Chiqarish" : "🗄 Arxivlash"}</button>
+    \${c.needs_human ? '<button class="btn btn-sm" onclick="resolveHuman()" data-tip="Hal qilindi deb belgilash">✓ Hal qilindi</button>' : ""}\`;
 }
 // D4: suhbatni arxivlash — inbox'dan yashiriladi, lekin o'chmaydi
 async function toggleArchive() {
@@ -335,8 +335,8 @@ function renderMessages(messages, highlightNew) {
     // D5: bot javobi ostida 👍/👎 (operator javobida emas)
     const rate = m.role === "assistant" && !op && m.id ? \`
       <div class="rate-row">
-        <button class="rate-btn\${m.rating === 1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === 1 ? 0 : 1})" title="Yaxshi javob">👍</button>
-        <button class="rate-btn\${m.rating === -1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === -1 ? 0 : -1})" title="Yomon javob">👎</button>
+        <button class="rate-btn\${m.rating === 1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === 1 ? 0 : 1})" data-tip="Yaxshi javob">👍</button>
+        <button class="rate-btn\${m.rating === -1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === -1 ? 0 : -1})" data-tip="Yomon javob">👎</button>
       </div>\` : "";
     const srcTag = m.source === "story_reply" ? '<div class="op-tag" style="color:var(--accent-2)">📸 Story javobi</div>'
       : m.source === "comment" ? '<div class="op-tag">💬 Komment</div>'

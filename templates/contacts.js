@@ -107,8 +107,8 @@ function renderTable() {
           \${avatar(c.name || c.ig_user_id, 34)}
           <span style="min-width:0">
             <strong style="display:flex;align-items:center;gap:6px">\${esc(c.name || c.ig_user_id)}
-              \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
-              \${c.bot_paused ? '<span title="Bot pauzada">🔕</span>' : ""}
+              \${c.needs_human ? '<span data-tip="Odam kerak">🙋</span>' : ""}
+              \${c.bot_paused ? '<span data-tip="Bot pauzada">🔕</span>' : ""}
               \${c.unread ? \`<span class="badge" style="background:var(--grad);color:#fff">\${c.unread}</span>\` : ""}</strong>
             <span class="small muted">ID: \${esc(c.ig_user_id)}</span>
           </span>
@@ -119,12 +119,12 @@ function renderTable() {
         <span style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
           \${c.segment && SEG_BADGE[c.segment] ? \`<span class="badge \${c.segment === "vip" ? "b-green" : c.segment === "faol" ? "b-indigo" : "b-gray"}">\${SEG_BADGE[c.segment]}</span>\` : ""}
           \${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join("")}
-          <button class="chip-add" onclick="openTagEditor(\${c.id})" title="Teg qo'shish/o'chirish"
+          <button class="chip-add" onclick="openTagEditor(\${c.id})" data-tip="Teg qo'shish/o'chirish"
             style="background:none;border:1px dashed var(--border);border-radius:999px;color:var(--muted);font-size:11px;padding:2px 8px;cursor:pointer">+ teg</button>
         </span>
       </td>
       <td style="text-align:center">\${c.msg_count}</td>
-      <td class="small muted" title="\${fmt(c.last_seen)}">\${timeAgo(c.last_seen)}</td>
+      <td class="small muted" data-tip="\${fmt(c.last_seen)}">\${timeAgo(c.last_seen)}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm" onclick="openProfile(\${c.id})">👤 Profil</button>
         <a class="btn btn-sm" href="/dashboard/inbox?contact=\${c.id}">💬 Suhbat</a>
@@ -193,7 +193,7 @@ loadData();`;
   return renderLayout({
     title: "Kontaktlar",
     active: "contacts",
-    headerAction: `<button class="btn" onclick="showDuplicates()" title="Bir xil telefon/emailli kontaktlar">🧹 Duplikatlar</button> <button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" title="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
+    headerAction: `<button class="btn" onclick="showDuplicates()" data-tip="Bir xil telefon/emailli kontaktlar">🧹 Duplikatlar</button> <button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" data-tip="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" data-tip="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
     content,
     script,
   });

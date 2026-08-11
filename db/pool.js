@@ -109,6 +109,12 @@ export async function initDb() {
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS followup_sent_count INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS followup_paused BOOLEAN NOT NULL DEFAULT false;
 
+    -- 16 (3.1b): moslik turlari kengaytirildi — starts va regex qo'shildi.
+    -- Eski CHECK faqat exact/contains ga ruxsat berardi, yangi tur saqlanmasdi.
+    ALTER TABLE keyword_rules DROP CONSTRAINT IF EXISTS keyword_rules_match_type_check;
+    ALTER TABLE keyword_rules ADD CONSTRAINT keyword_rules_match_type_check
+      CHECK (match_type IN ('exact','contains','starts','regex'));
+
     -- 7.8: Avtomatik teglash qoidalari (so'z → teg)
     CREATE TABLE IF NOT EXISTS tag_rules (
       id          SERIAL PRIMARY KEY,

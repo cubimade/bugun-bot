@@ -80,7 +80,32 @@ small, .small { font-size: 12px; }
 ::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-track { background: transparent; }
-::selection { background: rgba(99,102,241,.3); }
+::selection { background: rgba(168,85,247,.28); color: inherit; }
+
+/* ---------- Fokus halqasi (ROADMAP-16 1.2) ----------
+   Brauzerning standart KO'K ramkasi o'chirildi. :focus-visible qoladi —
+   klaviatura bilan yuruvchi ko'radi, sichqoncha bilan bosganda chiqmaydi. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ---------- O'z tooltip'imiz (ROADMAP-16 1.2) ----------
+   Brauzerning xunuk native tooltip'i o'rniga (title= → data-tip=).
+   Bubble body'ga JS orqali qo'yiladi — kartochkalardagi ::after/::before
+   bezaklari bilan urishmaydi. */
+.tip-bubble {
+  position: fixed; z-index: 200; pointer-events: none;
+  max-width: 260px; padding: 6px 10px; border-radius: 9px;
+  background: var(--surface-2, rgba(20,22,34,.96));
+  border: 1px solid var(--glass-border);
+  color: var(--text-1); font-size: 12.5px; line-height: 1.5;
+  box-shadow: 0 10px 30px rgba(0,0,0,.32);
+  opacity: 0; transform: translateY(3px); transition: opacity .14s ease, transform .14s ease;
+}
+.tip-bubble.show { opacity: 1; transform: translateY(0); }
 
 /* ---------- Layout ---------- */
 .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 240px; background: var(--surface-1); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%); border-right: 1px solid var(--glass-border); display: flex; flex-direction: column; z-index: 50; transition: transform .25s ease, background .3s ease; }
@@ -139,12 +164,10 @@ small, .small { font-size: 12px; }
 }
 
 /* KURSORNI KUZATUVCHI GLOW (A5) */
-.glass-glow::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; transition: opacity .3s;
-  background: radial-gradient(220px circle at var(--mx) var(--my), rgba(99,102,241,.15), transparent 60%);
-  pointer-events: none;
-}
-.glass-glow:hover::after { opacity: 1; }
+/* ROADMAP-16 (1.2): kursor ortidan yuruvchi KO'K radial nur olib tashlandi —
+   foydalanuvchi "kursor olib borilganda ko'k narsa chiqadi, keraksiz" dedi.
+   .glass-glow klassi markupda qoldirildi (hover ko'tarilishi .hoverable'dan
+   keladi), faqat ko'k dog' chizilmaydi. */
 
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 16px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--input-bg); color: var(--text-1); font-weight: 500; cursor: pointer; transition: border-color .18s ease, filter .18s ease, background .18s ease, transform .18s ease; white-space: nowrap; }
 .btn:hover { border-color: var(--border-glow); background: var(--hover-bg); transform: scale(1.02); }
@@ -338,7 +361,6 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
   background: var(--fallback-bg);
 }
 .perf-lite .modal-back, .perf-lite .drawer-back { backdrop-filter: none; -webkit-backdrop-filter: none; }
-.perf-lite .glass-glow::after { display: none; }
 .perf-lite .stagger > * { animation: none; }
 .perf-lite .content { animation: none; }
 .perf-lite .glass:hover, .perf-lite .card.hoverable:hover { transform: none; }

@@ -129,7 +129,7 @@ function renderGbRows() {
         oninput="GB_ROWS[\${i}].title=this.value">
       <textarea class="input" rows="2" maxlength="900" placeholder="Bosilganda yuboriladigan javob"
         oninput="GB_ROWS[\${i}].reply=this.value">\${esc(b.reply || "")}</textarea>
-      <button class="btn btn-sm" onclick="GB_ROWS.splice(\${i},1);renderGbRows()" title="O'chirish">🗑</button>
+      <button class="btn btn-sm" onclick="GB_ROWS.splice(\${i},1);renderGbRows()" data-tip="O'chirish">🗑</button>
     </div>\`).join("");
 }
 function addGbRow() {

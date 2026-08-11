@@ -71,9 +71,9 @@ export function renderInboxPage() {
       <div class="chat-head" id="chatHead" style="display:none"></div>
       <div class="chat-msgs" id="chatMsgs" style="display:none"></div>
       <div class="composer" id="composer" style="display:none">
-        <button class="btn" onclick="openQuickReplies()" title="Tezkor javoblar" style="padding:9px 12px">⚡</button>
-        <button class="btn" onclick="openMediaPicker()" title="Media yuborish" style="padding:9px 12px">📎</button>
-        <button class="btn" onclick="openPaymentModal()" title="To'lov havolasi yuborish" style="padding:9px 12px">💳</button>
+        <button class="btn" onclick="openQuickReplies()" data-tip="Tezkor javoblar" style="padding:9px 12px">⚡</button>
+        <button class="btn" onclick="openMediaPicker()" data-tip="Media yuborish" style="padding:9px 12px">📎</button>
+        <button class="btn" onclick="openPaymentModal()" data-tip="To'lov havolasi yuborish" style="padding:9px 12px">💳</button>
         <textarea class="input" id="replyText" rows="1" placeholder="Qo'lda javob yozish... (bot o'rniga siz)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendReply()">${ICONS.send} Yuborish</button>

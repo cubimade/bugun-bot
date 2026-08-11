@@ -49,13 +49,13 @@ function renderGallery() {
       : '<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:42px;background:var(--panel2);border-radius:9px">' + (m.type === "video" ? "🎬" : "📄") + "</div>";
     return '<div class="card" style="padding:10px">' +
       preview +
-      '<div class="small" style="margin:8px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(m.name) + '">' +
+      '<div class="small" style="margin:8px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-tip="' + esc(m.name) + '">' +
         (m.is_portfolio ? "⭐ " : "") + esc(m.name) + "</div>" +
       '<div class="small muted" style="margin-bottom:8px">' + (m.size / 1024).toFixed(0) + " KB</div>" +
       '<div style="display:flex;gap:5px;flex-wrap:wrap">' +
-        '<button class="btn btn-sm" onclick="copyUrl(' + m.id + ')" title="URL nusxalash">🔗</button>' +
-        (m.type === "image" ? '<button class="btn btn-sm" onclick="togglePortfolio(' + m.id + "," + !m.is_portfolio + ')" title="Portfolio">' + (m.is_portfolio ? "⭐" : "☆") + "</button>" : "") +
-        '<button class="btn btn-sm btn-danger" onclick="delMedia(' + m.id + ')" title="O\\'chirish">🗑</button>' +
+        '<button class="btn btn-sm" onclick="copyUrl(' + m.id + ')" data-tip="URL nusxalash">🔗</button>' +
+        (m.type === "image" ? '<button class="btn btn-sm" onclick="togglePortfolio(' + m.id + "," + !m.is_portfolio + ')" data-tip="Portfolio">' + (m.is_portfolio ? "⭐" : "☆") + "</button>" : "") +
+        '<button class="btn btn-sm btn-danger" onclick="delMedia(' + m.id + ')" data-tip="O\\'chirish">🗑</button>' +
       "</div></div>";
   }).join("");
 }

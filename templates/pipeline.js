@@ -88,10 +88,10 @@ function cardHtml(c) {
   return '<div class="pipe-card" data-cid="' + c.id + '">' +
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' + avatar(c.name || c.ig_user_id, 26) +
       '<strong class="small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.name || c.ig_user_id) + "</strong>" +
-      '<span class="pipe-money" data-amid="' + c.id + '" title="Summa" style="cursor:pointer">💰</span></div>' +
+      '<span class="pipe-money" data-amid="' + c.id + '" data-tip="Summa" style="cursor:pointer">💰</span></div>' +
     (t ? '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px">' + esc(t.length > 42 ? t.slice(0, 42) + "…" : t) + "</div>" : "") +
     (c.profile && (c.profile.ehtiyoj || c.profile.byudjet)
-      ? '<div class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px" title="AI profil">🤖 ' +
+      ? '<div class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px" data-tip="AI profil">🤖 ' +
         esc([c.profile.ehtiyoj, c.profile.byudjet].filter(Boolean).join(" · ").slice(0, 46)) + "</div>"
       : "") +
     '<div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">' +

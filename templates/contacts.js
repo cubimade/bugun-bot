@@ -80,7 +80,8 @@ function filtered() {
   const acc = $("accFilter").value;
   const seg = $("segFilter").value;
   return CONTACTS.filter((c) =>
-    (!q || String(c.name || "").toLowerCase().includes(q) || String(c.ig_user_id).includes(q)) &&
+    (!q || String(c.name || "").toLowerCase().includes(q) || String(c.ig_user_id).includes(q) ||
+     String(c.username || "").toLowerCase().includes(q) || String(c.full_name || "").toLowerCase().includes(q)) &&
     (!tag || (c.tags || []).includes(tag)) &&
     (!acc || c.project_name === acc) &&
     (!seg || c.segment === seg)
@@ -88,6 +89,34 @@ function filtered() {
 }
 // 11.2: segment badge
 const SEG_BADGE = { vip: "🌟 VIP", faol: "🔥 Faol", uxlagan: "😴 Uxlagan", sovuq: "❄️ Sovuq" };
+// 16 (2.1): mavjud kontaktlar uchun @username va rasmni bir martalik olib kelish.
+// Ish fonda ketadi — tugma jarayonni ko'rsatib turadi, sahifa qotmaydi.
+async function refreshProfiles(btn) {
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Boshlanmoqda...';
+  try {
+    const r = await postJson("/api/contacts/refresh-profiles", {});
+    if (!r.started) { toast(r.message || "Yangilash shart emas"); btn.disabled = false; btn.innerHTML = orig; return; }
+    toast(r.total + " ta kontakt yangilanmoqda — bu biroz vaqt oladi");
+    const timer = setInterval(async () => {
+      try {
+        const { progress } = await api("/api/contacts/refresh-profiles/status");
+        btn.innerHTML = '<span class="spinner"></span> ' + progress.done + "/" + progress.total;
+        if (!progress.running) {
+          clearInterval(timer);
+          btn.disabled = false; btn.innerHTML = orig;
+          toast(progress.ok + " ta profil olindi ✓");
+          loadData();
+        }
+      } catch (e) { clearInterval(timer); btn.disabled = false; btn.innerHTML = orig; }
+    }, 2000);
+  } catch (e) {
+    toast("Xatolik: " + e.message, false);
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+
 function renderTable() {
   const items = filtered();
   document.querySelector(".page-head h1").textContent = "Kontaktlar · " + TOTAL + " ta";
@@ -104,13 +133,13 @@ function renderTable() {
     <tr>
       <td>
         <a href="/dashboard/inbox?contact=\${c.id}" style="display:flex;align-items:center;gap:10px">
-          \${avatar(c.name || c.ig_user_id, 34)}
+          \${contactAvatar(c, 34)}
           <span style="min-width:0">
-            <strong style="display:flex;align-items:center;gap:6px">\${esc(c.name || c.ig_user_id)}
+            <strong style="display:flex;align-items:center;gap:6px">\${esc(contactTitle(c))}
               \${c.needs_human ? '<span data-tip="Odam kerak">🙋</span>' : ""}
               \${c.bot_paused ? '<span data-tip="Bot pauzada">🔕</span>' : ""}
               \${c.unread ? \`<span class="badge" style="background:var(--grad);color:#fff">\${c.unread}</span>\` : ""}</strong>
-            <span class="small muted">ID: \${esc(c.ig_user_id)}</span>
+            <span class="small muted">\${esc(contactSubtitle(c))}</span>
           </span>
         </a>
       </td>
@@ -193,7 +222,7 @@ loadData();`;
   return renderLayout({
     title: "Kontaktlar",
     active: "contacts",
-    headerAction: `<button class="btn" onclick="showDuplicates()" data-tip="Bir xil telefon/emailli kontaktlar">🧹 Duplikatlar</button> <button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" data-tip="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" data-tip="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
+    headerAction: `<button class="btn" id="refreshProfBtn" onclick="refreshProfiles(this)" data-tip="Instagram profil rasmi va @username ni olib keladi">👤 Profillarni yangilash</button> <button class="btn" onclick="showDuplicates()" data-tip="Bir xil telefon/emailli kontaktlar">🧹 Duplikatlar</button> <button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" data-tip="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" data-tip="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
     content,
     script,
   });

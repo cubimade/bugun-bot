@@ -246,11 +246,11 @@ function renderList() {
   if (!items.length) { $("convItems").innerHTML = emptyState("💬", q ? "Topilmadi" : "Hali suhbatlar yo'q — bot birinchi xabarni kutmoqda"); return; }
   $("convItems").innerHTML = items.map((c) => \`
     <div class="conv-item \${c.needs_human ? "human" : ""} \${c.id === SELECTED ? "sel" : ""}" onclick="openChat(\${c.id})">
-      \${avatar(c.name || c.ig_user_id, 40)}
+      \${contactAvatar(c, 40)}
       <div style="min-width:0;flex:1">
         <div style="display:flex;align-items:center;gap:6px">
           <span data-tip="\${c.platform === "telegram" ? "Telegram" : "Instagram"}" style="font-size:11px">\${c.platform === "telegram" ? "✈️" : "📷"}</span>
-          <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">\${esc(c.name || c.ig_user_id)}</strong>
+          <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px">\${esc(contactTitle(c))}</strong>
           \${c.needs_human ? '<span data-tip="Odam kerak">🙋</span>' : ""}
           \${c.bot_paused ? '<span data-tip="Bot pauzada — operator gaplashadi">🔕</span>' : ""}
           \${c.sentiment === "negative" ? '<span data-tip="Salbiy kayfiyat — tez aralashing!">😟</span>' : ""}
@@ -289,17 +289,19 @@ function renderChatHead() {
   const c = CURRENT;
   $("chatHead").innerHTML = \`
     <button class="btn btn-sm back-btn" onclick="closeChat()">←</button>
-    \${avatar(c.name || c.ig_user_id, 36)}
+    \${contactAvatar(c, 36)}
     <div style="min-width:0;flex:1">
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-        <strong>\${esc(c.name || c.ig_user_id)}</strong>
+        <strong>\${esc(contactTitle(c))}</strong>
+        \${c.username && c.full_name ? '<span class="small muted">' + esc(c.full_name) + "</span>" : ""}
         \${c.needs_human ? '<span class="badge b-amber">🙋 odam kerak</span>' : ""}
         \${c.bot_paused ? '<span class="badge b-amber">🔕 bot pauzada</span>' : ""}
         \${sentimentBadge(c.sentiment)}
         \${c.language ? '<span class="badge b-gray" data-tip="Mijoz tili">' + (c.language === "ru" ? "🇷🇺 RU" : c.language === "en" ? "🇬🇧 EN" : "🇺🇿 UZ") + "</span>" : ""}
       </div>
       <div class="small muted" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        \${esc(c.project_name || "")} · ID: \${esc(c.ig_user_id)}
+        <span data-tip="Qaysi akkauntingizga yozgan">\${c.platform === "telegram" ? "✈️" : "📷"} \${esc(c.project_name || "")}\${c.account_username ? " (@" + esc(c.account_username) + ")" : ""}</span>
+        · \${esc(contactSubtitle(c) || ("ID: " + c.ig_user_id))}
         <span id="tagBadges">\${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join(" ")}</span>
       </div>
     </div>
@@ -341,9 +343,16 @@ function renderMessages(messages, highlightNew) {
     const srcTag = m.source === "story_reply" ? '<div class="op-tag" style="color:var(--accent-2)">📸 Story javobi</div>'
       : m.source === "comment" ? '<div class="op-tag">💬 Komment</div>'
       : m.source === "followup" ? '<div class="op-tag" style="color:var(--warning)">⏰ Follow-up</div>' : "";
+    // 16 (2.2): har xabar ustida KIM yozgani — mijoz ismi / 🤖 Bot (AI) /
+    // 👤 Operator / ⚡ Avtomatlashtirish. Ketma-ket bir xil yuboruvchida
+    // takrorlanmaydi (suhbat toza ko'rinadi).
+    const prev = messages[i - 1];
+    const who = senderLabel(m, CURRENT);
+    const sameAsPrev = prev && senderLabel(prev, CURRENT) === who;
+    const whoTag = sameAsPrev ? "" : \`<div class="op-tag">\${who}</div>\`;
     return \`
     <div class="bubble-row \${m.role === "assistant" ? "from-bot" : "from-user"}\${fresh ? " fresh" : ""}">
-      <div class="bubble\${op ? " from-op" : ""}">\${op ? '<div class="op-tag">👤 Operator</div>' : srcTag}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div>\${rate}</div>
+      <div class="bubble\${op ? " from-op" : ""}">\${whoTag}\${srcTag}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div>\${rate}</div>
     </div>\`;
   }).join("");
   MSG_COUNT = messages.length;

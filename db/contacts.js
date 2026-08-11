@@ -20,6 +20,63 @@ export async function getOrCreateContact(projectId, igUserId, name = null) {
   return rows[0];
 }
 
+// ------------------------------------------------------------
+//  16 (2.1): MIJOZ PROFILI — @username, ism, rasm
+// ------------------------------------------------------------
+// Profil ma'lumotlarini saqlash. `name` ham to'ldiriladi, lekin faqat
+// hozirgi nom bo'sh yoki raqamli IGSID bo'lsa — operator qo'lda qo'ygan
+// nomni bosib ketmasin.
+export async function saveContactProfile(contactId, { username, fullName, pic }) {
+  await pool.query(
+    `UPDATE contacts
+        SET username = COALESCE($2, username),
+            full_name = COALESCE($3, full_name),
+            profile_pic = COALESCE($4, profile_pic),
+            profile_fetched_at = now(),
+            name = CASE
+              WHEN name IS NULL OR name = '' OR name ~ '^[0-9]+$'
+                THEN COALESCE($3, $2, name)
+              ELSE name END
+      WHERE id = $1`,
+    [contactId, username || null, fullName || null, pic || null]
+  );
+}
+
+// Urinish bo'ldi, lekin ma'lumot kelmadi — 7 kun qayta urinmaymiz
+export async function markProfileChecked(contactId) {
+  await pool.query(`UPDATE contacts SET profile_fetched_at = now() WHERE id = $1`, [contactId]);
+}
+
+// Profili yo'q yoki 7 kundan eski kontaktlar (fon yangilash va to'ldirish uchun).
+// Faqat Instagram: Telegram'da ism webhook bilan keladi, Meta API kerak emas.
+export async function listContactsNeedingProfile(limit = 200, staleDays = 7) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.ig_user_id, p.access_token, p.id AS project_id
+       FROM contacts c
+       JOIN projects p ON p.id = c.project_id
+      WHERE p.platform = 'instagram'
+        AND p.access_token IS NOT NULL
+        AND (c.profile_fetched_at IS NULL
+             OR c.profile_fetched_at < now() - make_interval(days => $2::int))
+      ORDER BY c.last_seen DESC
+      LIMIT $1`,
+    [limit, staleDays]
+  );
+  return rows;
+}
+
+// Profil eskirganmi? (fon yangilashni har xabarda emas, 7 kunda bir marta)
+export async function profileIsStale(contactId, staleDays = 7) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM contacts
+      WHERE id = $1
+        AND (profile_fetched_at IS NULL
+             OR profile_fetched_at < now() - make_interval(days => $2::int))`,
+    [contactId, staleDays]
+  );
+  return rows.length > 0;
+}
+
 // --- Bot pauza (operator rejimi) ---
 // paused=true, until=null  → doimiy pauza (operator qo'lda yoqadi)
 // paused=true, until=vaqt  → avto-pauza (vaqti kelganda bot o'zi yoqiladi)
@@ -45,6 +102,7 @@ export async function listContacts(limit = 50, offset = 0, projectIds = null) {
             c.tags, c.unread, c.first_seen, c.bot_paused, c.paused_until, c.sentiment,
             c.language, c.segment, c.assigned_user_id,
             c.archived,
+            c.username, c.full_name, c.profile_pic,
             p.name AS project_name, p.platform,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count,
             (SELECT text FROM messages m WHERE m.contact_id = c.id
@@ -133,7 +191,9 @@ export async function getContact(contactId) {
   const { rows } = await pool.query(
     `SELECT c.id, c.ig_user_id, c.name, c.project_id, c.needs_human, c.tags,
             c.unread, c.first_seen, c.last_seen, c.bot_paused, c.paused_until,
-            c.note, c.sentiment, c.archived, c.language, c.profile, p.name AS project_name, p.platform,
+            c.note, c.sentiment, c.archived, c.language, c.profile,
+            c.username, c.full_name, c.profile_pic,
+            p.name AS project_name, p.platform, p.ig_username AS account_username,
             (SELECT COUNT(*)::int FROM messages m WHERE m.contact_id = c.id) AS msg_count
        FROM contacts c JOIN projects p ON p.id = c.project_id
       WHERE c.id = $1`,

@@ -111,7 +111,7 @@ router.post("/api/broadcast", protect, async (req, res, next) => {
           const result = await send.text(r.ig_user_id, text);
           if (result.ok) {
             job.sent++;
-            await saveMessage(r.id, "assistant", text);
+            await saveMessage(r.id, "assistant", text, false, "dm", { type: "broadcast" });
           } else {
             job.failed++;
           }
@@ -207,7 +207,7 @@ export function startBroadcastScheduler() {
               const result = await send.text(r.ig_user_id, text);
               if (result.ok) {
                 sent++;
-                await saveMessage(r.id, "assistant", text);
+                await saveMessage(r.id, "assistant", text, false, "dm", { type: "broadcast" });
               } else {
                 failed++;
               }

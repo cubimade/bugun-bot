@@ -43,6 +43,51 @@ function avatar(name, size) {
   const st = size ? `width:${size}px;height:${size}px;font-size:${Math.round(size * .42)}px;` : "";
   return `<span class="avatar" style="background:${c};${st}">${esc(n.trim().charAt(0).toUpperCase() || "?")}</span>`;
 }
+// ===== Mijozni ko'rsatish (ROADMAP-16 2.1) =====
+// Kontaktlar, Suhbatlar, Voronka, Broadcast — HAMMASI shu 3 ta funksiyani
+// ishlatadi, shuning uchun mijoz hamma joyda bir xil ko'rinadi.
+// Tartib: @username → to'liq ism → operator qo'ygan nom → qisqartirilgan ID.
+function contactTitle(c) {
+  if (!c) return "Noma'lum";
+  if (c.username) return "@" + c.username;
+  if (c.full_name) return c.full_name;
+  if (c.name && !/^[0-9]+$/.test(String(c.name))) return c.name;
+  const id = String(c.ig_user_id || "");
+  return id ? "…" + id.slice(-6) : "Noma'lum"; // raqamli ID — qisqartirilgan
+}
+// Ikkinchi qator: ism (username bo'lsa) yoki qisqartirilgan ID
+function contactSubtitle(c) {
+  if (!c) return "";
+  if (c.username && c.full_name) return c.full_name;
+  const id = String(c.ig_user_id || "");
+  return id ? "…" + id.slice(-6) : "";
+}
+// Profil rasmi bo'lsa — rasm, bo'lmasa harfli avatar (eski ko'rinish)
+function contactAvatar(c, size) {
+  const s = size || 38;
+  if (c && c.profile_pic) {
+    // Meta profil rasmi URL'i vaqtinchalik — muddati tugasa rasm ochilmaydi.
+    // Shunday holatda harfli avatarga qaytamiz (bo'sh kvadrat qolmasin).
+    const fallback = avatar(contactTitle(c), s).replace(/"/g, "&quot;");
+    return `<img class="avatar" src="${esc(c.profile_pic)}" alt="" referrerpolicy="no-referrer" loading="lazy"
+      style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover"
+      onerror="this.outerHTML='${fallback.replace(/'/g, "&#39;")}'">`;
+  }
+  return avatar(contactTitle(c), s);
+}
+
+// ===== Xabarni kim yozgani (ROADMAP-16 2.2) =====
+function senderLabel(m, contact) {
+  const type = m.sender_type || (m.role === "user" ? "contact" : m.is_operator ? "operator" : "ai");
+  switch (type) {
+    case "contact": return esc(contactTitle(contact));
+    case "operator": return "👤 Operator" + (m.sender_label ? ": " + esc(m.sender_label) : "");
+    case "automation": return "⚡ Avtomatlashtirish" + (m.sender_label ? ": " + esc(m.sender_label) : "");
+    case "broadcast": return "📢 Ommaviy xabar";
+    default: return "🤖 Bot (AI)";
+  }
+}
+
 // Statistika raqamlari: 0 dan haqiqiy songacha "sanash" animatsiyasi (0.8s)
 function countUp(el, target, dur = 800) {
   const t = Number(target) || 0;

@@ -364,6 +364,25 @@ export async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_oauth_states_created ON oauth_states(created_at);
 
+    -- 16 (2.1): Mijoz profili — raqamli IGSID o'rniga @username va rasm.
+    -- profile_pic URL'i VAQTINCHALIK (Meta muddatini tugatadi) — shuning uchun
+    -- rasm emas, URL saqlanadi va profile_fetched_at bo'yicha qayta olinadi.
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS username TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS full_name TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile_pic TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile_fetched_at TIMESTAMPTZ;
+    CREATE INDEX IF NOT EXISTS idx_contacts_profile_fetched ON contacts(profile_fetched_at);
+
+    -- 16 (2.2): Xabarni KIM yozgani — contact | ai | operator | automation | broadcast
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_type TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_label TEXT;
+    -- Eski xabarlar: role va is_operator bo'yicha bir martalik to'ldirish
+    UPDATE messages SET sender_type =
+      CASE WHEN role = 'user' THEN 'contact'
+           WHEN is_operator THEN 'operator'
+           ELSE 'ai' END
+     WHERE sender_type IS NULL;
+
     -- 8.5: Sotuv voronkasi (kanban) — bosqich, summa
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'new';
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage_changed_at TIMESTAMPTZ;

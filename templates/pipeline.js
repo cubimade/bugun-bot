@@ -86,8 +86,8 @@ function renderBoard() {
 function cardHtml(c) {
   const t = String(c.last_text || "");
   return '<div class="pipe-card" data-cid="' + c.id + '">' +
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' + avatar(c.name || c.ig_user_id, 26) +
-      '<strong class="small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.name || c.ig_user_id) + "</strong>" +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' + contactAvatar(c, 26) +
+      '<strong class="small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(contactTitle(c)) + "</strong>" +
       '<span class="pipe-money" data-amid="' + c.id + '" data-tip="Summa" style="cursor:pointer">💰</span></div>' +
     (t ? '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:5px">' + esc(t.length > 42 ? t.slice(0, 42) + "…" : t) + "</div>" : "") +
     (c.profile && (c.profile.ehtiyoj || c.profile.byudjet)

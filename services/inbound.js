@@ -27,6 +27,8 @@ import {
   incrementKeywordHit,
   resetFollowupCount,
 } from "../db.js";
+import { profileIsStale } from "../db.js";
+import { refreshContactProfileInBackground } from "./ig-profile.js";
 import { keywordRulesFor, autoTag } from "./rules.js";
 import { detectLanguage, languageInstruction } from "./lang.js";
 import { setContactLanguage } from "../db.js";
@@ -89,6 +91,17 @@ export async function processIncomingText(msg) {
       await saveMessage(contactId, "user", savedText, false, msgSource);
       resetFollowupCount(contactId).catch(() => {});
       autoTag(contactId, projectId, userText);
+
+      // 16 (2.1): mijoz profilini (@username, rasm) FON REJIMIDA olamiz —
+      // javob shu sabab kechikmaydi. Faqat Instagram va faqat profil yo'q
+      // yoki 7 kundan eski bo'lsa (Meta limitini tejaymiz).
+      if (platform === "instagram" && token) {
+        profileIsStale(contactId)
+          .then((stale) => {
+            if (stale) refreshContactProfileInBackground(contactId, String(senderId), token);
+          })
+          .catch(() => {});
+      }
 
       // 9.3: Til aniqlash — qo'llab-quvvatlanadigan ro'yxatda bo'lsa saqlaymiz
       const detected = detectLanguage(userText);
@@ -175,7 +188,11 @@ export async function processIncomingText(msg) {
     await send.text(senderId, kwRule.reply_text);
     if (contactId) {
       try {
-        await saveMessage(contactId, "assistant", kwRule.reply_text);
+        // 16 (2.2): suhbatda "⚡ Avtomatlashtirish: <qoida>" bo'lib ko'rinadi
+        await saveMessage(contactId, "assistant", kwRule.reply_text, false, "dm", {
+          type: "automation",
+          label: kwRule.keyword,
+        });
       } catch (dbErr) {
         console.error("⚠️ Saqlashda xatolik:", dbErr.message);
       }

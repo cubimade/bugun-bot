@@ -27,9 +27,62 @@ import {
   setBotPaused,
   stopContactFlows,
   setContactNote,
+  listContactsNeedingProfile,
 } from "../db.js";
+import { refreshContactProfile } from "../services/ig-profile.js";
 
 const router = express.Router();
+
+// ------------------------------------------------------------
+//  16 (2.1): Mavjud kontaktlar profilini bir martalik to'ldirish.
+//  Meta limiti: soatiga ~200 so'rov — shuning uchun so'rovlar orasida
+//  200ms tanaffus va bir yurishda ko'pi bilan 200 ta kontakt.
+//  Uzoq davom etadi → javob DARHOL qaytariladi, ish fonda ketadi.
+// ------------------------------------------------------------
+let PROFILE_FILL = { running: false, done: 0, ok: 0, total: 0, startedAt: null };
+
+router.post("/api/contacts/refresh-profiles", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    if (PROFILE_FILL.running) {
+      return res.status(409).json({ error: "Yangilash allaqachon ketmoqda", progress: PROFILE_FILL });
+    }
+    const rows = await listContactsNeedingProfile(200);
+    if (!rows.length) {
+      return res.json({ ok: true, total: 0, message: "Hamma profil yangi — yangilash shart emas" });
+    }
+
+    PROFILE_FILL = { running: true, done: 0, ok: 0, total: rows.length, startedAt: Date.now() };
+    res.json({ ok: true, started: true, total: rows.length });
+
+    // Fon: javob yuborilgandan keyin
+    (async () => {
+      for (const c of rows) {
+        try {
+          const updated = await refreshContactProfile(c.id, c.ig_user_id, c.access_token);
+          if (updated) PROFILE_FILL.ok++;
+        } catch (err) {
+          console.warn(`⚠️ Profil to'ldirish xatosi (#${c.id}): ${err.message}`);
+        }
+        PROFILE_FILL.done++;
+        await new Promise((r) => setTimeout(r, 200)); // rate limit
+      }
+      console.log(`👤 Profil to'ldirish yakuni: ${PROFILE_FILL.ok}/${PROFILE_FILL.total} ta olindi.`);
+      PROFILE_FILL.running = false;
+    })().catch((err) => {
+      console.error("⚠️ Profil to'ldirish to'xtadi:", err.message);
+      PROFILE_FILL.running = false;
+    });
+  } catch (err) {
+    PROFILE_FILL.running = false;
+    next(err);
+  }
+});
+
+// Jarayon holati (tugma yonida "42/79" ko'rsatish uchun)
+router.get("/api/contacts/refresh-profiles/status", protect, (req, res) => {
+  res.json({ progress: PROFILE_FILL });
+});
 
 router.get("/api/contacts", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;

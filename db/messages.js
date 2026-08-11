@@ -6,10 +6,22 @@ import { pool } from "./pool.js";
 // ------------------------------------------------------------
 //  Xabarni saqlash
 // ------------------------------------------------------------
-export async function saveMessage(contactId, role, text, isOperator = false, source = "dm") {
+// 16 (2.2): sender — kim yozgani. Berilmasa role/is_operator dan aniqlanadi,
+// shuning uchun eski chaqiruvlar (5 argumentli) o'zgarishsiz ishlayveradi.
+export async function saveMessage(
+  contactId,
+  role,
+  text,
+  isOperator = false,
+  source = "dm",
+  sender = null
+) {
+  const senderType =
+    sender?.type || (role === "user" ? "contact" : isOperator ? "operator" : "ai");
   await pool.query(
-    `INSERT INTO messages (contact_id, role, text, is_operator, source) VALUES ($1, $2, $3, $4, $5)`,
-    [contactId, role, text, isOperator, source]
+    `INSERT INTO messages (contact_id, role, text, is_operator, source, sender_type, sender_label)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [contactId, role, text, isOperator, source, senderType, sender?.label || null]
   );
   // Mijoz xabari — o'qilmagan hisoblagichni oshiramiz (inbox belgisi uchun)
   // last_message_at (7.5) har ikkala rolda yangilanadi
@@ -46,7 +58,8 @@ export async function getConversationHistory(contactId, limit = 20) {
 
 export async function getContactMessages(contactId) {
   const { rows } = await pool.query(
-    `SELECT id, role, text, created_at, is_operator, rating, source
+    `SELECT id, role, text, created_at, is_operator, rating, source,
+            sender_type, sender_label
        FROM messages WHERE contact_id = $1
       ORDER BY created_at ASC`,
     [contactId]

@@ -7,7 +7,7 @@
 //  CSS app.css'ga tegmasdan sahifa ichida — app.min.css qayta yig'ilmasin.
 // ============================================================
 import { renderLayout } from "./layout.js";
-import { esc } from "./components.js";
+import { esc, ICONS } from "./components.js";
 import { isConfigured, missingConfig } from "../services/instagram-oauth.js";
 
 // Instagram brend gradienti (ROADMAP-15: #833AB4 → #FD1D1D → #FCAF45)
@@ -39,7 +39,8 @@ const CONNECT_CSS = `<style>
 .ch-card.soon { opacity:.5; pointer-events:none }
 .ch-ic { display:flex; align-items:center; justify-content:center; width:52px; height:52px;
   border-radius:14px; color:#fff; flex-shrink:0 }
-.ch-arrow { margin-left:auto; font-size:20px; opacity:.55; flex-shrink:0 }
+.ch-arrow { margin-left:auto; color:var(--text-4); flex-shrink:0; display:flex }
+.ch-arrow svg { width:18px; height:18px }
 .btn-ig-connect {
   display:inline-flex; align-items:center; justify-content:center; gap:9px; width:100%;
   padding:14px 22px; border-radius:13px; border:none; cursor:pointer;
@@ -63,10 +64,10 @@ export function renderConnectPage() {
       <span class="ch-ic" style="background:${bg}">${glyph}</span>
       <span style="min-width:0">
         <strong style="display:block;font-size:16px;margin-bottom:3px">${esc(name)}
-          ${soon ? '<span class="badge b-gray" style="margin-left:7px;vertical-align:middle">Tez orada</span>' : ""}</strong>
+          ${soon ? '<span class="pill pill-plain" style="margin-left:7px;vertical-align:middle">Tez orada</span>' : ""}</strong>
         <span class="small muted">${esc(desc)}</span>
       </span>
-      <span class="ch-arrow">→</span>
+      <span class="ch-arrow">${ICONS.chevronRight}</span>
     </a>`;
 
   const content = `
@@ -97,7 +98,7 @@ export function renderConnectPage() {
     })}
   </div>
   <div style="margin-top:22px">
-    <a class="btn" href="/dashboard/accounts">← Orqaga</a>
+    <a class="btn btn-plain" href="/dashboard/accounts">← Orqaga</a>
   </div>`;
 
   return renderLayout({ title: "Kanal tanlang", active: "accounts", content });
@@ -116,8 +117,9 @@ export function renderConnectInstagramPage() {
     : `<span class="btn-ig-connect" aria-disabled="true" data-tip="${esc(missing)} sozlanmagan">
          ${IG_GLYPH} Instagram bilan davom etish</span>
        <div class="card" style="padding:11px 13px;margin-top:11px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)">
-         <div class="small"><strong>⚠️ ${esc(missing)} sozlanmagan</strong>
-         <div class="muted" style="margin-top:3px">Railway → Variables bo'limiga qo'shilishi kerak. Shu paytgacha quyidagi <strong>qo'lda token kiritish</strong> orqali ulashingiz mumkin — u to'liq ishlaydi.</div></div>
+         <div class="small" style="display:flex;gap:8px;align-items:flex-start"><span style="color:var(--warn-ap);flex-shrink:0">${ICONS.alert}</span>
+         <span><strong>${esc(missing)} sozlanmagan</strong>
+         <div class="muted" style="margin-top:3px">Railway → Variables bo'limiga qo'shilishi kerak. Shu paytgacha quyidagi <strong>qo'lda token kiritish</strong> orqali ulashingiz mumkin — u to'liq ishlaydi.</div></span></div>
        </div>`;
 
   const content = `
@@ -142,9 +144,10 @@ export function renderConnectInstagramPage() {
 
       <!-- Ishonch bloki: "parolimni so'rayaptimi?" cho'chishini yo'qotadi -->
       <div class="card" style="padding:12px 14px;margin-bottom:14px;background:var(--input-bg)">
-        <div class="small" style="line-height:1.7">
-          🔒 Ulanish Meta'ning rasmiy API'si orqali amalga oshiriladi.
-          Login va parolingizni <strong>bizga bermaysiz</strong> — ularni faqat Instagram'ning o'z sahifasiga kiritasiz.
+        <div class="small" style="line-height:1.7;display:flex;gap:8px;align-items:flex-start">
+          <span style="color:var(--text-3);flex-shrink:0">${ICONS.lock}</span>
+          <span>Ulanish Meta'ning rasmiy API'si orqali amalga oshiriladi.
+          Login va parolingizni <strong>bizga bermaysiz</strong> — ularni faqat Instagram'ning o'z sahifasiga kiritasiz.</span>
         </div>
       </div>
 
@@ -152,8 +155,8 @@ export function renderConnectInstagramPage() {
       <div class="card" style="padding:12px 14px;margin-bottom:16px;border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.07)">
         <strong class="small">Ulashdan oldin tekshiring:</strong>
         <div class="small muted" style="line-height:1.85;margin-top:4px">
-          <div>✓ Instagram akkauntingiz <strong>Professional</strong> (Business yoki Creator) turida</div>
-          <div>✓ Akkaunt Facebook sahifasiga bog'langan</div>
+          <div style="display:flex;gap:6px;align-items:center"><span style="color:var(--ok);flex-shrink:0">${ICONS.check}</span> Instagram akkauntingiz <strong>Professional</strong> (Business yoki Creator) turida</div>
+          <div style="display:flex;gap:6px;align-items:center"><span style="color:var(--ok);flex-shrink:0">${ICONS.check}</span> Akkaunt Facebook sahifasiga bog'langan</div>
         </div>
       </div>
 
@@ -167,7 +170,7 @@ export function renderConnectInstagramPage() {
   </div>
 
   <div style="margin-top:24px">
-    <a class="btn" href="/dashboard/connect">← Orqaga</a>
+    <a class="btn btn-plain" href="/dashboard/connect">← Orqaga</a>
   </div>`;
 
   return renderLayout({ title: "Instagram ulash", active: "accounts", content });

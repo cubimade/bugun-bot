@@ -1,15 +1,16 @@
 // templates/contacts.js — sahifa shabloni (ROADMAP-6 A1 da templates.js dan ajratilgan)
+// ROADMAP-17 FAZA 2 — group-list, pill, btn-primary/secondary/plain, SVG ikonlar
 import { renderLayout } from "./layout.js";
 import { esc, I, ICONS, DRAWER_HTML, APP_VERSION, NAV_ITEMS } from "./components.js";
 
 // ============================================================
 //  3. KONTAKTLAR — /dashboard/contacts
-//  Jadval: avatar, ism/ID, akkaunt, teglar, xabarlar, faollik, amallar
+//  Guruhlangan ro'yxat: avatar, ism/ID, akkaunt, teglar, xabarlar, faollik, amallar
 // ============================================================
 export function renderContactsPage() {
   const content = `
   <div class="card" style="padding:14px;margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-    <input class="input" id="search" placeholder="🔍 Qidirish (ism yoki ID)..." style="flex:1;min-width:180px" oninput="renderTable()">
+    <input class="input" id="search" placeholder="Qidirish (ism yoki ID)..." style="flex:1;min-width:180px" oninput="renderTable()">
     <select class="input" id="tagFilter" style="width:auto;min-width:150px" onchange="renderTable()">
       <option value="">Barcha teglar</option>
     </select>
@@ -18,23 +19,17 @@ export function renderContactsPage() {
     </select>
     <select class="input" id="segFilter" style="width:auto;min-width:150px" onchange="renderTable()">
       <option value="">Barcha segmentlar</option>
-      <option value="vip">🌟 VIP</option>
-      <option value="faol">🔥 Faol</option>
-      <option value="uxlagan">😴 Uxlagan</option>
-      <option value="sovuq">❄️ Sovuq</option>
+      <option value="vip">VIP</option>
+      <option value="faol">Faol</option>
+      <option value="uxlagan">Uxlagan</option>
+      <option value="sovuq">Sovuq</option>
     </select>
   </div>
-  <div class="table-wrap">
-    <table class="tbl">
-      <thead><tr>
-        <th>Mijoz</th><th>Akkaunt</th><th>Teglar</th>
-        <th style="text-align:center">Xabarlar</th><th>Oxirgi faollik</th><th></th>
-      </tr></thead>
-      <tbody id="rows"><tr><td colspan="6">${'<div class="skeleton" style="height:44px;margin:6px 0"></div>'.repeat(4)}</td></tr></tbody>
-    </table>
+  <div class="group-list" id="rows">
+    ${'<div class="skeleton" style="height:58px"></div>'.repeat(4)}
   </div>
   <div style="text-align:center;margin-top:14px">
-    <button class="btn" id="loadMore" style="display:none" onclick="loadMore()">⬇ Ko'proq yuklash</button>
+    <button class="btn btn-plain" id="loadMore" style="display:none" onclick="loadMore()">Ko'proq yuklash</button>
   </div>
   ${DRAWER_HTML}`;
 
@@ -51,7 +46,7 @@ async function loadData() {
     CONTACTS = c.contacts; TOTAL = c.total ?? c.contacts.length; ALL_TAGS = t.tags || [];
     fillFilters(); renderTable();
   } catch (e) {
-    $("rows").innerHTML = \`<tr><td colspan="6">\${emptyState("⚠️", "Yuklashda xatolik: " + e.message)}</td></tr>\`;
+    $("rows").innerHTML = emptyState('${ICONS.alert}', "Yuklashda xatolik: " + e.message);
   }
 }
 // B2: pagination — keyingi 50 tani qo'shib yuklash
@@ -65,7 +60,7 @@ async function loadMore() {
     TOTAL = c.total ?? TOTAL;
     fillFilters(); renderTable();
   } catch (e) { toast("Xatolik: " + e.message, false); }
-  btn.disabled = false; btn.textContent = "⬇ Ko'proq yuklash";
+  btn.disabled = false; btn.textContent = "Ko'proq yuklash";
 }
 function fillFilters() {
   $("tagFilter").innerHTML = '<option value="">Barcha teglar</option>' +
@@ -86,50 +81,41 @@ function filtered() {
     (!seg || c.segment === seg)
   );
 }
-// 11.2: segment badge
-const SEG_BADGE = { vip: "🌟 VIP", faol: "🔥 Faol", uxlagan: "😴 Uxlagan", sovuq: "❄️ Sovuq" };
+// 11.2: segment pill — matn + ikonka, rang pill sinfi orqali
+const SEG_BADGE = { vip: '${ICONS.sparkle} VIP', faol: '${ICONS.zap} Faol', uxlagan: '${ICONS.moon} Uxlagan', sovuq: "Sovuq" };
+const SEG_PILL = { vip: "pill-ok", faol: "pill-warn", uxlagan: "pill-plain", sovuq: "pill-plain" };
 function renderTable() {
   const items = filtered();
   document.querySelector(".page-head h1").textContent = "Kontaktlar · " + TOTAL + " ta";
   const more = $("loadMore");
   if (more) {
     more.style.display = CONTACTS.length < TOTAL ? "" : "none";
-    more.textContent = "⬇ Ko'proq yuklash (" + CONTACTS.length + "/" + TOTAL + ")";
+    more.textContent = "Ko'proq yuklash (" + CONTACTS.length + "/" + TOTAL + ")";
   }
   if (!items.length) {
-    $("rows").innerHTML = \`<tr><td colspan="6">\${emptyState("👥", CONTACTS.length ? "Filtrga mos kontakt topilmadi" : "Hali kontaktlar yo'q — birinchi mijoz yozganda shu yerda ko'rinadi")}</td></tr>\`;
+    $("rows").innerHTML = emptyState('${ICONS.contacts}', CONTACTS.length ? "Filtrga mos kontakt topilmadi" : "Hali kontaktlar yo'q — birinchi mijoz yozganda shu yerda ko'rinadi");
     return;
   }
-  $("rows").innerHTML = items.map((c) => \`
-    <tr>
-      <td>
-        <a href="/dashboard/inbox?contact=\${c.id}" style="display:flex;align-items:center;gap:10px">
-          \${avatar(c.name || c.ig_user_id, 34)}
-          <span style="min-width:0">
-            <strong style="display:flex;align-items:center;gap:6px">\${esc(c.name || c.ig_user_id)}
-              \${c.needs_human ? '<span title="Odam kerak">🙋</span>' : ""}
-              \${c.bot_paused ? '<span title="Bot pauzada">🔕</span>' : ""}
-              \${c.unread ? \`<span class="badge" style="background:var(--grad);color:#fff">\${c.unread}</span>\` : ""}</strong>
-            <span class="small muted">ID: \${esc(c.ig_user_id)}</span>
-          </span>
-        </a>
-      </td>
-      <td class="small muted">\${esc(c.project_name || "—")}</td>
-      <td>
-        <span style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
-          \${c.segment && SEG_BADGE[c.segment] ? \`<span class="badge \${c.segment === "vip" ? "b-green" : c.segment === "faol" ? "b-indigo" : "b-gray"}">\${SEG_BADGE[c.segment]}</span>\` : ""}
-          \${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join("")}
-          <button class="chip-add" onclick="openTagEditor(\${c.id})" title="Teg qo'shish/o'chirish"
-            style="background:none;border:1px dashed var(--border);border-radius:999px;color:var(--muted);font-size:11px;padding:2px 8px;cursor:pointer">+ teg</button>
-        </span>
-      </td>
-      <td style="text-align:center">\${c.msg_count}</td>
-      <td class="small muted" title="\${fmt(c.last_seen)}">\${timeAgo(c.last_seen)}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-sm" onclick="openProfile(\${c.id})">👤 Profil</button>
-        <a class="btn btn-sm" href="/dashboard/inbox?contact=\${c.id}">💬 Suhbat</a>
-      </td>
-    </tr>\`).join("");
+  $("rows").innerHTML = items.map((c, i) => \`
+    <div class="group-row">
+      <a href="/dashboard/inbox?contact=\${c.id}" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0;text-decoration:none;color:inherit">
+        \${avatar(c.name || c.ig_user_id, 42)}
+        <div class="row-body">
+          <p class="row-title">\${esc(c.name || c.ig_user_id)}
+            \${c.needs_human ? '<span title="Odam kerak" style="display:inline-flex;vertical-align:middle;color:var(--warn-ap)">${ICONS.person}</span>' : ""}
+            \${c.bot_paused ? '<span title="Bot pauzada" style="display:inline-flex;vertical-align:middle;color:var(--text-3)">${ICONS.bellOff}</span>' : ""}
+            \${c.unread ? '<span class="pill pill-ok" style="padding:1px 7px">' + c.unread + '</span>' : ""}</p>
+          <p class="row-sub">ID: \${esc(c.ig_user_id)} · \${esc(c.project_name || "—")} · \${c.msg_count} xabar · \${timeAgo(c.last_seen)}</p>
+        </div>
+      </a>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;justify-content:flex-end;max-width:46%">
+        \${c.segment && SEG_BADGE[c.segment] ? '<span class="pill ' + (SEG_PILL[c.segment] || "pill-plain") + '">' + SEG_BADGE[c.segment] + '</span>' : ""}
+        \${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join("")}
+        <button class="btn-plain btn-sm" onclick="openTagEditor(\${c.id})" title="Teg qo'shish/o'chirish">+ teg</button>
+        <button class="btn-plain btn-sm" onclick="openProfile(\${c.id})">Profil</button>
+      </div>
+    </div>
+    \${i < items.length - 1 ? '<div class="separator"></div>' : ""}\`).join("");
 }
 
 function openTagEditor(contactId) {
@@ -173,19 +159,19 @@ function onPauseChanged(id, v) {
 }
 // 12.5: duplikat kontaktlar (bir xil telefon/email — AI profildan)
 async function showDuplicates() {
-  openModal("🧹 Duplikat kontaktlar", skeletonRows(3, 40));
+  openModal("Duplikat kontaktlar", skeletonRows(3, 40));
   try {
     const { duplicates } = await api("/api/duplicates");
     $("modalBody").innerHTML = duplicates.length ? duplicates.map((d) => \`
       <div class="card" style="padding:10px 13px;margin-bottom:8px">
-        <strong class="small">📞 \${esc(d.key)}</strong>
+        <strong class="small" style="display:flex;align-items:center;gap:6px">${ICONS.phone} \${esc(d.key)}</strong>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
           \${d.contacts.map((c) => \`<a class="badge b-indigo" href="/dashboard/inbox?contact=\${c.id}">\${esc(c.name || c.ig_user_id)}</a>\`).join("")}
         </div>
         <div class="small muted" style="margin-top:6px">Birlashtirish: keraklisini qoldirib, ikkinchisini profil oynasidan o'chiring (xabarlari ham o'chadi).</div>
-      </div>\`).join("") : emptyState("✨", "Duplikat topilmadi — hammasi toza");
+      </div>\`).join("") : emptyState('${ICONS.sparkle}', "Duplikat topilmadi — hammasi toza");
   } catch (e) {
-    $("modalBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message);
+    $("modalBody").innerHTML = emptyState('${ICONS.alert}', "Yuklanmadi: " + e.message);
   }
 }
 loadData();`;
@@ -193,7 +179,7 @@ loadData();`;
   return renderLayout({
     title: "Kontaktlar",
     active: "contacts",
-    headerAction: `<button class="btn" onclick="showDuplicates()" title="Bir xil telefon/emailli kontaktlar">🧹 Duplikatlar</button> <button class="btn" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">⬇ CSV yuklab olish</button> <button class="btn" onclick="location.href='/api/export/full.json'" title="Barcha kontakt + suhbatlar (JSON)">📦 To'liq eksport</button> <a class="btn" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
+    headerAction: `<button class="btn btn-secondary" onclick="showDuplicates()" title="Bir xil telefon/emailli kontaktlar">Duplikatlar</button> <button class="btn btn-secondary" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">CSV yuklab olish</button> <button class="btn btn-plain" onclick="location.href='/api/export/full.json'" title="Barcha kontakt + suhbatlar (JSON)">To'liq eksport</button> <a class="btn btn-plain" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
     content,
     script,
   });

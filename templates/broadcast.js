@@ -9,7 +9,7 @@ import { esc, I, ICONS, DRAWER_HTML, APP_VERSION, NAV_ITEMS } from "./components
 export function renderBroadcastPage() {
   const content = `
   <div class="card" style="display:flex;gap:12px;align-items:flex-start;border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.06);margin-bottom:18px">
-    <span style="font-size:20px">⚠️</span>
+    <span style="color:#fbbf24;flex-shrink:0">${ICONS.alert}</span>
     <div>
       <strong style="color:#fbbf24">Instagram 24 soat qoidasi</strong>
       <div class="small muted" style="margin-top:2px">Xabar faqat oxirgi 24 soat ichida sizga yozgan mijozlarga yuboriladi. Boshqalarga Instagram ruxsat bermaydi.</div>
@@ -18,7 +18,7 @@ export function renderBroadcastPage() {
 
   <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px" class="two-col">
     <div class="card">
-      <h3 style="margin-bottom:14px">📢 Yangi broadcast</h3>
+      <h3 style="margin-bottom:14px;display:flex;align-items:center;gap:8px">${ICONS.broadcast} Yangi broadcast</h3>
       <label class="lbl">Akkaunt</label>
       <select class="input" id="account" onchange="updateCount()" style="margin-bottom:12px"></select>
       <label class="lbl">Auditoriya</label>
@@ -29,16 +29,16 @@ export function renderBroadcastPage() {
       <textarea class="input" id="message" rows="5" maxlength="900" placeholder="Salom {ism}! Sizga maxsus taklifimiz bor..." oninput="updatePreview()"></textarea>
       <div class="small muted" style="margin-top:4px">O'zgaruvchilar: <code>{ism}</code> — mijoz ismi, <code>{akkaunt}</code> — akkaunt nomi (yuborishda haqiqiy qiymatga almashadi)</div>
       <div class="small muted" style="text-align:right;margin:4px 0 14px"><span id="charCount">0</span>/900</div>
-      <label class="lbl">🖼 Rasm (ixtiyoriy — xabardan oldin yuboriladi)</label>
+      <label class="lbl">Rasm (ixtiyoriy — xabardan oldin yuboriladi)</label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
         <input class="input" id="bcMedia" maxlength="500" placeholder="https://... yoki kutubxonadan tanlang">
-        <button class="btn btn-sm" onclick="pickBcMedia()">📎</button>
+        <button class="btn-plain btn-sm" onclick="pickBcMedia()" title="Kutubxonadan tanlash">${ICONS.media}</button>
       </div>
       <label class="lbl">Qachon yuborilsin?</label>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
         <select class="input" id="whenSel" style="width:auto" onchange="toggleSchedule()">
           <option value="now">Hozir yuborish</option>
-          <option value="later">🗓 Rejalashtirish</option>
+          <option value="later">Rejalashtirish</option>
         </select>
         <input type="datetime-local" class="input" id="schedAt" style="display:none;width:auto;color-scheme:dark">
       </div>
@@ -59,7 +59,7 @@ export function renderBroadcastPage() {
 
     <div style="display:flex;flex-direction:column;gap:14px">
       <div class="card">
-        <h3 style="margin-bottom:12px">👁 Oldindan ko'rish</h3>
+        <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">${ICONS.messageCircle} Oldindan ko'rish</h3>
         <div style="background:var(--bg);border-radius:12px;padding:16px;min-height:90px;display:flex;justify-content:flex-end">
           <div id="preview" style="max-width:85%;padding:9px 13px;border-radius:16px;border-bottom-right-radius:5px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;white-space:pre-wrap;word-break:break-word;box-shadow:0 4px 14px rgba(99,102,241,.25)">
             <span class="muted" style="color:rgba(255,255,255,.65)">Xabar matni shu yerda ko'rinadi...</span>
@@ -67,7 +67,7 @@ export function renderBroadcastPage() {
         </div>
       </div>
       <div class="card">
-        <h3 style="margin-bottom:12px">🕓 Oldingi broadcastlar</h3>
+        <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">${ICONS.clock} Oldingi broadcastlar</h3>
         <div id="history"><div class="skeleton" style="height:48px"></div></div>
       </div>
     </div>
@@ -84,11 +84,11 @@ async function loadData() {
       ? PROJECTS.map((x) => \`<option value="\${x.id}">\${esc(x.name)}</option>\`).join("")
       : '<option value="">Akkaunt yo\\'q</option>';
     $("audience").innerHTML = '<option value="">Hammasi (24 soat ichida yozganlar)</option>' +
-      '<option value="seg:vip">🌟 Segment: VIP</option>' +
-      '<option value="seg:faol">🔥 Segment: Faol</option>' +
-      '<option value="seg:uxlagan">😴 Segment: Uxlagan (qaytarish kampaniyasi)</option>' +
-      '<option value="seg:sovuq">❄️ Segment: Sovuq</option>' +
-      (t.tags || []).map((x) => \`<option value="\${esc(x)}">🏷 Teg: \${esc(x)}</option>\`).join("");
+      '<option value="seg:vip">Segment: VIP</option>' +
+      '<option value="seg:faol">Segment: Faol</option>' +
+      '<option value="seg:uxlagan">Segment: Uxlagan (qaytarish kampaniyasi)</option>' +
+      '<option value="seg:sovuq">Segment: Sovuq</option>' +
+      (t.tags || []).map((x) => \`<option value="\${esc(x)}">Teg: \${esc(x)}</option>\`).join("");
     updateCount();
   } catch (e) { toast("Yuklashda xatolik: " + e.message, false); }
   loadHistory();
@@ -96,30 +96,27 @@ async function loadData() {
 async function loadHistory() {
   try {
     const { broadcasts } = await api("/api/broadcasts");
-    if (!broadcasts.length) { $("history").innerHTML = emptyState("📢", "Hali broadcast yo'q"); return; }
-    $("history").innerHTML = broadcasts.map((b) => \`
-      <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <strong class="small">\${esc(b.project_name || "—")}</strong>
-          <span class="small muted">\${b.status === "scheduled" ? "" : timeAgo(b.created_at)}</span>
+    if (!broadcasts.length) { $("history").innerHTML = emptyState('${ICONS.broadcast}', "Hali broadcast yo'q"); return; }
+    $("history").innerHTML = '<div class="group-list">' + broadcasts.map((b, i) => \`
+      <div class="group-row">
+        <div class="row-body">
+          <p class="row-title">\${esc(b.project_name || "—")} <span class="small muted">· \${esc(b.audience)}</span></p>
+          <p class="row-sub">\${esc(b.message)}</p>
         </div>
-        <div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0">\${esc(b.message)}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <span class="badge b-gray">\${esc(b.audience)}</span>
-          \${broadcastStatus(b)}
-        </div>
-      </div>\`).join("");
-  } catch (e) { $("history").innerHTML = emptyState("📢", "Tarix yuklanmadi"); }
+        <span class="small muted" style="white-space:nowrap">\${b.status === "scheduled" ? "" : timeAgo(b.created_at)}</span>
+        \${broadcastStatus(b)}
+      </div>\${i < broadcasts.length - 1 ? '<div class="separator no-avatar"></div>' : ""}\`).join("") + '</div>';
+  } catch (e) { $("history").innerHTML = emptyState('${ICONS.broadcast}', "Tarix yuklanmadi"); }
 }
 function broadcastStatus(b) {
   if (b.status === "scheduled") {
-    return \`<span class="badge b-cyan">🗓 \${fmt(b.scheduled_at)}</span>
+    return \`<span class="pill pill-plain">${ICONS.clock} \${fmt(b.scheduled_at)}</span>
       <button class="btn btn-sm btn-danger" style="padding:2px 9px;font-size:11px" onclick="cancelScheduled(\${b.id})">Bekor qilish</button>\`;
   }
-  if (b.status === "sending") return '<span class="badge b-amber">⏳ yuborilmoqda...</span>';
-  if (b.status === "failed") return '<span class="badge b-red">✕ xato</span>';
-  return \`<span class="badge b-green">✓ \${b.sent}/\${b.total}</span>\` +
-    (b.failed ? \` <span class="badge b-red">✕ \${b.failed}</span>\` : "");
+  if (b.status === "sending") return '<span class="pill pill-warn">${ICONS.clock} yuborilmoqda...</span>';
+  if (b.status === "failed") return '<span class="pill pill-danger">${ICONS.close} xato</span>';
+  return \`<span class="pill pill-ok">${ICONS.check} \${b.sent}/\${b.total}</span>\` +
+    (b.failed ? \` <span class="pill pill-danger">${ICONS.close} \${b.failed}</span>\` : "");
 }
 async function cancelScheduled(id) {
   try {
@@ -137,7 +134,7 @@ function toggleSchedule() {
     const p = (n) => String(n).padStart(2, "0");
     $("schedAt").value = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
   }
-  $("sendBtn").innerHTML = later ? "🗓 Rejalashtirish" : "Yuborish";
+  $("sendBtn").innerHTML = later ? '${ICONS.calendar} Rejalashtirish' : '${ICONS.broadcast} Yuborish';
 }
 let COUNT = 0;
 async function updateCount() {
@@ -174,8 +171,8 @@ function confirmSend() {
       <p style="margin-bottom:8px"><strong>\${fmt(when)}</strong> da yuboriladi — o'sha paytda 24 soat qoidasiga mos mijozlarga:</p>
       <div style="background:var(--panel2);border-radius:12px;padding:12px;margin-bottom:16px;white-space:pre-wrap;font-size:13px">\${esc(msg)}</div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn" onclick="closeModal()">Bekor qilish</button>
-        <button class="btn btn-primary" onclick="closeModal();doSend()">🗓 Rejalashtirish</button>
+        <button class="btn-secondary" onclick="closeModal()">Bekor qilish</button>
+        <button class="btn btn-primary" onclick="closeModal();doSend()">${ICONS.calendar} Rejalashtirish</button>
       </div>\`);
     return;
   }
@@ -184,7 +181,7 @@ function confirmSend() {
     <p style="margin-bottom:8px"><strong>\${COUNT} ta mijozga</strong> quyidagi xabar yuboriladi:</p>
     <div style="background:var(--panel2);border-radius:12px;padding:12px;margin-bottom:16px;white-space:pre-wrap;font-size:13px">\${esc(msg)}</div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn" onclick="closeModal()">Bekor qilish</button>
+      <button class="btn-secondary" onclick="closeModal()">Bekor qilish</button>
       <button class="btn btn-primary" onclick="closeModal();doSend()">Ha, yuborish</button>
     </div>\`);
 }
@@ -194,9 +191,9 @@ async function pickBcMedia() {
     const { media } = await api("/api/media");
     const imgs = (media || []).filter(function (m) { return m.type === "image"; });
     if (!imgs.length) return toast("Kutubxonada rasm yo'q — Media sahifasida yuklang", false);
-    openModal("📎 Rasm tanlash", '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:55vh;overflow-y:auto">' +
+    openModal("Rasm tanlash", '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:55vh;overflow-y:auto">' +
       imgs.map(function (m) {
-        return '<div onclick="$(\\'bcMedia\\').value=location.origin+\\'' + "/media/" + '\\'+' + m.id + ';closeModal();toast(\\'Rasm tanlandi ✓\\')" style="cursor:pointer">' +
+        return '<div onclick="$(\\'bcMedia\\').value=location.origin+\\'' + "/media/" + '\\'+' + m.id + ';closeModal();toast(\\'Rasm tanlandi\\')" style="cursor:pointer">' +
           '<img src="' + m.url + '" style="width:100%;height:76px;object-fit:cover;border-radius:8px" loading="lazy">' +
           '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + esc(m.name) + "</div></div>";
       }).join("") + "</div>");
@@ -217,7 +214,7 @@ async function doSend() {
         media_url: $("bcMedia").value.trim() || null,
         scheduledAt: new Date($("schedAt").value).toISOString(),
       });
-      toast("Broadcast rejalashtirildi 🗓 " + fmt(r.scheduledAt));
+      toast("Broadcast rejalashtirildi: " + fmt(r.scheduledAt));
       $("message").value = ""; updatePreview();
       loadHistory();
     } catch (e) { toast("Xatolik: " + e.message, false); }
@@ -245,11 +242,11 @@ async function doSend() {
         $("progressNums").textContent = (j.sent + j.failed) + "/" + j.total;
         if (j.done) {
           clearInterval(timer);
-          $("progressLabel").textContent = "Tugadi ✓";
+          $("progressLabel").textContent = "Tugadi";
           $("progressResult").innerHTML =
-            \`<span style="color:#4ade80">✓ \${j.sent} ta yuborildi</span>\` +
-            (j.failed ? \` · <span style="color:#f87171">✕ \${j.failed} ta xato</span>\` : "");
-          toast("Broadcast tugadi: " + j.sent + "/" + j.total + " yuborildi ✓");
+            \`<span class="pill pill-ok">${ICONS.check} \${j.sent} ta yuborildi</span>\` +
+            (j.failed ? \` <span class="pill pill-danger">${ICONS.close} \${j.failed} ta xato</span>\` : "");
+          toast("Broadcast tugadi: " + j.sent + "/" + j.total + " yuborildi");
           btn.disabled = false;
           $("message").value = ""; updatePreview();
           loadHistory(); updateCount();

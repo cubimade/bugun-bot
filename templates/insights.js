@@ -2,6 +2,7 @@
 // 13-audit: 521 qatorli fayl bo'lindi — klient JS insights-script.js'da.
 import { renderLayout } from "./layout.js";
 import { insightsScript } from "./insights-script.js";
+import { ICONS } from "./components.js";
 
 
 // ============================================================
@@ -38,7 +39,7 @@ export function renderInsightsPage() {
 
   <div class="card glow" style="margin-top:16px">
     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <h3>🕒 Qaysi soatda ko'p yozishadi?</h3>
+      <h3 style="display:flex;align-items:center;gap:6px">${ICONS.clock} Qaysi soatda ko'p yozishadi?</h3>
       <span class="small muted">mijoz xabarlari, hafta kuni × soat</span>
     </div>
     <div id="heatmap"><div class="skeleton" style="height:150px"></div></div>
@@ -48,21 +49,21 @@ export function renderInsightsPage() {
   <div class="two-col-ana">
     <div class="card">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
-        <h3>🔻 Konversiya voronkasi</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.funnel} Konversiya voronkasi</h3>
         <span class="small muted">mijoz yo'li</span>
       </div>
       <div id="funnel"><div class="skeleton" style="height:220px"></div></div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
-        <h3>📱 Akkauntlar taqqoslashi</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.accounts} Akkauntlar taqqoslashi</h3>
         <span class="small muted">eng faoldan pastga</span>
       </div>
       <div id="accBars"><div class="skeleton" style="height:220px"></div></div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
-        <h3>📥 Mijozlar qayerdan kelyapti?</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.inbox} Mijozlar qayerdan kelyapti?</h3>
         <span class="small muted">DM · story · komment</span>
       </div>
       <div id="srcDonut"><div class="skeleton" style="height:180px"></div></div>
@@ -71,9 +72,9 @@ export function renderInsightsPage() {
 
   <div class="card glow" style="margin-top:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <h3>💰 Moliyaviy natija</h3>
+      <h3 style="display:flex;align-items:center;gap:6px">${ICONS.dollarSign} Moliyaviy natija</h3>
       <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap" class="small">
-        <a class="btn btn-sm" href="/api/report/weekly.html" target="_blank">🖨 Haftalik hisobot</a>
+        <a class="btn btn-secondary btn-sm" href="/api/report/weekly.html" target="_blank">${ICONS.receipt} Haftalik hisobot</a>
       </span>
     </div>
     <div id="finBody"><div class="skeleton" style="height:120px"></div></div>
@@ -89,14 +90,14 @@ export function renderInsightsPage() {
   <div class="two-col-ana">
     <div class="card">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
-        <h3>📉 Yo'qotilgan mijozlar</h3>
-        <button class="btn btn-sm" onclick="loadLost(true)">↻</button>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.alert} Yo'qotilgan mijozlar</h3>
+        <button class="btn-plain btn-sm" onclick="loadLost(true)">↻</button>
       </div>
       <div id="lostBody"><div class="skeleton" style="height:160px"></div></div>
     </div>
     <div class="card">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
-        <h3>🔮 Prognoz</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.chartBar} Prognoz</h3>
         <span class="small muted">taxminiy, 60 kun trendi</span>
       </div>
       <div id="fcBody"><div class="skeleton" style="height:160px"></div></div>
@@ -105,15 +106,15 @@ export function renderInsightsPage() {
 
   <div class="card" style="margin-top:16px">
     <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px">
-      <h3>💡 Kontent tavsiyalari</h3>
-      <button class="btn btn-sm" onclick="loadContent(true)">↻</button>
+      <h3 style="display:flex;align-items:center;gap:6px">${ICONS.lightbulb} Kontent tavsiyalari</h3>
+      <button class="btn-plain btn-sm" onclick="loadContent(true)">↻</button>
     </div>
     <div id="contentBody"><div class="skeleton" style="height:140px"></div></div>
   </div>
 
   <div class="card glass-featured" style="margin-top:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-      <h3>✨ Bu hafta nima o'zgardi</h3>
+      <h3 style="display:flex;align-items:center;gap:6px">${ICONS.sparkle} Bu hafta nima o'zgardi</h3>
       <span class="small muted" id="changedMeta"></span>
     </div>
     <div id="changedText" style="font-size:15px;line-height:1.65">
@@ -123,7 +124,7 @@ export function renderInsightsPage() {
   </div>
 
   <div class="card glow" style="display:flex;align-items:center;gap:14px;margin:16px 0;flex-wrap:wrap">
-    <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">🧠</div>
+    <div class="stat-ic" style="background:rgba(139,92,246,.14)">${ICONS.cpu}</div>
     <div style="flex:1;min-width:220px">
       <strong>AI suhbatlar tahlili</strong>
       <div class="small muted" style="margin-top:2px">Claude oxirgi 7 kunlik mijoz xabarlarini o'qib, sizga xulosa beradi. Kuniga bir marta yangilanadi.</div>
@@ -140,7 +141,7 @@ export function renderInsightsPage() {
   return renderLayout({
     title: "Tahlil",
     active: "insights",
-    headerAction: `<button class="btn" onclick="location.href='/api/export/report.csv?period='+PERIOD">⬇ Hisobot</button> <button class="btn" onclick="loadInsights(true)">🔄 Yangilash</button>`,
+    headerAction: `<button class="btn btn-secondary" onclick="location.href='/api/export/report.csv?period='+PERIOD">${ICONS.receipt} Hisobot</button> <button class="btn btn-secondary" onclick="loadInsights(true)">Yangilash</button>`,
     content,
     script: insightsScript(),
   });

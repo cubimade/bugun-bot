@@ -18,11 +18,12 @@ export function renderMediaPage() {
         </div>
       </div>
     </div>
-    <p class="small muted" style="margin-top:10px">⭐ Portfolio belgisi qo'yilgan rasmlar — mijoz "ishlaringizni ko'rsating" deb so'raganda bot avtomatik yuboradi. Media'ni inbox, flow va broadcast'da ishlatish mumkin.</p>
+    <p class="small muted" style="margin-top:10px;display:flex;align-items:center;gap:6px">${ICONS.sparkle} Portfolio belgisi qo'yilgan rasmlar — mijoz "ishlaringizni ko'rsating" deb so'raganda bot avtomatik yuboradi. Media'ni inbox, flow va broadcast'da ishlatish mumkin.</p>
   </div>
   <div id="gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
     ${'<div class="card skeleton" style="height:180px"></div>'.repeat(4)}
-  </div>`;
+  </div>
+  <style>.media-ph .ic { width: 40px; height: 40px; }</style>`;
 
   const script = `
 let MEDIA = [];
@@ -35,27 +36,28 @@ async function loadMedia() {
     $("usageBar").style.width = pct + "%";
     if (pct > 85) $("usageBar").style.background = "var(--danger)";
     renderGallery();
-  } catch (e) { $("gallery").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message); }
+  } catch (e) { $("gallery").innerHTML = emptyState('${ICONS.alert}', "Yuklashda xatolik: " + e.message); }
 }
 function renderGallery() {
   document.querySelector(".page-head h1").textContent = "Media · " + MEDIA.length + " ta";
   if (!MEDIA.length) {
-    $("gallery").innerHTML = '<div style="grid-column:1/-1">' + emptyState("🖼", "Hali fayl yo'q — birinchisini yuklang") + "</div>";
+    $("gallery").innerHTML = '<div style="grid-column:1/-1">' + emptyState('${ICONS.media}', "Hali fayl yo'q — birinchisini yuklang") + "</div>";
     return;
   }
   $("gallery").innerHTML = MEDIA.map(function (m) {
     const preview = m.type === "image"
       ? '<img src="' + m.url + '" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:9px;background:var(--panel2)" loading="lazy">'
-      : '<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:42px;background:var(--panel2);border-radius:9px">' + (m.type === "video" ? "🎬" : "📄") + "</div>";
+      : '<div class="media-ph" style="height:120px;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:9px;color:var(--text-3)">' + (m.type === "video" ? '${ICONS.media}' : '${ICONS.book}') + "</div>";
     return '<div class="card" style="padding:10px">' +
       preview +
-      '<div class="small" style="margin:8px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(m.name) + '">' +
-        (m.is_portfolio ? "⭐ " : "") + esc(m.name) + "</div>" +
+      '<div class="small" style="margin:8px 0 2px;display:flex;align-items:center;gap:4px;overflow:hidden" title="' + esc(m.name) + '">' +
+        (m.is_portfolio ? '<span style="color:var(--warn-ap);flex-shrink:0">${ICONS.sparkle}</span>' : "") +
+        '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m.name) + "</span></div>" +
       '<div class="small muted" style="margin-bottom:8px">' + (m.size / 1024).toFixed(0) + " KB</div>" +
       '<div style="display:flex;gap:5px;flex-wrap:wrap">' +
-        '<button class="btn btn-sm" onclick="copyUrl(' + m.id + ')" title="URL nusxalash">🔗</button>' +
-        (m.type === "image" ? '<button class="btn btn-sm" onclick="togglePortfolio(' + m.id + "," + !m.is_portfolio + ')" title="Portfolio">' + (m.is_portfolio ? "⭐" : "☆") + "</button>" : "") +
-        '<button class="btn btn-sm btn-danger" onclick="delMedia(' + m.id + ')" title="O\\'chirish">🗑</button>' +
+        '<button class="btn-plain btn-sm" onclick="copyUrl(' + m.id + ')" title="URL nusxalash">URL</button>' +
+        (m.type === "image" ? '<button class="btn-plain btn-sm" onclick="togglePortfolio(' + m.id + "," + !m.is_portfolio + ')" title="Portfolio" style="' + (m.is_portfolio ? "color:var(--warn-ap)" : "") + '">${ICONS.sparkle}</button>' : "") +
+        '<button class="btn-danger btn-sm" onclick="delMedia(' + m.id + ')" title="O\\'chirish">${ICONS.trash}</button>' +
       "</div></div>";
   }).join("");
 }
@@ -68,7 +70,7 @@ function uploadFile(inp) {
     try {
       toast("Yuklanmoqda...");
       await postJson("/api/media", { name: f.name, data: reader.result });
-      toast("Fayl yuklandi ✓");
+      toast("Fayl yuklandi");
       loadMedia();
     } catch (e) { toast("Xatolik: " + e.message, false); }
     inp.value = "";
@@ -86,13 +88,13 @@ async function togglePortfolio(id, val) {
     const m = MEDIA.find(function (x) { return x.id === id; });
     if (m) m.is_portfolio = val;
     renderGallery();
-    toast(val ? "Portfolio'ga qo'shildi ⭐" : "Portfolio'dan olindi");
+    toast(val ? "Portfolio'ga qo'shildi" : "Portfolio'dan olindi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 function delMedia(id) {
   const m = MEDIA.find(function (x) { return x.id === id; });
   openModal("Faylni o'chirish", '<p style="margin-bottom:16px">"<strong>' + esc(m ? m.name : "") + '</strong>" o\\'chirilsinmi? Bu fayl ishlatilgan flow/kalit so\\'zlarda rasm ochilmay qoladi.</p>' +
-    '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal()">Bekor</button>' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn-secondary" onclick="closeModal()">Bekor</button>' +
     '<button class="btn btn-danger" onclick="doDelMedia(' + id + ')">Ha, o\\'chirish</button></div>');
 }
 async function doDelMedia(id) {

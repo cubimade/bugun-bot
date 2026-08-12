@@ -85,17 +85,22 @@ async function saveReport(btn) {
 async function loadLmStats() {
   try {
     const s = await api("/api/lead-magnet/stats");
-    $("lmStats").innerHTML = "📊 Yuborilgan: <strong>" + s.sent + "</strong> ta · Mijozga aylangan (lead + sotildi): <strong>" + s.converted + "</strong> ta";
+    $("lmStats").innerHTML = '<span style="display:inline-flex;align-items:center;gap:6px"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><rect x="6" y="11" width="3.5" height="8"/><rect x="13" y="6" width="3.5" height="13"/></svg> Yuborilgan: <strong>' + s.sent + "</strong> ta · Mijozga aylangan (lead + sotildi): <strong>" + s.converted + "</strong> ta</span>";
   } catch (e) { /* jim */ }
 }
 async function pickLmMedia() {
   try {
     const { media } = await api("/api/media");
     if (!media.length) return toast("Kutubxona bo'sh — Media sahifasida fayl yuklang", false);
-    openModal("📎 Fayl tanlash", '<div style="display:grid;gap:8px;max-height:55vh;overflow-y:auto">' +
+    openModal("Fayl tanlash", '<div style="display:grid;gap:8px;max-height:55vh;overflow-y:auto">' +
       media.map(function (m) {
+        var icon = m.type === "image"
+          ? '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>'
+          : m.type === "video"
+          ? '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l14 8-14 8V4z"/></svg>'
+          : '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
         return '<button class="btn" style="justify-content:flex-start" onclick="$(\\'lmMedia\\').value=location.origin+\\'/media/' + m.id + '\\';closeModal();toast(\\'Fayl tanlandi ✓\\')">' +
-          (m.type === "image" ? "🖼" : m.type === "video" ? "🎬" : "📄") + " " + esc(m.name) + "</button>";
+          icon + " " + esc(m.name) + "</button>";
       }).join("") + "</div>");
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
@@ -129,7 +134,7 @@ function renderGbRows() {
         oninput="GB_ROWS[\${i}].title=this.value">
       <textarea class="input" rows="2" maxlength="900" placeholder="Bosilganda yuboriladigan javob"
         oninput="GB_ROWS[\${i}].reply=this.value">\${esc(b.reply || "")}</textarea>
-      <button class="btn btn-sm" onclick="GB_ROWS.splice(\${i},1);renderGbRows()" title="O'chirish">🗑</button>
+      <button class="btn btn-plain btn-sm" onclick="GB_ROWS.splice(\${i},1);renderGbRows()" title="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
     </div>\`).join("");
 }
 function addGbRow() {

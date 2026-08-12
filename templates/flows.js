@@ -6,6 +6,7 @@
 // muharrir klient JS flows-editor-script.js'da.
 import { renderLayout } from "./layout.js";
 import { flowEditorScript } from "./flows-editor-script.js";
+import { ICONS } from "./components.js";
 
 export { renderFlowsPage } from "./flows-list.js";
 
@@ -15,39 +16,39 @@ export { renderFlowsPage } from "./flows-list.js";
 export function renderFlowEditorPage(flowId) {
   const content = `
   <div class="card" style="padding:10px 12px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="metaBar">
-    <a class="btn btn-sm" href="/dashboard/flows">←</a>
+    <a class="btn btn-sm btn-plain" href="/dashboard/flows">← Orqaga</a>
     <input class="input" id="fName" maxlength="120" style="max-width:200px" placeholder="Flow nomi">
     <select class="input" id="fTrigger" style="max-width:150px" onchange="onTriggerChange()">
-      <option value="keyword">🔑 Kalit so'z</option>
-      <option value="story">📸 Story javobi</option>
-      <option value="comment">💬 Komment</option>
-      <option value="new_contact">✨ Yangi mijoz</option>
-      <option value="manual">🖐 Qo'lda</option>
+      <option value="keyword">Kalit so'z</option>
+      <option value="story">Story javobi</option>
+      <option value="comment">Komment</option>
+      <option value="new_contact">Yangi mijoz</option>
+      <option value="manual">Qo'lda</option>
     </select>
     <input class="input" id="fTrigVal" maxlength="300" style="max-width:200px" placeholder="Kalit so'zlar (vergul bilan)">
     <label style="display:flex;align-items:center;gap:6px;cursor:pointer" class="small">
       <input type="checkbox" id="fActive"> Faol
     </label>
     <span style="flex:1"></span>
-    <button class="btn btn-sm" onclick="testFlow()">🧪 Sinab ko'rish</button>
-    <button class="btn btn-sm btn-primary" onclick="saveAll(this)">💾 Saqlash</button>
+    <button class="btn btn-sm btn-secondary" onclick="testFlow()">${ICONS.flask} Sinab ko'rish</button>
+    <button class="btn btn-sm btn-primary" onclick="saveAll(this)">${ICONS.check} Saqlash</button>
   </div>
 
   <div class="fb-wrap">
     <div class="fb-palette card">
       <div class="small muted" style="margin-bottom:8px">Qadam qo'shish:</div>
-      <button class="btn btn-sm" onclick="addNode('message')">💬 Xabar</button>
-      <button class="btn btn-sm" onclick="addNode('buttons')">🔘 Tugmalar</button>
-      <button class="btn btn-sm" onclick="addNode('condition')">❓ Shart</button>
-      <button class="btn btn-sm" onclick="addNode('action')">⚡ Amal</button>
-      <button class="btn btn-sm" onclick="addNode('delay')">⏱ Kutish</button>
+      <button class="btn btn-sm btn-secondary" onclick="addNode('message')">${ICONS.messageCircle} Xabar</button>
+      <button class="btn btn-sm btn-secondary" onclick="addNode('buttons')">${ICONS.target} Tugmalar</button>
+      <button class="btn btn-sm btn-secondary" onclick="addNode('condition')">${ICONS.helpCircle} Shart</button>
+      <button class="btn btn-sm btn-secondary" onclick="addNode('action')">${ICONS.zap} Amal</button>
+      <button class="btn btn-sm btn-secondary" onclick="addNode('delay')">${ICONS.clock} Kutish</button>
       <div style="border-top:1px solid var(--border);margin:8px 0"></div>
       <div style="display:flex;gap:6px;align-items:center">
-        <button class="btn btn-sm" onclick="zoomBy(-0.15)">−</button>
+        <button class="btn btn-sm btn-plain" onclick="zoomBy(-0.15)">−</button>
         <span class="small muted" id="zoomLbl" style="min-width:40px;text-align:center">100%</span>
-        <button class="btn btn-sm" onclick="zoomBy(0.15)">+</button>
+        <button class="btn btn-sm btn-plain" onclick="zoomBy(0.15)">+</button>
       </div>
-      <div class="small muted" style="margin-top:8px;line-height:1.5">Ulash: node o'ng chetidagi ⚪ dan boshqa nodega torting. Chiziqni o'chirish: ustiga bosing.</div>
+      <div class="small muted" style="margin-top:8px;line-height:1.5">Ulash: node o'ng chetidagi doiradan boshqa nodega torting. Chiziqni o'chirish: ustiga bosing.</div>
     </div>
 
     <div class="fb-canvas card" id="fbCanvas">
@@ -60,7 +61,7 @@ export function renderFlowEditorPage(flowId) {
     <div class="fb-panel card" id="fbPanel" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         <strong id="fbPanelTitle" style="flex:1"></strong>
-        <button class="modal-x" onclick="closePanel()">✕</button>
+        <button class="modal-x" onclick="closePanel()">${ICONS.close}</button>
       </div>
       <div id="fbPanelBody"></div>
     </div>

@@ -16,7 +16,7 @@ export function renderKeywordsPage() {
   </div>
 
   <div class="card" style="margin-bottom:16px">
-    <h3 style="margin-bottom:12px">➕ Yangi qoida</h3>
+    <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">${ICONS.plus} Yangi qoida</h3>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px" class="kw-cols">
       <div><label class="lbl">Kalit so'z</label>
         <input class="input" id="kwWord" maxlength="100" placeholder="Masalan: NARX"></div>
@@ -52,31 +52,26 @@ async function loadRules() {
         \`<option value="\${x.id}">\${esc(x.name)}</option>\`).join("");
     renderRules();
   } catch (e) {
-    $("rulesList").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message);
+    $("rulesList").innerHTML = emptyState('${ICONS.alert}', "Yuklashda xatolik: " + e.message);
   }
 }
 function renderRules() {
   document.querySelector(".page-head h1").textContent = "Kalit so'zlar · " + RULES.length + " ta";
   if (!RULES.length) {
-    $("rulesList").innerHTML = emptyState("🔑", "Hali qoida yo'q — birinchisini yuqorida qo'shing");
+    $("rulesList").innerHTML = emptyState('${ICONS.key}', "Hali qoida yo'q — birinchisini yuqorida qo'shing");
     return;
   }
-  $("rulesList").innerHTML = RULES.map((r) => \`
-    <div class="card" style="margin-bottom:10px;\${r.is_active ? "" : "opacity:.55"}">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        <span class="badge b-indigo" style="font-size:13px;padding:4px 12px">🔑 \${esc(r.keyword)}</span>
-        <span class="small muted">\${r.match_type === "exact" ? "aynan shu so'z" : "ichida bo'lsa"}</span>
-        <span class="small muted">· \${esc(r.project_name || "Barcha akkauntlar")}</span>
-        \${r.media_url ? '<span class="small muted">· 🖼 rasm bilan</span>' : ""}
-        <span style="flex:1"></span>
-        <span class="badge \${r.hit_count ? "b-green" : ""}" title="Necha marta ishlagan">⚡ \${r.hit_count} marta</span>
+  $("rulesList").innerHTML = '<div class="group-list">' + RULES.map((r, i) => \`
+    <div class="group-row" style="\${r.is_active ? "" : "opacity:.55"}">
+      <div class="row-body">
+        <p class="row-title" style="display:flex;align-items:center;gap:6px">${ICONS.key} \${esc(r.keyword)}</p>
+        <p class="row-sub">\${r.match_type === "exact" ? "aynan shu so'z" : "ichida bo'lsa"} · \${esc(r.project_name || "Barcha akkauntlar")}\${r.media_url ? " · rasm bilan" : ""}</p>
+        <p class="row-sub" style="white-space:pre-wrap;overflow:visible;text-overflow:clip;margin-top:4px">\${esc(r.reply_text)}</p>
       </div>
-      <div class="small" style="line-height:1.6;margin-bottom:10px;white-space:pre-wrap">\${esc(r.reply_text)}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="toggleRule(\${r.id}, \${!r.is_active})">\${r.is_active ? "⏸ To'xtatish" : "▶️ Yoqish"}</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRule(\${r.id})">🗑 O'chirish</button>
-      </div>
-    </div>\`).join("");
+      <span class="pill \${r.hit_count ? "pill-ok" : "pill-plain"}" title="Necha marta ishlagan">\${r.hit_count} marta</span>
+      <button class="btn btn-plain btn-sm" onclick="toggleRule(\${r.id}, \${!r.is_active})">\${r.is_active ? "To'xtatish" : "Yoqish"}</button>
+      <button class="btn btn-plain btn-sm" onclick="deleteRule(\${r.id})" title="O'chirish">${ICONS.trash}</button>
+    </div>\${i < RULES.length - 1 ? '<div class="separator no-avatar"></div>' : ""}\`).join("") + '</div>';
 }
 async function addRule(btn) {
   const keyword = $("kwWord").value.trim();
@@ -90,7 +85,7 @@ async function addRule(btn) {
       media_url: $("kwMedia").value.trim(),
       project_id: $("kwProject").value || null,
     });
-    toast("Qoida qo'shildi ✓ (1 daqiqagacha kuchga kiradi)");
+    toast("Qoida qo'shildi (1 daqiqagacha kuchga kiradi)");
     $("kwWord").value = ""; $("kwReply").value = ""; $("kwMedia").value = "";
     loadRules();
   } catch (e) { toast("Xatolik: " + e.message, false); }
@@ -102,7 +97,7 @@ async function toggleRule(id, val) {
     const r = RULES.find((x) => x.id === id);
     if (r) r.is_active = val;
     renderRules();
-    toast(val ? "Qoida yoqildi ▶️" : "Qoida to'xtatildi ⏸");
+    toast(val ? "Qoida yoqildi" : "Qoida to'xtatildi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 async function deleteRule(id) {

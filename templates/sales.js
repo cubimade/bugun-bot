@@ -8,48 +8,48 @@ export function renderSalesPage() {
   <div style="display:grid;gap:14px;max-width:860px">
 
     <div class="card">
-      <h3 style="margin-bottom:4px">💳 To'lov usullari</h3>
-      <p class="small muted" style="margin-bottom:14px">Havolalarni kiriting — mijoz "to'lov" desa yoki siz inbox'dan 💳 bossangiz, bot shu havolalarni yuboradi. Karta ma'lumotlari platformada SAQLANMAYDI.</p>
+      <h3 style="margin-bottom:4px;display:flex;align-items:center;gap:8px">${ICONS.card} To'lov usullari</h3>
+      <p class="small muted" style="margin-bottom:14px">Havolalarni kiriting — mijoz "to'lov" desa yoki siz inbox'dan to'lov havolasi tugmasi bossangiz, bot shu havolalarni yuboradi. Karta ma'lumotlari platformada SAQLANMAYDI.</p>
       <div style="display:grid;gap:10px;margin-bottom:14px">
         <div><label class="lbl">Click havolasi</label><input class="input" id="payClick" maxlength="300" placeholder="https://my.click.uz/..."></div>
         <div><label class="lbl">Payme havolasi</label><input class="input" id="payPayme" maxlength="300" placeholder="https://payme.uz/..."></div>
         <div><label class="lbl">Uzum havolasi</label><input class="input" id="payUzum" maxlength="300" placeholder="https://uzum.uz/..."></div>
       </div>
-      <button class="btn btn-primary" onclick="savePayLinks(this)">${ICONS.check} Saqlash</button>
+      <button class="btn-secondary" onclick="savePayLinks(this)">${ICONS.check} Saqlash</button>
     </div>
 
     <div class="card">
-      <h3 style="margin-bottom:12px">🧾 To'lovlar</h3>
+      <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:8px">${ICONS.receipt} To'lovlar</h3>
       <div id="payList"><div class="skeleton" style="height:50px"></div></div>
     </div>
 
     <div class="card">
-      <h3 style="margin-bottom:4px">🎟 Promo-kodlar</h3>
+      <h3 style="margin-bottom:4px;display:flex;align-items:center;gap:8px">${ICONS.tag} Promo-kodlar</h3>
       <p class="small muted" style="margin-bottom:12px">Mijoz kodni yozsa — bot tekshiradi va tasdiqlaydi. Flow'dagi "Chegirma kodi berish" amali avtomatik kod yaratadi.</p>
       <div style="display:grid;grid-template-columns:1fr 90px 90px 130px auto;gap:8px;margin-bottom:12px" class="pr-cols">
         <input class="input" id="prCode" maxlength="20" placeholder="KOD (masalan: YOZ25)">
         <input class="input" id="prPct" type="number" min="1" max="99" placeholder="%">
         <input class="input" id="prUses" type="number" min="1" value="10" title="Necha marta ishlatiladi">
         <input class="input" id="prUntil" type="date" title="Amal qilish muddati" style="color-scheme:dark">
-        <button class="btn btn-primary" onclick="addPromo(this)">${ICONS.plus}</button>
+        <button class="btn-secondary" onclick="addPromo(this)" title="Promo-kod qo'shish">${ICONS.plus}</button>
       </div>
       <div id="promoList"><div class="skeleton" style="height:44px"></div></div>
     </div>
 
     <div class="card">
-      <h3 style="margin-bottom:4px">🤝 Referral</h3>
+      <h3 style="margin-bottom:4px;display:flex;align-items:center;gap:8px">${ICONS.flow} Referral</h3>
       <p class="small muted" style="margin-bottom:12px">Mijoz "taklif havolasi" so'rasa — bot unikal kod/havola beradi. Yangi mijoz shu kod bilan kelsa, kim taklif qilgani yoziladi.</p>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <label class="switch"><input type="checkbox" id="refBonus"><span class="slider"></span></label>
         <div class="small"><strong>Bonus:</strong> taklif qilganga avto promo-kod</div>
         <input class="input" id="refPct" type="number" min="1" max="90" value="10" style="width:80px" title="Bonus foizi">%
-        <button class="btn btn-sm btn-primary" onclick="saveRefBonus(this)">Saqlash</button>
+        <button class="btn-secondary btn-sm" onclick="saveRefBonus(this)">Saqlash</button>
       </div>
       <div id="refTop"><div class="skeleton" style="height:44px"></div></div>
     </div>
 
     <div class="card">
-      <h3 style="margin-bottom:4px">🧮 Narx kalkulyatori</h3>
+      <h3 style="margin-bottom:4px;display:flex;align-items:center;gap:8px">${ICONS.dollarSign} Narx kalkulyatori</h3>
       <p class="small muted" style="margin-bottom:12px">Yoqilsa — mijoz "narx qancha" desa bot savollarni tugmalar bilan beradi va taxminiy narxni aytadi. Variant formati: <code>Nomi | qo'shiladigan summa | ko'paytiruvchi</code> (masalan: <code>10 ta post | 1000000 | 1</code>).</p>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
         <label class="switch"><input type="checkbox" id="calcOn"><span class="slider"></span></label>
@@ -59,8 +59,8 @@ export function renderSalesPage() {
       </div>
       <div id="calcRules" style="display:grid;gap:12px;margin-bottom:12px"></div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-sm" onclick="addCalcRule()">➕ Savol qo'shish</button>
-        <button class="btn btn-primary btn-sm" onclick="saveCalc(this)">${ICONS.check} Kalkulyatorni saqlash</button>
+        <button class="btn-plain btn-sm" onclick="addCalcRule()">${ICONS.plus} Savol qo'shish</button>
+        <button class="btn-secondary btn-sm" onclick="saveCalc(this)">${ICONS.check} Kalkulyatorni saqlash</button>
       </div>
     </div>
   </div>
@@ -97,29 +97,30 @@ async function savePayLinks(btn) {
       pay_payme: $("payPayme").value.trim(),
       pay_uzum: $("payUzum").value.trim(),
     });
-    toast("To'lov havolalari saqlandi ✓");
+    toast("To'lov havolalari saqlandi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }
-const PAY_STATUS = { pending: ["⏳ Kutilmoqda", "b-amber"], paid: ["✅ To'landi", "b-green"], failed: ["❌ Xato", "b-red"] };
+const PAY_STATUS = { pending: ['${ICONS.clock}', "Kutilmoqda", "pill-warn"], paid: ['${ICONS.check}', "To'landi", "pill-ok"], failed: ['${ICONS.close}', "Xato", "pill-danger"] };
 function renderPayments(list) {
-  if (!list.length) { $("payList").innerHTML = emptyState("🧾", "Hali to'lov yo'q — inbox'da 💳 tugmasi bilan havola yuboring"); return; }
-  $("payList").innerHTML = list.map(function (p) {
+  if (!list.length) { $("payList").innerHTML = emptyState('${ICONS.receipt}', "Hali to'lov yo'q — inbox'da to'lov havolasi tugmasi orqali yuboring"); return; }
+  $("payList").innerHTML = '<div class="group-list">' + list.map(function (p, i) {
     const st = PAY_STATUS[p.status] || PAY_STATUS.pending;
-    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">' +
-      '<span class="badge ' + st[1] + '">' + st[0] + "</span>" +
-      '<span class="small" style="flex:1;min-width:0">' +
-        (p.contact_id ? '<a href="/dashboard/inbox?contact=' + p.contact_id + '" style="color:var(--accent-soft)">' + esc(p.contact_name || p.ig_user_id || "mijoz") + "</a>" : "—") +
-        ' · <span class="muted">' + (p.amount ? Number(p.amount).toLocaleString("uz-UZ") + " so'm" : "summa yo'q") + " · " + (p.method || "").toUpperCase() + " · " + timeAgo(p.created_at) + "</span></span>" +
-      (p.status === "pending" ? '<button class="btn btn-sm" onclick="setPay(' + p.id + ',\\'paid\\')">✅ To\\'landi</button>' +
-        '<button class="btn btn-sm" onclick="setPay(' + p.id + ',\\'failed\\')">❌</button>' : "") +
-      "</div>";
-  }).join("");
+    return '<div class="group-row">' +
+      '<div class="row-body">' +
+        '<p class="row-title">' + (p.contact_id ? '<a href="/dashboard/inbox?contact=' + p.contact_id + '">' + esc(p.contact_name || p.ig_user_id || "mijoz") + "</a>" : "—") + "</p>" +
+        '<p class="row-sub">' + (p.amount ? Number(p.amount).toLocaleString("uz-UZ") + " so'm" : "summa yo'q") + " · " + (p.method || "").toUpperCase() + " · " + timeAgo(p.created_at) + "</p>" +
+      "</div>" +
+      '<span class="pill ' + st[2] + '">' + st[0] + " " + st[1] + "</span>" +
+      (p.status === "pending" ? '<button class="btn-secondary btn-sm" onclick="setPay(' + p.id + ',\\'paid\\')">' + '${ICONS.check}' + " To'landi</button>" +
+        '<button class="btn-danger btn-sm" onclick="setPay(' + p.id + ',\\'failed\\')" title="Xato deb belgilash">' + '${ICONS.close}' + "</button>" : "") +
+      "</div>" + (i < list.length - 1 ? '<div class="separator no-avatar"></div>' : "");
+  }).join("") + "</div>";
 }
 async function setPay(id, status) {
   try {
     await postJson("/api/payments/" + id + "/status", { status });
-    toast(status === "paid" ? "To'lov tasdiqlandi ✓ — mijoz 'Sotildi' bosqichiga o'tdi" : "Holat o'zgardi");
+    toast(status === "paid" ? "To'lov tasdiqlandi — mijoz 'Sotildi' bosqichiga o'tdi" : "Holat o'zgardi");
     loadAll();
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
@@ -128,11 +129,11 @@ function renderPromos() {
   $("promoList").innerHTML = PROMOS.map(function (p) {
     const disc = p.discount_percent ? p.discount_percent + "%" : Number(p.discount_amount).toLocaleString("uz-UZ") + " so'm";
     return '<div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);' + (p.is_active ? "" : "opacity:.5") + '">' +
-      '<span class="badge b-indigo" style="font-size:12.5px">🎟 ' + esc(p.code) + "</span>" +
+      '<span class="pill pill-plain" style="font-size:12.5px">${ICONS.tag} ' + esc(p.code) + "</span>" +
       '<span class="small" style="flex:1">' + disc + ' chegirma · <span class="muted">' + p.used_count + "/" + p.max_uses + " ishlatilgan" +
         (p.valid_until ? " · " + new Date(p.valid_until).toLocaleDateString("uz-UZ") + " gacha" : "") + "</span></span>" +
-      '<button class="btn btn-sm" onclick="togglePromo(' + p.id + "," + !p.is_active + ')">' + (p.is_active ? "⏸" : "▶️") + "</button>" +
-      '<button class="btn btn-sm" onclick="delPromo(' + p.id + ')">🗑</button>' +
+      '<button class="btn-plain btn-sm" onclick="togglePromo(' + p.id + "," + !p.is_active + ')" title="' + (p.is_active ? "Faolsizlantirish" : "Faollashtirish") + '">' + (p.is_active ? '${ICONS.close}' : '${ICONS.play}') + "</button>" +
+      '<button class="btn-danger btn-sm" onclick="delPromo(' + p.id + ')" title="O\\'chirish">${ICONS.trash}</button>' +
     "</div>";
   }).join("");
 }
@@ -148,7 +149,7 @@ async function addPromo(btn) {
       valid_until: $("prUntil").value || null,
     });
     $("prCode").value = ""; $("prPct").value = "";
-    toast("Promo-kod yaratildi ✓");
+    toast("Promo-kod yaratildi");
     const pr = await api("/api/promos"); PROMOS = pr.promos || []; renderPromos();
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
@@ -171,7 +172,7 @@ async function delPromo(id) {
 }
 function renderRefTop(top) {
   if (!top.length) { $("refTop").innerHTML = '<span class="small muted">Hali referral yo\\'q — mijozlar "taklif havolasi" deb so\\'rashi mumkin</span>'; return; }
-  $("refTop").innerHTML = '<strong class="small" style="display:block;margin-bottom:6px">🏆 Top taklifchilar:</strong>' +
+  $("refTop").innerHTML = '<strong class="small" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">${ICONS.trendingUp} Top taklifchilar:</strong>' +
     top.map(function (r, i) {
       return '<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--border)" class="small">' +
         "<span>" + (i + 1) + ".</span>" +
@@ -186,7 +187,7 @@ async function saveRefBonus(btn) {
       referral_bonus_enabled: String($("refBonus").checked),
       referral_bonus_percent: $("refPct").value,
     });
-    toast("Referral sozlamalari saqlandi ✓");
+    toast("Referral sozlamalari saqlandi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }
@@ -198,7 +199,7 @@ function renderCalcRules() {
     return '<div style="background:var(--panel2);border-radius:12px;padding:12px">' +
       '<div style="display:flex;gap:8px;margin-bottom:8px">' +
         '<input class="input" value="' + esc(r.question) + '" placeholder="Savol (masalan: Nechta post kerak?)" oninput="CALC_RULES[' + i + '].question=this.value">' +
-        '<button class="btn btn-sm" onclick="CALC_RULES.splice(' + i + ',1);renderCalcRules()">🗑</button></div>' +
+        '<button class="btn-danger btn-sm" onclick="CALC_RULES.splice(' + i + ',1);renderCalcRules()" title="O\\'chirish">${ICONS.trash}</button></div>' +
       '<textarea class="input" rows="3" placeholder="Variant | summa | koeff (har qatorda)" oninput="parseOpts(' + i + ', this.value)">' + esc(optsRaw) + "</textarea>" +
     "</div>";
   }).join("");
@@ -223,7 +224,7 @@ async function saveCalc(btn) {
       calc_base_price: $("calcBase").value || "0",
     });
     const r = await postJson("/api/price-rules", { rules: CALC_RULES });
-    toast("Kalkulyator saqlandi ✓ (" + r.count + " ta savol)");
+    toast("Kalkulyator saqlandi (" + r.count + " ta savol)");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }

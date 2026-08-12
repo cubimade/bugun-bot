@@ -15,13 +15,15 @@ async function loadTagRules() {
 }
 function renderTagRules() {
   if (!TAG_RULES.length) { $("trList").innerHTML = '<span class="small muted">Hali qoida yo\\'q</span>'; return; }
-  $("trList").innerHTML = TAG_RULES.map((r) => \`
-    <div style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);\${r.is_active ? "" : "opacity:.5"}">
-      <span class="small" style="flex:1;min-width:0">"<strong>\${esc(r.keyword)}</strong>" → <span class="badge b-indigo">\${esc(r.tag_name)}</span>
-        <span class="muted">\${r.project_name ? "· " + esc(r.project_name) : ""}</span></span>
+  $("trList").innerHTML = '<div class="group-list">' + TAG_RULES.map((r, i) => \`
+    <div class="group-row"\${r.is_active ? "" : ' style="opacity:.5"'}>
+      <div class="row-body">
+        <p class="row-title">"\${esc(r.keyword)}" → <span class="pill pill-plain">\${esc(r.tag_name)}</span></p>
+        \${r.project_name ? '<p class="row-sub">' + esc(r.project_name) + "</p>" : ""}
+      </div>
       <button class="btn btn-sm" onclick="toggleTagRule(\${r.id}, \${!r.is_active})" title="\${r.is_active ? "To'xtatish" : "Yoqish"}">\${r.is_active ? "⏸" : "▶️"}</button>
-      <button class="btn btn-sm" onclick="delTagRule(\${r.id})" title="O'chirish">🗑</button>
-    </div>\`).join("");
+      <button class="btn btn-plain btn-sm" onclick="delTagRule(\${r.id})" title="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+    </div>\${i < TAG_RULES.length - 1 ? '<div class="separator no-avatar"></div>' : ""}\`).join("") + "</div>";
 }
 async function addTagRule(btn) {
   const keyword = $("trWord").value.trim();
@@ -64,14 +66,14 @@ async function loadSystem() {
     $("sysInfo").innerHTML = \`
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
         \${sysRow("Versiya", "v" + s.version)}
-        \${sysRow("Server", '<span class="dot dot-green"></span> ishlayapti')}
-        \${sysRow("Database", s.db ? '<span class="dot dot-green"></span> ulangan' : '<span class="dot dot-red"></span> uzilgan')}
+        \${sysRow("Server", '<span class="pill pill-ok">ishlayapti</span>')}
+        \${sysRow("Database", s.db ? '<span class="pill pill-ok">ulangan</span>' : '<span class="pill pill-danger">uzilgan</span>')}
         \${sysRow("Akkauntlar", s.accounts + " ta faol")}
         \${sysRow("Oxirgi deploy", fmt(s.startedAt))}
         \${sysRow("Ishlash vaqti", fmtUptime(s.uptimeSec))}
         \${sysRow("Node.js", s.node)}
       </div>\`;
-  } catch (e) { $("sysInfo").innerHTML = emptyState("🖥", "Tizim ma'lumoti yuklanmadi"); }
+  } catch (e) { $("sysInfo").innerHTML = emptyState('<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="7" rx="1.5"/><rect x="2" y="14" width="20" height="7" rx="1.5"/><circle cx="6" cy="6.5" r=".8" fill="currentColor" stroke="none"/><circle cx="6" cy="17.5" r=".8" fill="currentColor" stroke="none"/></svg>', "Tizim ma'lumoti yuklanmadi"); }
 }
 function sysRow(label, valueHtml) {
   return \`<div style="background:var(--panel2);border-radius:12px;padding:12px">
@@ -83,18 +85,18 @@ async function loadQuickReplies() {
   try {
     const { replies } = await api("/api/saved-replies");
     if (!replies.length) {
-      $("qrList").innerHTML = emptyState("⚡", "Hali tezkor javob yo'q — birinchisini qo'shing");
+      $("qrList").innerHTML = emptyState('<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>', "Hali tezkor javob yo'q — birinchisini qo'shing");
       return;
     }
-    $("qrList").innerHTML = replies.map((r) => \`
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
-        <div style="min-width:0;flex:1">
-          <strong class="small" style="display:block">\${esc(r.title)}</strong>
-          <span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(r.text)}</span>
+    $("qrList").innerHTML = '<div class="group-list">' + replies.map((r, i) => \`
+      <div class="group-row">
+        <div class="row-body">
+          <p class="row-title">\${esc(r.title)}</p>
+          <p class="row-sub" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(r.text)}</p>
         </div>
-        <button class="btn btn-sm btn-danger" onclick="deleteQuickReply(\${r.id})" title="O'chirish">✕</button>
-      </div>\`).join("");
-  } catch (e) { $("qrList").innerHTML = emptyState("⚡", "Yuklanmadi: " + e.message); }
+        <button class="btn btn-plain btn-sm" onclick="deleteQuickReply(\${r.id})" title="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div>\${i < replies.length - 1 ? '<div class="separator no-avatar"></div>' : ""}\`).join("") + "</div>";
+  } catch (e) { $("qrList").innerHTML = emptyState('<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>', "Yuklanmadi: " + e.message); }
 }
 async function addQuickReply(btn) {
   const title = $("qrTitle").value.trim();
@@ -137,24 +139,30 @@ async function loadUsers() {
 }
 function renderUsers() {
   if (!USERS.length) { $("usersList").innerHTML = '<span class="small muted">Hali jamoa a\\'zosi yo\\'q — pastda qo\\'shing</span>'; return; }
-  const ROLE_LBL = { owner: "👑 Owner", admin: "🛠 Admin", operator: "🎧 Operator" };
-  $("usersList").innerHTML = USERS.map(function (u) {
+  const ROLE_LBL = { owner: "Owner", admin: "Admin", operator: "Operator" };
+  const ICO_LINK = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>';
+  const ICO_KEY = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4"/><path d="M18 5l2 2"/><path d="M15 8l2 2"/></svg>';
+  const ICO_TRASH = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+  $("usersList").innerHTML = '<div class="group-list">' + USERS.map(function (u, i) {
     const projs = (u.project_ids || []).map(function (pid) {
       const p = US_PROJECTS.find(function (x) { return x.id === pid; });
       return p ? p.name : "#" + pid;
     });
-    return '<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;' + (u.is_active ? "" : "opacity:.5") + '">' +
-      '<span class="small" style="flex:1;min-width:0"><strong>' + esc(u.name || u.email) + "</strong>" +
-        ' <span class="muted">' + esc(u.email) + "</span><br>" +
-        '<span class="badge ' + (u.role === "owner" ? "b-green" : u.role === "admin" ? "b-indigo" : "b-gray") + '">' + ROLE_LBL[u.role] + "</span>" +
-        (u.role === "operator" ? ' <span class="muted small">' + (projs.length ? "akkauntlar: " + esc(projs.join(", ")) : "barcha akkauntlar") + "</span>" : "") +
-        (u.last_login ? ' <span class="muted small">· oxirgi kirish: ' + timeAgo(u.last_login) + "</span>" : "") + "</span>" +
-      (u.role !== "owner" ? '<button class="btn btn-sm" onclick="editUserProjects(' + u.id + ')" title="Akkauntlarni biriktirish">📱</button>' : "") +
-      '<button class="btn btn-sm" onclick="resetUserPassword(' + u.id + ')" title="Parolni yangilash">🔑</button>' +
-      (u.role !== "owner" ? '<button class="btn btn-sm" onclick="toggleUser(' + u.id + "," + !u.is_active + ')">' + (u.is_active ? "⏸" : "▶️") + "</button>" +
-        '<button class="btn btn-sm" onclick="delUser(' + u.id + ')">🗑</button>' : "") +
-    "</div>";
-  }).join("");
+    const sub = esc(u.email) +
+      (u.role === "operator" ? " · " + (projs.length ? "akkauntlar: " + esc(projs.join(", ")) : "barcha akkauntlar") : "") +
+      (u.last_login ? " · oxirgi kirish: " + timeAgo(u.last_login) : "");
+    return '<div class="group-row"' + (u.is_active ? "" : ' style="opacity:.5"') + '>' +
+      '<div class="row-body">' +
+        '<p class="row-title">' + esc(u.name || u.email) +
+          ' <span class="pill ' + (u.role === "owner" ? "pill-ok" : u.role === "admin" ? "pill-warn" : "pill-plain") + '">' + ROLE_LBL[u.role] + "</span></p>" +
+        '<p class="row-sub">' + sub + "</p>" +
+      "</div>" +
+      (u.role !== "owner" ? '<button class="btn btn-plain btn-sm" onclick="editUserProjects(' + u.id + ')" title="Akkauntlarni biriktirish">' + ICO_LINK + "</button>" : "") +
+      '<button class="btn btn-plain btn-sm" onclick="resetUserPassword(' + u.id + ')" title="Parolni yangilash">' + ICO_KEY + "</button>" +
+      (u.role !== "owner" ? '<button class="btn btn-plain btn-sm" onclick="toggleUser(' + u.id + "," + !u.is_active + ')">' + (u.is_active ? "⏸" : "▶️") + "</button>" +
+        '<button class="btn btn-plain btn-sm" onclick="delUser(' + u.id + ')">' + ICO_TRASH + "</button>" : "") +
+    "</div>" + (i < USERS.length - 1 ? '<div class="separator no-avatar"></div>' : "");
+  }).join("") + "</div>";
 }
 async function addUser(btn) {
   const email = $("nuEmail").value.trim();
@@ -162,7 +170,7 @@ async function addUser(btn) {
   btn.disabled = true;
   try {
     const r = await postJson("/api/users", { email, name: $("nuName").value.trim(), role: $("nuRole").value });
-    openModal("✅ Foydalanuvchi qo'shildi", '<p style="line-height:1.8">Vaqtinchalik parol (bir marta ko\\'rsatiladi, nusxalab yuboring):</p>' +
+    openModal("Foydalanuvchi qo'shildi", '<p style="line-height:1.8">Vaqtinchalik parol (bir marta ko\\'rsatiladi, nusxalab yuboring):</p>' +
       '<div class="card" style="padding:14px;text-align:center;font-size:18px;font-weight:700;letter-spacing:1px;margin:10px 0">' + esc(r.tempPassword) + "</div>" +
       '<p class="small muted">Kirish: ' + location.origin + "/login — email: " + esc(email) + "</p>" +
       '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');
@@ -174,7 +182,7 @@ async function addUser(btn) {
 function editUserProjects(id) {
   const u = USERS.find(function (x) { return x.id === id; });
   const cur = u.project_ids || [];
-  openModal("📱 Akkauntlar — " + esc(u.name || u.email), '<p class="small muted" style="margin-bottom:10px">Operator faqat belgilangan akkauntlarning suhbatlarini ko\\'radi. Hech biri belgilanmasa — hammasini ko\\'radi.</p>' +
+  openModal("Akkauntlar — " + esc(u.name || u.email), '<p class="small muted" style="margin-bottom:10px">Operator faqat belgilangan akkauntlarning suhbatlarini ko\\'radi. Hech biri belgilanmasa — hammasini ko\\'radi.</p>' +
     US_PROJECTS.map(function (p) {
       return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer" class="small">' +
         '<input type="checkbox" class="upChk" value="' + p.id + '"' + (cur.includes(p.id) ? " checked" : "") + "> " + esc(p.name) + "</label>";
@@ -194,7 +202,7 @@ async function saveUserProjects(id) {
 async function resetUserPassword(id) {
   try {
     const r = await postJson("/api/users/" + id, { reset_password: true });
-    openModal("🔑 Yangi parol", '<div class="card" style="padding:14px;text-align:center;font-size:18px;font-weight:700;letter-spacing:1px;margin:10px 0">' + esc(r.tempPassword) + "</div>" +
+    openModal("Yangi parol", '<div class="card" style="padding:14px;text-align:center;font-size:18px;font-weight:700;letter-spacing:1px;margin:10px 0">' + esc(r.tempPassword) + "</div>" +
       '<p class="small muted">Bir marta ko\\'rsatiladi — nusxalab yuboring.</p>' +
       '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');
   } catch (e) { toast("Xatolik: " + e.message, false); }
@@ -245,14 +253,17 @@ const EV_LBL = { new_contact: "yangi kontakt", won: "sotuv", booking: "bron", pa
 async function loadWebhooks() {
   try {
     const { webhooks } = await api("/api/webhooks");
-    $("whList").innerHTML = webhooks.length ? webhooks.map(function (w) {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;' + (w.is_active ? "" : "opacity:.5") + '">' +
-        '<span class="small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(w.url) +
-        ' <span class="muted">(' + (w.events || []).map(function (e) { return EV_LBL[e] || e; }).join(", ") + ")</span></span>" +
-        '<button class="btn btn-sm" onclick="testWebhook(' + w.id + ')" title="Test yuborish">🧪</button>' +
-        '<button class="btn btn-sm" onclick="toggleWebhook(' + w.id + "," + !w.is_active + ')">' + (w.is_active ? "⏸" : "▶️") + "</button>" +
-        '<button class="btn btn-sm" onclick="delWebhook(' + w.id + ')">🗑</button></div>';
-    }).join("") : '<span class="small muted">Hali webhook yo\\'q</span>';
+    const ICO_FLASK = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v6L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/></svg>';
+    const ICO_TRASH = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+    $("whList").innerHTML = webhooks.length ? '<div class="group-list">' + webhooks.map(function (w, i) {
+      return '<div class="group-row"' + (w.is_active ? "" : ' style="opacity:.5"') + '>' +
+        '<div class="row-body"><p class="row-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(w.url) + "</p>" +
+        '<p class="row-sub">' + (w.events || []).map(function (e) { return EV_LBL[e] || e; }).join(", ") + "</p></div>" +
+        '<button class="btn btn-plain btn-sm" onclick="testWebhook(' + w.id + ')" title="Test yuborish">' + ICO_FLASK + "</button>" +
+        '<button class="btn btn-plain btn-sm" onclick="toggleWebhook(' + w.id + "," + !w.is_active + ')">' + (w.is_active ? "⏸" : "▶️") + "</button>" +
+        '<button class="btn btn-plain btn-sm" onclick="delWebhook(' + w.id + ')">' + ICO_TRASH + "</button></div>" +
+        (i < webhooks.length - 1 ? '<div class="separator no-avatar"></div>' : "");
+    }).join("") + "</div>" : '<span class="small muted">Hali webhook yo\\'q</span>';
   } catch (e) { $("whList").innerHTML = '<span class="small muted">Yuklanmadi</span>'; }
 }
 async function addWebhook(btn) {
@@ -262,7 +273,7 @@ async function addWebhook(btn) {
   btn.disabled = true;
   try {
     const r = await postJson("/api/webhooks", { url, events });
-    openModal("✅ Webhook qo'shildi", '<p class="small" style="margin-bottom:8px">Imzo tekshirish uchun secret (bir marta ko\\'rsatiladi):</p>' +
+    openModal("Webhook qo'shildi", '<p class="small" style="margin-bottom:8px">Imzo tekshirish uchun secret (bir marta ko\\'rsatiladi):</p>' +
       '<div class="card" style="padding:12px;font-family:monospace;font-size:13px;word-break:break-all">' + esc(r.secret) + "</div>" +
       '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');
     $("whUrl").value = "";
@@ -287,11 +298,15 @@ async function delWebhook(id) {
 async function loadApiKeys() {
   try {
     const { keys } = await api("/api/api-keys");
-    $("akList").innerHTML = keys.length ? keys.map(function (k) {
-      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)" class="small">' +
-        "<span style='flex:1'>🔑 " + esc(k.name) + ' <span class="muted">' + esc(k.key_hint || "") + (k.last_used ? " · ishlatilgan: " + timeAgo(k.last_used) : "") + "</span></span>" +
-        '<button class="btn btn-sm" onclick="delApiKey(' + k.id + ')">🗑</button></div>';
-    }).join("") : '<span class="small muted">Hali kalit yo\\'q</span>';
+    const ICO_KEY = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4"/><path d="M18 5l2 2"/><path d="M15 8l2 2"/></svg>';
+    const ICO_TRASH = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+    $("akList").innerHTML = keys.length ? '<div class="group-list">' + keys.map(function (k, i) {
+      return '<div class="group-row">' +
+        '<div class="row-body"><p class="row-title" style="display:flex;align-items:center;gap:6px">' + ICO_KEY + esc(k.name) + "</p>" +
+        '<p class="row-sub">' + esc(k.key_hint || "") + (k.last_used ? " · ishlatilgan: " + timeAgo(k.last_used) : "") + "</p></div>" +
+        '<button class="btn btn-plain btn-sm" onclick="delApiKey(' + k.id + ')">' + ICO_TRASH + "</button></div>" +
+        (i < keys.length - 1 ? '<div class="separator no-avatar"></div>' : "");
+    }).join("") + "</div>" : '<span class="small muted">Hali kalit yo\\'q</span>';
   } catch (e) { /* jim */ }
 }
 async function delApiKey(id) {
@@ -303,7 +318,7 @@ async function addApiKey(btn) {
   btn.disabled = true;
   try {
     const r = await postJson("/api/api-keys", { name: $("akName").value.trim() || "API kalit" });
-    openModal("🔑 API kalit yaratildi", '<p class="small" style="margin-bottom:8px">Bir marta ko\\'rsatiladi — nusxalab oling:</p>' +
+    openModal("API kalit yaratildi", '<p class="small" style="margin-bottom:8px">Bir marta ko\\'rsatiladi — nusxalab oling:</p>' +
       '<div class="card" style="padding:12px;font-family:monospace;font-size:13px;word-break:break-all">' + esc(r.key) + "</div>" +
       '<p class="small muted" style="margin-top:10px">Ishlatish: <code>curl -H "X-API-Key: ..." ' + location.origin + "/api/v1/contacts</code></p>" +
       '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-primary" onclick="closeModal()">Yopish</button></div>');

@@ -7,13 +7,21 @@ const FLOW_ID = ${Number(flowId)};
 let FLOW = null, NODES = [], EDGES = [], SEQ = 1;
 let VIEW = { x: 40, y: 20, z: 1 };
 let SEL = null, DRAG = null, PAN = null, CONNECT = null, DIRTY = false;
+const ICSTYLE = 'class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
 const TYPE_META = {
-  message: { emoji: "💬", label: "Xabar" },
-  buttons: { emoji: "🔘", label: "Tugmalar" },
-  condition: { emoji: "❓", label: "Shart" },
-  action: { emoji: "⚡", label: "Amal" },
-  delay: { emoji: "⏱", label: "Kutish" },
+  message: { icon: '<svg ' + ICSTYLE + '><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-4-1L3 20l1.1-5.5a8.4 8.4 0 0 1-1-4A8.5 8.5 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/></svg>', label: "Xabar" },
+  buttons: { icon: '<svg ' + ICSTYLE + '><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>', label: "Tugmalar" },
+  condition: { icon: '<svg ' + ICSTYLE + '><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2-2.4 3.7"/><path d="M12 17h.01"/></svg>', label: "Shart" },
+  action: { icon: '<svg ' + ICSTYLE + '><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>', label: "Amal" },
+  delay: { icon: '<svg ' + ICSTYLE + '><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>', label: "Kutish" },
 };
+const SVG_CLOSE_SM = '<svg class="ic" style="width:11px;height:11px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+const SVG_TRASH_SM = '<svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>';
+const SVG_PLUS_SM = '<svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+const SVG_MEDIA_SM = '<svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>';
+const SVG_ALERT_SM = '<svg class="ic" style="width:12px;height:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+const SVG_FLAG_SM = '<svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/></svg>';
+const SVG_NEXT_SM = '<svg class="ic" style="width:14px;height:14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>';
 const ACTION_LABELS = { add_tag: "Teg qo'shish", remove_tag: "Tegni olib tashlash", handoff: "Operatorga uzatish", pause_bot: "Botni pauza qilish", set_stage: "Voronka bosqichi", give_promo: "Chegirma kodi berish" };
 
 function ports(n) {
@@ -29,7 +37,7 @@ function summary(n) {
   if (n.type === "action") return (ACTION_LABELS[c.action] || "amal tanlang…") + (c.value ? ": <strong>" + esc(c.value) + "</strong>" : "");
   if (n.type === "delay") {
     const warn = c.unit === "soat" && Number(c.amount) > 24;
-    return (c.amount || 1) + " " + (c.unit || "daqiqa") + " kutish" + (warn ? ' <span style="color:var(--danger)">⚠️ 24h+</span>' : "");
+    return (c.amount || 1) + " " + (c.unit || "daqiqa") + " kutish" + (warn ? ' <span style="color:var(--danger);display:inline-flex;align-items:center;gap:3px">' + SVG_ALERT_SM + " 24h+</span>" : "");
   }
   return "";
 }
@@ -74,8 +82,8 @@ function renderNodes() {
     }).join("");
     return '<div class="fnode' + (SEL === n.ref ? " sel" : "") + '" data-ref="' + n.ref + '" style="left:' + n.x + "px;top:" + n.y + 'px">' +
       '<div class="fdot-in" data-ref="' + n.ref + '"></div>' +
-      '<div class="fnode-head">' + m.emoji + " " + m.label +
-        '<span class="fx" data-del="' + n.ref + '" title="O\\'chirish">✕</span></div>' +
+      '<div class="fnode-head">' + m.icon + "<span>" + m.label + "</span>" +
+        '<span class="fx" data-del="' + n.ref + '" title="O\\'chirish">' + SVG_CLOSE_SM + "</span></div>" +
       '<div class="fnode-body"><div class="fnode-sum">' + summary(n) + "</div>" + pr + "</div>" +
     "</div>";
   }).join("");
@@ -141,7 +149,7 @@ function selectNode(ref) {
   const n = NODES.find(function (x) { return x.ref === ref; });
   if (!n) return;
   $("fbPanel").style.display = "";
-  $("fbPanelTitle").textContent = TYPE_META[n.type].emoji + " " + TYPE_META[n.type].label;
+  $("fbPanelTitle").textContent = TYPE_META[n.type].label;
   $("fbPanelBody").innerHTML = panelForm(n);
 }
 function closePanel() {
@@ -156,20 +164,20 @@ function panelForm(n) {
       '<textarea class="input" rows="5" maxlength="900" oninput="cfg(\\'text\\', this.value)">' + esc(c.text || "") + "</textarea>" +
       '<label class="lbl" style="margin-top:10px">Rasm URL (ixtiyoriy, https://...)</label>' +
       '<input class="input" id="pnMediaUrl" maxlength="500" value="' + esc(c.media_url || "") + '" oninput="cfg(\\'media_url\\', this.value)">' +
-      '<button class="btn btn-sm" style="margin-top:6px" onclick="pickMedia()">📎 Kutubxonadan tanlash</button>';
+      '<button class="btn btn-sm btn-plain" style="margin-top:6px" onclick="pickMedia()">' + SVG_MEDIA_SM + " Kutubxonadan tanlash</button>";
   }
   if (n.type === "buttons") {
     const btns = (c.buttons || []).map(function (b, i) {
       return '<div style="display:flex;gap:6px;margin-bottom:6px">' +
         '<input class="input" maxlength="20" value="' + esc(b) + '" oninput="renameBtn(' + i + ', this.value)">' +
-        '<button class="btn btn-sm" onclick="delBtn(' + i + ')">🗑</button></div>';
+        '<button class="btn btn-sm btn-plain" onclick="delBtn(' + i + ')">' + SVG_TRASH_SM + "</button></div>";
     }).join("");
     const urlRaw = (c.url_buttons || []).map(function (u) { return u.title + " | " + u.url; }).join("\\n");
     return '<label class="lbl">Savol matni</label>' +
       '<textarea class="input" rows="3" maxlength="900" oninput="cfg(\\'text\\', this.value)">' + esc(c.text || "") + "</textarea>" +
       '<label class="lbl" style="margin-top:10px">Tugmalar (2-5 ta, maks 20 belgi)</label>' + btns +
-      '<button class="btn btn-sm" onclick="addBtn()">➕ Tugma</button>' +
-      '<label class="lbl" style="margin-top:12px">🔗 URL tugmalar (ixtiyoriy, har qatorda: Sarlavha | https://...)</label>' +
+      '<button class="btn btn-sm btn-secondary" onclick="addBtn()">' + SVG_PLUS_SM + " Tugma</button>" +
+      '<label class="lbl" style="margin-top:12px">URL tugmalar (ixtiyoriy, har qatorda: Sarlavha | https://...)</label>' +
       '<textarea class="input" rows="2" placeholder="Saytimiz | https://example.uz" oninput="setUrlButtons(this.value)">' + esc(urlRaw) + "</textarea>" +
       '<p class="small muted" style="margin-top:8px">Har tugmadan alohida chiziq torting — bosilganda o\\'sha yo\\'l davom etadi. URL tugmalar Telegram\\'da inline ochiladi, Instagram\\'da matn havola bo\\'lib boradi.</p>';
   }
@@ -205,7 +213,7 @@ function panelForm(n) {
           '<option value="soat"' + (c.unit === "soat" ? " selected" : "") + ">soat</option>" +
         "</select>" +
       "</div>" +
-      '<p class="small muted" style="margin-top:8px">⚠️ 24 soatdan uzun kutish: Instagram 24-soat qoidasi tufayli xabar yuborilmasligi mumkin. Mijoz kutish paytida yozsa — flow to\\'xtaydi, AI javob beradi.</p>';
+      '<p class="small muted" style="margin-top:8px">24 soatdan uzun kutish: Instagram 24-soat qoidasi tufayli xabar yuborilmasligi mumkin. Mijoz kutish paytida yozsa — flow to\\'xtaydi, AI javob beradi.</p>';
   }
   return "";
 }
@@ -222,7 +230,7 @@ async function pickMedia() {
     const { media } = await api("/api/media");
     const imgs = (media || []).filter(function (m) { return m.type === "image"; });
     if (!imgs.length) return toast("Kutubxonada rasm yo'q — Media sahifasida yuklang", false);
-    openModal("📎 Rasm tanlash", '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:55vh;overflow-y:auto">' +
+    openModal("Rasm tanlash", '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;max-height:55vh;overflow-y:auto">' +
       imgs.map(function (m) {
         return '<div onclick="useMedia(' + m.id + ')" style="cursor:pointer"><img src="' + m.url + '" style="width:100%;height:76px;object-fit:cover;border-radius:8px" loading="lazy">' +
           '<div class="small muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">' + esc(m.name) + "</div></div>";
@@ -235,7 +243,7 @@ function useMedia(id) {
   const inp = $("pnMediaUrl");
   if (inp) inp.value = url;
   closeModal();
-  toast("Rasm tanlandi ✓");
+  toast("Rasm tanlandi");
 }
 function setUrlButtons(raw) {
   const n = NODES.find(function (x) { return x.ref === SEL; });
@@ -294,7 +302,7 @@ cv.addEventListener("pointerdown", function (e) {
     const i = Number(hit.dataset.ei);
     const eg = EDGES[i];
     openModal("Chiziqni o'chirish", '<p style="margin-bottom:16px">Bu ulanish o\\'chirilsinmi?' + (eg && eg.label ? ' ("' + esc(eg.label) + '")' : "") + "</p>" +
-      '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn" onclick="closeModal()">Yo\\'q</button>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-plain" onclick="closeModal()">Yo\\'q</button>' +
       '<button class="btn btn-danger" onclick="EDGES.splice(' + i + ',1);DIRTY=true;renderEdges();closeModal()">Ha, o\\'chirish</button></div>');
     return;
   }
@@ -377,7 +385,7 @@ async function saveAll(btn) {
       edges: EDGES,
     });
     DIRTY = false;
-    toast("Flow saqlandi ✓");
+    toast("Flow saqlandi");
     await load(); // server ID'lari bilan qayta sinxron
   } catch (e) { toast("Xatolik: " + e.message, false); }
   if (btn) btn.disabled = false;
@@ -386,12 +394,15 @@ async function testFlow() {
   try {
     if (DIRTY) await saveAll(null);
     const r = await api("/api/flows/" + FLOW_ID + "/simulate");
-    const icons = { message: "💬", buttons: "🔘", condition: "❓", action: "⚡", delay: "⏱", info: "↪️", done: "🏁", error: "⚠️" };
-    openModal("🧪 Simulyatsiya", '<div style="display:grid;gap:8px;max-height:60vh;overflow-y:auto">' +
+    const icons = {
+      message: TYPE_META.message.icon, buttons: TYPE_META.buttons.icon, condition: TYPE_META.condition.icon,
+      action: TYPE_META.action.icon, delay: TYPE_META.delay.icon, info: SVG_NEXT_SM, done: SVG_FLAG_SM, error: SVG_ALERT_SM,
+    };
+    openModal("Simulyatsiya", '<div style="display:grid;gap:8px;max-height:60vh;overflow-y:auto">' +
       (r.steps || []).map(function (s) {
-        return '<div style="background:var(--panel2);border-radius:10px;padding:9px 12px" class="small">' +
-          (icons[s.type] || "•") + " " + esc(s.text) +
-          (s.buttons && s.buttons.length ? '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + s.buttons.map(function (b) { return '<span class="badge b-indigo">' + esc(b) + "</span>"; }).join("") + "</div>" : "") +
+        return '<div style="background:var(--panel2);border-radius:10px;padding:9px 12px;display:flex;align-items:center;gap:6px" class="small">' +
+          (icons[s.type] || "") + "<span>" + esc(s.text) + "</span>" +
+          (s.buttons && s.buttons.length ? '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' + s.buttons.map(function (b) { return '<span class="pill pill-plain">' + esc(b) + "</span>"; }).join("") + "</div>" : "") +
         "</div>";
       }).join("") + "</div>");
   } catch (e) { toast("Xatolik: " + e.message, false); }

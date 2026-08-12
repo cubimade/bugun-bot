@@ -6,6 +6,32 @@ export function insightsScript() {
 const DAY_FULL = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"];
 const DAY_SHORT = ["Yak", "Du", "Se", "Chor", "Pay", "Ju", "Shan"];
 
+// ROADMAP-17 FAZA 2.1 — interfeys chrome ikonkalari (emoji o'rniga). Bu fayl brauzerda
+// ishlaydi va serverdagi ICONS'ga ega emas, shuning uchun SVG'lar shu yerda inline.
+function ico(paths) { return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + '</svg>'; }
+const ICO = {
+  zap: ico('<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>'),
+  message: ico('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-4-1L3 20l1.1-5.5a8.4 8.4 0 0 1-1-4A8.5 8.5 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/>'),
+  calendar: ico('<rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
+  help: ico('<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2-2.4 3.7"/><path d="M12 17h.01"/>'),
+  repeat: ico('<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>'),
+  flag: ico('<path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/>'),
+  star: ico('<path d="M12 2l2.9 6.4 6.9.7-5.2 4.7 1.5 6.8L12 17.3 5.9 20.6l1.5-6.8-5.2-4.7 6.9-.7z"/>'),
+  clock: ico('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>'),
+  chart: ico('<path d="M3 21h18"/><rect x="6" y="11" width="3.5" height="8"/><rect x="13" y="6" width="3.5" height="13"/>'),
+  funnel: ico('<path d="M3 4h18l-7 9v6l-4 2v-8L3 4z"/>'),
+  accounts: ico('<rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>'),
+  inbox: ico('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+  money: ico('<path d="M12 2v20"/><path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.2-5 3 2.2 2.6 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>'),
+  puzzle: ico('<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>'),
+  warn: ico('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+  lightbulb: ico('<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>'),
+  check: ico('<path d="M20 6L9 17l-5-5"/>'),
+  contacts: ico('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  target: ico('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>'),
+  knowledge: ico('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'),
+};
+
 // D: 6 metrika
 async function loadMetrics() {
   try {
@@ -13,39 +39,39 @@ async function loadMetrics() {
     const wd = m.weekdays || [];
     const topDay = wd.length ? wd.reduce((a, b) => (b.n > a.n ? b : a)) : null;
     const cards = [
-      { e: "⚡", num: m.avgResponseSec != null ? m.avgResponseSec + " s" : "—",
+      { e: ICO.zap, num: m.avgResponseSec != null ? m.avgResponseSec + " s" : "—",
         lbl: "O'rtacha javob vaqti",
         sub: m.avgResponseSec != null ? "bot shu tezlikda javob beradi (" + m.avgResponseSample + " javob)" : "hali javoblar yo'q" },
-      { e: "💬", num: m.avgConversationMsgs || "—", lbl: "O'rtacha suhbat",
+      { e: ICO.message, num: m.avgConversationMsgs || "—", lbl: "O'rtacha suhbat",
         sub: "bitta mijoz bilan o'rtacha xabar" },
-      { e: "📅", num: topDay ? DAY_SHORT[topDay.dow] : "—", lbl: "Eng faol kun",
+      { e: ICO.calendar, num: topDay ? DAY_SHORT[topDay.dow] : "—", lbl: "Eng faol kun",
         sub: topDay ? DAY_FULL[topDay.dow] + " — " + topDay.n + " xabar" : "ma'lumot yig'ilmoqda" },
-      { e: "🤷", num: m.unanswered, lbl: "Javobsiz savollar",
+      { e: ICO.help, num: m.unanswered, lbl: "Javobsiz savollar",
         sub: m.unanswered ? "bilim bazasini to'ldirish kerak" : "bot hammasiga javob berdi" },
-      { e: "🔁", num: m.repeatCustomers.pct + "%", lbl: "Takroriy mijozlar",
+      { e: ICO.repeat, num: m.repeatCustomers.pct + "%", lbl: "Takroriy mijozlar",
         sub: m.repeatCustomers.count + " ta mijoz qaytib yozgan" },
-      { e: "🆕", num: m.newVsReturning.fresh + " / " + m.newVsReturning.returning, lbl: "Yangi / qaytgan",
+      { e: ICO.flag, num: m.newVsReturning.fresh + " / " + m.newVsReturning.returning, lbl: "Yangi / qaytgan",
         sub: "davr ichida yangi va eski mijozlar" },
     ];
     // D5: baholangan javoblar bo'lsa — sifat kartasi
     if (m.ratings && m.ratings.rated > 0) {
-      cards.push({ e: "⭐", num: m.ratings.pct + "%", lbl: "Ijobiy baholangan",
-        sub: "👍 " + m.ratings.pos + " · 👎 " + m.ratings.neg + " (inbox'da baholanadi)" });
+      cards.push({ e: ICO.star, num: m.ratings.pct + "%", lbl: "Ijobiy baholangan",
+        sub: m.ratings.pos + " ijobiy · " + m.ratings.neg + " salbiy (inbox'da baholanadi)" });
     }
     // 7.5: follow-up yuborilgan bo'lsa — konversiya kartasi
     if (m.followup && m.followup.sent > 0) {
-      cards.push({ e: "⏰", num: m.followup.pct + "%", lbl: "Follow-up konversiyasi",
+      cards.push({ e: ICO.clock, num: m.followup.pct + "%", lbl: "Follow-up konversiyasi",
         sub: m.followup.sent + " ta eslatma → " + m.followup.replied + " tasi javob berdi" });
     }
     $("metricsGrid").innerHTML = cards.map(function (c) {
       return '<div class="card hoverable glass-glow">' +
-        '<div style="font-size:20px;margin-bottom:6px">' + c.e + "</div>" +
+        '<div style="margin-bottom:6px">' + c.e + "</div>" +
         '<div class="m-num">' + c.num + "</div>" +
         '<div class="stat-lbl" style="margin-top:2px">' + c.lbl + "</div>" +
         '<div class="stat-ctx">' + c.sub + "</div></div>";
     }).join("");
   } catch (e) {
-    $("metricsGrid").innerHTML = '<div class="card" style="grid-column:1/-1">' + emptyState("📊", "Metrikalar yuklanmadi: " + e.message) + "</div>";
+    $("metricsGrid").innerHTML = '<div class="card" style="grid-column:1/-1">' + emptyState(ICO.chart, "Metrikalar yuklanmadi: " + e.message) + "</div>";
   }
 }
 
@@ -58,10 +84,10 @@ async function loadAnalytics() {
     renderAccBars(a.accounts || []);
     renderSources(a.sources || {});
   } catch (e) {
-    $("heatmap").innerHTML = emptyState("🕒", "Yuklanmadi: " + e.message);
-    $("funnel").innerHTML = emptyState("🔻", "Yuklanmadi");
-    $("accBars").innerHTML = emptyState("📱", "Yuklanmadi");
-    $("srcDonut").innerHTML = emptyState("📥", "Yuklanmadi");
+    $("heatmap").innerHTML = emptyState(ICO.clock, "Yuklanmadi: " + e.message);
+    $("funnel").innerHTML = emptyState(ICO.funnel, "Yuklanmadi");
+    $("accBars").innerHTML = emptyState(ICO.accounts, "Yuklanmadi");
+    $("srcDonut").innerHTML = emptyState(ICO.inbox, "Yuklanmadi");
   }
 }
 
@@ -69,11 +95,11 @@ async function loadAnalytics() {
 function renderSources(src) {
   const items = [
     { k: "dm", lbl: "To'g'ridan-to'g'ri DM", c: "var(--accent)", n: src.dm || 0 },
-    { k: "story_reply", lbl: "📸 Story javoblari", c: "var(--accent-2)", n: src.story_reply || 0 },
-    { k: "comment", lbl: "💬 Kommentdan kelgan", c: "var(--accent-3)", n: src.comment || 0 },
+    { k: "story_reply", lbl: "Story javoblari", c: "var(--accent-2)", n: src.story_reply || 0 },
+    { k: "comment", lbl: "Kommentdan kelgan", c: "var(--accent-3)", n: src.comment || 0 },
   ];
   const total = items.reduce((s, x) => s + x.n, 0);
-  if (!total) { $("srcDonut").innerHTML = emptyState("📥", "Ma'lumot yig'ilmoqda — bu davrda mijoz yo'q"); return; }
+  if (!total) { $("srcDonut").innerHTML = emptyState(ICO.inbox, "Ma'lumot yig'ilmoqda — bu davrda mijoz yo'q"); return; }
   const R = 52, CX = 70, CY = 70, CIRC = 2 * Math.PI * R;
   let off = 0;
   let segs = "";
@@ -106,7 +132,7 @@ function renderHeatmap(rows) {
   const grid = {};
   let max = 0;
   rows.forEach(function (r) { grid[r.dow + ":" + r.hour] = r.n; if (r.n > max) max = r.n; });
-  if (!max) { $("heatmap").innerHTML = emptyState("🕒", "Ma'lumot yig'ilmoqda — mijoz xabarlari kelganda to'ladi"); $("heatSummary").textContent = ""; return; }
+  if (!max) { $("heatmap").innerHTML = emptyState(ICO.clock, "Ma'lumot yig'ilmoqda — mijoz xabarlari kelganda to'ladi"); $("heatSummary").textContent = ""; return; }
   const dows = [1, 2, 3, 4, 5, 6, 0]; // Du...Yak
   let html = '<div class="heat-scroll"><div class="heat-grid">';
   html += '<div></div>';
@@ -132,7 +158,7 @@ function renderHeatmap(rows) {
     const s = hourTotals[h] + hourTotals[h + 1];
     if (s > bestSum) { bestSum = s; best = h; }
   }
-  $("heatSummary").innerHTML = "💡 Eng faol vaqt: <strong style='color:var(--text-1)'>" + best + ":00–" + (best + 2) + ":00</strong> — shu paytda onlayn bo'lish eng foydali";
+  $("heatSummary").innerHTML = ICO.lightbulb + " Eng faol vaqt: <strong style='color:var(--text-1)'>" + best + ":00–" + (best + 2) + ":00</strong> — shu paytda onlayn bo'lish eng foydali";
 }
 
 // C4: konversiya voronkasi (SVG trapetsiyalar)
@@ -143,7 +169,7 @@ function renderFunnel(f) {
     { lbl: "Qiziqqan (narx/xizmat)", n: f.interested || 0, c: "var(--accent-3)" },
     { lbl: "Aloqaga chiqqan", n: f.contacted || 0, c: "var(--success)" },
   ];
-  if (!stages[0].n) { $("funnel").innerHTML = emptyState("🔻", "Ma'lumot yig'ilmoqda — bu davrda mijoz yo'q"); return; }
+  if (!stages[0].n) { $("funnel").innerHTML = emptyState(ICO.funnel, "Ma'lumot yig'ilmoqda — bu davrda mijoz yo'q"); return; }
   const W = 400, SH = 54, GAP = 8, max = stages[0].n;
   const widths = stages.map(function (s) { return Math.max(0.14, s.n / max) * W; });
   let svg = '<svg viewBox="0 0 ' + W + " " + (stages.length * (SH + GAP)) + '" width="100%" style="display:block">';
@@ -168,7 +194,7 @@ function renderFunnel(f) {
 // C3: akkauntlar taqqoslashi — gorizontal gradient barlar (SVG)
 function renderAccBars(accounts) {
   const list = accounts.filter(function (a) { return a.messages || a.contacts; });
-  if (!list.length) { $("accBars").innerHTML = emptyState("📱", "Ma'lumot yig'ilmoqda — bu davrda faollik yo'q"); return; }
+  if (!list.length) { $("accBars").innerHTML = emptyState(ICO.accounts, "Ma'lumot yig'ilmoqda — bu davrda faollik yo'q"); return; }
   const max = Math.max.apply(null, list.map(function (a) { return a.messages; }));
   const total = list.reduce(function (s, a) { return s + a.messages; }, 0);
   $("accBars").innerHTML = list.map(function (a) {
@@ -197,7 +223,7 @@ async function loadChanged(attempt) {
       return;
     }
     $("changedText").textContent = text;
-    $("changedMeta").textContent = "✨ AI taqqoslash · " + fmt(cachedAt);
+    $("changedMeta").textContent = "AI taqqoslash · " + fmt(cachedAt);
   } catch (e) {
     $("changedText").textContent = "Taqqoslash hozircha tayyor emas — ma'lumot yig'ilganda paydo bo'ladi.";
   }
@@ -218,7 +244,7 @@ async function loadInsights(force, attempt) {
       return;
     }
     if (!insights) {
-      $("insBody").innerHTML = '<div class="card">' + emptyState("📈", "Hali tahlil uchun xabar yo'q — mijozlar yozganda AI tahlil paydo bo'ladi") + "</div>";
+      $("insBody").innerHTML = '<div class="card">' + emptyState(ICO.chart, "Hali tahlil uchun xabar yo'q — mijozlar yozganda AI tahlil paydo bo'ladi") + "</div>";
       $("insMeta").textContent = "";
       return;
     }
@@ -229,18 +255,18 @@ async function loadInsights(force, attempt) {
     $("insBody").innerHTML = \`
     <div class="ins-grid">
       <div class="card hoverable glass-glow">
-        <h3 style="margin-bottom:6px">❓ Eng ko'p so'ralgan savollar</h3>
+        <h3 style="margin-bottom:6px;display:flex;align-items:center;gap:6px">\${ICO.help} Eng ko'p so'ralgan savollar</h3>
         <p class="small muted" style="margin-bottom:8px">Mijozlar nimani so'rayapti</p>
         \${tq.length ? tq.map((q, i) => \`
           <div class="ins-item">
             <span class="ins-rank">\${i + 1}</span>
             <span style="flex:1">\${esc(q.question)}</span>
-            \${q.count ? \`<span class="badge b-indigo">\${q.count}×</span>\` : ""}
-          </div>\`).join("") : emptyState("❓", "Aniq takrorlanuvchi savollar topilmadi")}
+            \${q.count ? \`<span class="pill pill-plain">\${q.count}×</span>\` : ""}
+          </div>\`).join("") : emptyState(ICO.help, "Aniq takrorlanuvchi savollar topilmadi")}
       </div>
 
       <div class="card hoverable glass-glow">
-        <h3 style="margin-bottom:6px">💰 Sotuvga tayyor mijozlar</h3>
+        <h3 style="margin-bottom:6px;display:flex;align-items:center;gap:6px">\${ICO.money} Sotuvga tayyor mijozlar</h3>
         <p class="small muted" style="margin-bottom:8px">Narx so'raganlar va qiziqqanlar — tezroq bog'laning!</p>
         \${sr.length ? sr.map((c) => \`
           <div class="ins-item">
@@ -249,23 +275,23 @@ async function loadInsights(force, attempt) {
               <strong class="small" style="display:block">\${esc(c.name || "Mijoz #" + c.contact_id)}</strong>
               <span class="small muted">\${esc(c.reason || "")}</span>
             </span>
-            \${c.contact_id ? \`<a class="btn btn-sm" href="/dashboard/inbox?contact=\${Number(c.contact_id)}">💬</a>\` : ""}
-          </div>\`).join("") : emptyState("💰", "Hozircha sotuvga tayyor mijoz aniqlanmadi")}
+            \${c.contact_id ? \`<a class="btn-plain btn-sm" href="/dashboard/inbox?contact=\${Number(c.contact_id)}">\${ICO.message}</a>\` : ""}
+          </div>\`).join("") : emptyState(ICO.money, "Hozircha sotuvga tayyor mijoz aniqlanmadi")}
       </div>
 
       <div class="card hoverable glass-glow">
-        <h3 style="margin-bottom:6px">🧩 Bilim bazasi kamchiliklari</h3>
+        <h3 style="margin-bottom:6px;display:flex;align-items:center;gap:6px">\${ICO.puzzle} Bilim bazasi kamchiliklari</h3>
         <p class="small muted" style="margin-bottom:8px">Bot yaxshi javob berishi uchun nima qo'shish kerak</p>
         \${kg.length ? kg.map((g) => \`
           <div class="ins-item">
-            <span style="flex-shrink:0">💡</span>
+            <span style="flex-shrink:0">\${ICO.lightbulb}</span>
             <span style="flex:1">\${esc(g)}</span>
-          </div>\`).join("") : emptyState("🧩", "Kamchilik topilmadi — bilim bazasi yetarli ko'rinadi")}
-        \${kg.length ? '<a class="btn btn-sm" href="/dashboard/knowledge" style="margin-top:10px">🧠 Bilim bazasini to\\'ldirish</a>' : ""}
+          </div>\`).join("") : emptyState(ICO.puzzle, "Kamchilik topilmadi — bilim bazasi yetarli ko'rinadi")}
+        \${kg.length ? '<a class="btn btn-secondary btn-sm" href="/dashboard/knowledge" style="margin-top:10px">' + ICO.knowledge + " Bilim bazasini to'ldirish</a>" : ""}
       </div>
     </div>\`;
   } catch (e) {
-    $("insBody").innerHTML = '<div class="card">' + emptyState("⚠️", "Tahlil yuklanmadi: " + e.message) + "</div>";
+    $("insBody").innerHTML = '<div class="card">' + emptyState(ICO.warn, "Tahlil yuklanmadi: " + e.message) + "</div>";
     $("insMeta").textContent = "";
   }
 }
@@ -285,15 +311,15 @@ async function loadFinance() {
     }).join("");
     $("finBody").innerHTML =
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px">' +
-        finStat("💰 Daromad" + (f.revenueIsEstimate ? " (taxminiy)" : ""), fmtS(f.revenue)) +
-        finStat("✅ Sotilgan", f.won + " ta") +
-        finStat("📈 Konversiya", f.conversion + "%") +
-        finStat("🧲 LTV", fmtS(f.ltv)) +
-        (f.roi != null ? finStat("📊 ROI", f.roi + "%") : "") +
+        finStat(ICO.money + " Daromad" + (f.revenueIsEstimate ? " (taxminiy)" : ""), fmtS(f.revenue)) +
+        finStat(ICO.check + " Sotilgan", f.won + " ta") +
+        finStat(ICO.chart + " Konversiya", f.conversion + "%") +
+        finStat(ICO.target + " LTV", fmtS(f.ltv)) +
+        (f.roi != null ? finStat(ICO.chart + " ROI", f.roi + "%") : "") +
       "</div>" +
       '<div class="small muted" style="margin-bottom:6px">Oylar bo\\'yicha daromad:</div>' +
       '<div style="display:flex;align-items:flex-end;gap:3px;height:90px">' + bars + "</div>";
-  } catch (e) { $("finBody").innerHTML = emptyState("💰", "Yuklanmadi: " + e.message); }
+  } catch (e) { $("finBody").innerHTML = emptyState(ICO.money, "Yuklanmadi: " + e.message); }
 }
 function finStat(lbl, val) {
   return '<div style="background:var(--panel2);border-radius:12px;padding:11px"><div class="small muted" style="margin-bottom:3px">' + lbl + '</div><strong style="font-size:15px">' + val + "</strong></div>";
@@ -319,19 +345,19 @@ async function loadLost(force, attempt) {
       return;
     }
     const fn = r.funnel || {};
-    const stages = [["new", "🆕 Yangi"], ["interested", "🔥 Qiziqqan"], ["negotiation", "🤝 Muzokara"], ["won", "✅ Sotildi"], ["lost", "❌ Yo'q"]];
+    const stages = [["new", "Yangi", "plain"], ["interested", "Qiziqqan", "warn"], ["negotiation", "Muzokara", "plain"], ["won", "Sotildi", "ok"], ["lost", "Yo'q", "danger"]];
     let html = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
-      stages.map(function (s) { return '<span class="badge">' + s[1] + ": <strong>" + (fn[s[0]] || 0) + "</strong></span>"; }).join("") + "</div>";
+      stages.map(function (s) { return '<span class="pill pill-' + s[2] + '">' + s[1] + ": <strong>" + (fn[s[0]] || 0) + "</strong></span>"; }).join("") + "</div>";
     if (r.ai && (r.ai.reasons || []).length) {
       html += '<strong class="small">Yo\\'qotish sabablari (AI):</strong><ul class="small" style="margin:6px 0 10px 18px;line-height:1.8">' +
         r.ai.reasons.map(function (x) { return "<li>" + esc(x.reason) + (x.count ? ' <span class="muted">(~' + x.count + " mijoz)</span>" : "") + "</li>"; }).join("") + "</ul>" +
         '<strong class="small">Tavsiyalar:</strong><ul class="small" style="margin:6px 0 0 18px;line-height:1.8">' +
         (r.ai.tips || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
     } else {
-      html += '<span class="small muted">Tahlil uchun yetarli yo\\'qotilgan mijoz yo\\'q (yaxshi belgi! 🎉)</span>';
+      html += '<span class="small muted">Tahlil uchun yetarli yo\\'qotilgan mijoz yo\\'q (yaxshi belgi!)</span>';
     }
     $("lostBody").innerHTML = html;
-  } catch (e) { $("lostBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message); }
+  } catch (e) { $("lostBody").innerHTML = emptyState(ICO.warn, "Yuklanmadi: " + e.message); }
 }
 // ===== 11.4: Prognoz =====
 async function loadForecast() {
@@ -340,16 +366,16 @@ async function loadForecast() {
     const f = r.forecast;
     const vals = (r.days || []).map(function (d) { return d.newContacts; });
     $("fcBody").innerHTML =
-      (r.warning ? '<div class="card" style="padding:10px 12px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08);margin-bottom:10px" class="small">⚠️ ' + esc(r.warning) + "</div>" : "") +
+      (r.warning ? '<div class="card" style="padding:10px 12px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08);margin-bottom:10px" class="small">' + ICO.warn + " " + esc(r.warning) + "</div>" : "") +
       '<div class="small" style="line-height:1.9;margin-bottom:10px">Shu tempda oyiga taxminan:<br>' +
-        "👥 <strong>~" + f.monthlyContacts + "</strong> yangi mijoz · " +
-        "✅ <strong>~" + f.monthlyWon + "</strong> sotuv" +
-        (f.monthlyRevenue ? ' · 💰 <strong>~' + Number(f.monthlyRevenue).toLocaleString("uz-UZ") + "</strong> so'm" : "") +
+        ICO.contacts + " <strong>~" + f.monthlyContacts + "</strong> yangi mijoz · " +
+        ICO.check + " <strong>~" + f.monthlyWon + "</strong> sotuv" +
+        (f.monthlyRevenue ? ' · ' + ICO.money + ' <strong>~' + Number(f.monthlyRevenue).toLocaleString("uz-UZ") + "</strong> so'm" : "") +
       "</div>" +
       '<div class="small muted" style="margin-bottom:4px">Kunlik yangi mijozlar (60 kun):</div>' +
       sparkline(vals, "var(--accent)") +
       '<div class="small muted" style="margin-top:8px">' + esc(f.note) + "</div>";
-  } catch (e) { $("fcBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message); }
+  } catch (e) { $("fcBody").innerHTML = emptyState(ICO.warn, "Yuklanmadi: " + e.message); }
 }
 // ===== 11.6: Kontent tavsiyalari =====
 async function loadContent(force, attempt) {
@@ -362,16 +388,16 @@ async function loadContent(force, attempt) {
       if (attempt < 12) setTimeout(function () { loadContent(false, attempt + 1); }, 5000);
       return;
     }
-    if (!r.ai) { $("contentBody").innerHTML = emptyState("💡", r.note || "Tahlil uchun xabar kam — mijozlar yozganda paydo bo'ladi"); return; }
+    if (!r.ai) { $("contentBody").innerHTML = emptyState(ICO.lightbulb, r.note || "Tahlil uchun xabar kam — mijozlar yozganda paydo bo'ladi"); return; }
     $("contentBody").innerHTML =
-      (r.bestTime ? '<div class="small" style="margin-bottom:10px">🕗 Auditoriyangiz <strong>' + r.bestTime + "</strong> oralig'ida faol — post/story shu vaqtda chiqaring.</div>" : "") +
+      (r.bestTime ? '<div class="small" style="margin-bottom:10px">' + ICO.clock + ' Auditoriyangiz <strong>' + r.bestTime + "</strong> oralig'ida faol — post/story shu vaqtda chiqaring.</div>" : "") +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
-        (r.ai.topics || []).map(function (t) { return '<span class="badge b-indigo">' + esc(t.topic) + " · " + (t.count || "?") + "</span>"; }).join("") + "</div>" +
+        (r.ai.topics || []).map(function (t) { return '<span class="pill pill-plain">' + esc(t.topic) + " · " + (t.count || "?") + "</span>"; }).join("") + "</div>" +
       '<div style="display:grid;gap:8px">' +
         (r.ai.ideas || []).map(function (i) {
           return '<div style="background:var(--panel2);border-radius:11px;padding:10px 13px"><strong class="small">' + esc(i.title) + '</strong><div class="small muted" style="margin-top:3px">' + esc(i.desc) + "</div></div>";
         }).join("") + "</div>";
-  } catch (e) { $("contentBody").innerHTML = emptyState("⚠️", "Yuklanmadi: " + e.message); }
+  } catch (e) { $("contentBody").innerHTML = emptyState(ICO.warn, "Yuklanmadi: " + e.message); }
 }
 renderPeriodSeg($("periodSeg"), () => { loadMetrics(); loadAnalytics(); });
 loadMetrics(); loadAnalytics(); loadChanged(); loadInsights(false);

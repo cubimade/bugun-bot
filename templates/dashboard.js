@@ -16,9 +16,6 @@ export function renderDashboardHome() {
     .bento-big { grid-column: span 6; }
     .bento-sm { grid-column: span 3; }
     .summary-text { font-size: 15px; line-height: 1.65; min-height: 72px; }
-    .ai-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-    .ai-ok { background: rgba(52,211,153,.12); color: var(--success); }
-    .ai-warn { background: rgba(251,191,36,.12); color: var(--warning); }
     .chart-box { position: relative; }
     .chart-tip { position: absolute; pointer-events: none; background: var(--surface-2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--border-glow); border-radius: 10px; padding: 6px 11px; font-size: 12px; white-space: nowrap; transform: translate(-50%, -115%); opacity: 0; transition: opacity .15s; z-index: 5; box-shadow: var(--shadow-glass); }
     .chart-tip.show { opacity: 1; }
@@ -35,7 +32,7 @@ export function renderDashboardHome() {
   <div class="bento stagger">
     <div class="card glass-featured glass-glow bento-xl" id="summaryCard">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-        <h3>✨ Bugungi xulosa</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.sparkle} Bugungi xulosa</h3>
         <span id="aiStatus"></span>
       </div>
       <div id="summaryText" class="summary-text">
@@ -48,7 +45,7 @@ export function renderDashboardHome() {
 
     <div class="card glow glass-glow bento-big">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:6px">
-        <h3>📈 Xabarlar</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.trendingUp} Xabarlar</h3>
         <span class="small muted" id="chartSub">oxirgi 7 kun</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
@@ -63,7 +60,7 @@ export function renderDashboardHome() {
 
     <div class="card glow glass-glow bento-big">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px">
-        <h3>🍩 Suhbatlar holati</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.chartPie} Suhbatlar holati</h3>
         <span class="small muted">davr bo'yicha</span>
       </div>
       <div id="donut" class="skeleton" style="height:170px"></div>
@@ -71,7 +68,7 @@ export function renderDashboardHome() {
 
     <a href="/dashboard/inbox?filter=human" class="card hoverable glass-glow bento-sm" id="humanCard">
       <div style="display:flex;align-items:flex-start;gap:12px">
-        <div class="stat-ic" style="background:rgba(251,191,36,.13);font-size:20px">🙋</div>
+        <div class="stat-ic" style="background:rgba(251,191,36,.13)">${ICONS.person}</div>
         <div style="flex:1;min-width:0">
           <div class="stat-num" id="humanNum">0</div>
           <div class="stat-lbl">Odam kerak</div>
@@ -82,7 +79,7 @@ export function renderDashboardHome() {
     </a>
     <div class="card hoverable glass-glow bento-sm">
       <div style="display:flex;align-items:flex-start;gap:12px">
-        <div class="stat-ic" style="background:rgba(99,102,241,.14);font-size:20px">📱</div>
+        <div class="stat-ic" style="background:rgba(99,102,241,.14)">${ICONS.accounts}</div>
         <div style="flex:1;min-width:0">
           <div class="stat-num" id="projNum">0</div>
           <div class="stat-lbl">Akkauntlar</div>
@@ -92,7 +89,7 @@ export function renderDashboardHome() {
     </div>
     <div class="card hoverable glass-glow bento-sm">
       <div style="display:flex;align-items:flex-start;gap:12px">
-        <div class="stat-ic" style="background:rgba(139,92,246,.14);font-size:20px">👥</div>
+        <div class="stat-ic" style="background:rgba(139,92,246,.14)">${ICONS.contacts}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span class="stat-num" id="contactNum">0</span><span id="contactTrend"></span></div>
           <div class="stat-lbl" id="contactLbl">Mijozlar</div>
@@ -103,7 +100,7 @@ export function renderDashboardHome() {
     </div>
     <div class="card hoverable glass-glow bento-sm">
       <div style="display:flex;align-items:flex-start;gap:12px">
-        <div class="stat-ic" style="background:rgba(34,211,238,.12);font-size:20px">💬</div>
+        <div class="stat-ic" style="background:rgba(34,211,238,.12)">${ICONS.messageCircle}</div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span class="stat-num" id="msgNum">0</span><span id="msgTrend2"></span></div>
           <div class="stat-lbl">Xabarlar</div>
@@ -117,22 +114,22 @@ export function renderDashboardHome() {
   <div style="display:grid;grid-template-columns:3fr 2fr;gap:14px;margin-top:18px" class="two-col">
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <h3>💬 Oxirgi suhbatlar</h3>
+        <h3 style="display:flex;align-items:center;gap:6px">${ICONS.messageCircle} Oxirgi suhbatlar</h3>
         <a href="/dashboard/inbox" class="small" style="color:var(--accent-soft)">Hammasi →</a>
       </div>
-      <div id="conversations">${'<div class="skeleton" style="height:52px;margin-bottom:8px"></div>'.repeat(4)}</div>
+      <div id="conversations" class="group-list">${'<div class="skeleton" style="height:52px;margin-bottom:8px"></div>'.repeat(4)}</div>
     </div>
     <div class="card">
-      <h3 style="margin-bottom:12px">⚡ Tezkor amallar</h3>
+      <h3 style="margin-bottom:12px;display:flex;align-items:center;gap:6px">${ICONS.zap} Tezkor amallar</h3>
       <div style="display:flex;flex-direction:column;gap:9px">
-        <a class="btn" href="/dashboard/broadcast" style="justify-content:flex-start">${ICONS.broadcast} Broadcast yuborish</a>
-        <a class="btn" href="/dashboard/knowledge" style="justify-content:flex-start">${ICONS.knowledge} Bilim bazasini tahrirlash</a>
-        <a class="btn" href="/dashboard/accounts" style="justify-content:flex-start">${ICONS.plus} Yangi akkaunt qo'shish</a>
-        <a class="btn" href="/dashboard/contacts" style="justify-content:flex-start">${ICONS.contacts} Kontaktlarni ko'rish</a>
+        <a class="btn btn-secondary" href="/dashboard/broadcast" style="justify-content:flex-start">${ICONS.broadcast} Broadcast yuborish</a>
+        <a class="btn btn-secondary" href="/dashboard/knowledge" style="justify-content:flex-start">${ICONS.knowledge} Bilim bazasini tahrirlash</a>
+        <a class="btn btn-secondary" href="/dashboard/accounts" style="justify-content:flex-start">${ICONS.plus} Yangi akkaunt qo'shish</a>
+        <a class="btn btn-secondary" href="/dashboard/contacts" style="justify-content:flex-start">${ICONS.contacts} Kontaktlarni ko'rish</a>
       </div>
       <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-        <h3 style="margin-bottom:10px">📱 Akkauntlar</h3>
-        <div id="accounts"><div class="skeleton" style="height:44px"></div></div>
+        <h3 style="margin-bottom:10px;display:flex;align-items:center;gap:6px">${ICONS.accounts} Akkauntlar</h3>
+        <div id="accounts" class="group-list"><div class="skeleton" style="height:44px"></div></div>
       </div>
     </div>
   </div>`;
@@ -153,9 +150,9 @@ function applySummary(r, attempt) {
   $("summaryText").textContent = r.text;
   const warn = r.digest && r.digest.needsHuman > 0;
   $("aiStatus").innerHTML = warn
-    ? '<span class="ai-badge ai-warn"><span class="dot dot-amber"></span>E\\'tibor kerak</span>'
-    : '<span class="ai-badge ai-ok"><span class="dot dot-green"></span>Hammasi ishlayapti</span>';
-  $("summaryMeta").textContent = "✨ AI xulosa · yangilangan: " + fmt(r.cachedAt);
+    ? '<span class="pill pill-warn"><span class="dot dot-amber"></span>E\\'tibor kerak</span>'
+    : '<span class="pill pill-ok"><span class="dot dot-green"></span>Hammasi ishlayapti</span>';
+  $("summaryMeta").textContent = "AI xulosa · yangilangan: " + fmt(r.cachedAt);
 }
 async function loadSummary(attempt) {
   try {
@@ -196,7 +193,7 @@ function applyStats(s) {
     renderChart(s.series || [], s.period);
   } catch (e) {
     $("chart").classList.remove("skeleton");
-    $("chart").innerHTML = emptyState("📈", "Statistika yuklanmadi: " + e.message);
+    $("chart").innerHTML = emptyState('${ICONS.trendingUp}', "Statistika yuklanmadi: " + e.message);
   }
 }
 async function loadStats() {
@@ -204,7 +201,7 @@ async function loadStats() {
     applyStats(await api("/api/stats?period=" + PERIOD));
   } catch (e) {
     $("chart").classList.remove("skeleton");
-    $("chart").innerHTML = emptyState("📈", "Statistika yuklanmadi: " + e.message);
+    $("chart").innerHTML = emptyState('${ICONS.trendingUp}', "Statistika yuklanmadi: " + e.message);
   }
 }
 
@@ -293,48 +290,46 @@ function renderChart(series, period) {
 function applyConversations(contacts) {
   try {
     contacts = contacts || [];
-    if (!contacts.length) { $("conversations").innerHTML = emptyState("💬", "Hali suhbatlar yo'q — bot birinchi xabarni kutmoqda"); return; }
+    if (!contacts.length) { $("conversations").innerHTML = emptyState('${ICONS.messageCircle}', "Hali suhbatlar yo'q — bot birinchi xabarni kutmoqda"); return; }
     $("conversations").innerHTML = contacts.slice(0, 5).map((c) => \`
-      <a href="/dashboard/inbox?contact=\${c.id}" style="display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:12px;transition:background .15s"
-         onmouseover="this.style.background='var(--panel2)'" onmouseout="this.style.background=''">
+      <a href="/dashboard/inbox?contact=\${c.id}" class="group-row" style="text-decoration:none;color:inherit">
         \${avatar(c.name || c.ig_user_id, 36)}
-        <span style="min-width:0;flex:1">
-          <span style="display:flex;align-items:center;gap:6px">
-            <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(c.name || c.ig_user_id)}</strong>
-            \${c.needs_human ? '<span class="badge b-amber">🙋 odam kerak</span>' : ""}
-          </span>
-          <span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(c.last_text || "")}</span>
-        </span>
-        <span class="small muted" style="flex-shrink:0">\${timeAgo(c.last_seen)}</span>
-      </a>\`).join("");
-  } catch (e) { $("conversations").innerHTML = emptyState("💬", "Suhbatlar yuklanmadi"); }
+        <div class="row-body">
+          <p class="row-title">\${esc(c.name || c.ig_user_id)}</p>
+          <p class="row-sub">\${esc(c.last_text || "")}</p>
+        </div>
+        \${c.needs_human ? '<span class="pill pill-warn">odam kerak</span>' : ""}
+        <span class="small muted">\${timeAgo(c.last_seen)}</span>
+        <span class="chevron">${ICONS.chevronRight}</span>
+      \`).join('<div class="separator"></div>');
+  } catch (e) { $("conversations").innerHTML = emptyState('${ICONS.messageCircle}', "Suhbatlar yuklanmadi"); }
 }
 async function loadConversations() {
   try {
     const r = await api("/api/contacts?limit=6");
     applyConversations(r.contacts);
-  } catch (e) { $("conversations").innerHTML = emptyState("💬", "Suhbatlar yuklanmadi"); }
+  } catch (e) { $("conversations").innerHTML = emptyState('${ICONS.messageCircle}', "Suhbatlar yuklanmadi"); }
 }
 function applyAccounts(projects) {
   try {
     projects = projects || [];
-    if (!projects.length) { $("accounts").innerHTML = emptyState("📱", "Hali akkaunt yo'q"); return; }
+    if (!projects.length) { $("accounts").innerHTML = emptyState('${ICONS.accounts}', "Hali akkaunt yo'q"); return; }
     $("accounts").innerHTML = projects.map((p) => \`
-      <div style="display:flex;align-items:center;gap:10px;padding:7px 4px">
+      <div class="group-row">
         \${avatar(p.name, 32)}
-        <span style="min-width:0;flex:1">
-          <strong class="small" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
-          <span class="small muted">\${p.contacts} mijoz · \${p.messages} xabar</span>
-        </span>
-        \${p.knowledge_base ? '<span class="badge b-green">✓</span>' : '<span class="badge b-gray">bo\\'sh</span>'}
-      </div>\`).join("");
-  } catch (e) { $("accounts").innerHTML = emptyState("📱", "Yuklanmadi"); }
+        <div class="row-body">
+          <p class="row-title">\${esc(p.name)}</p>
+          <p class="row-sub">\${p.contacts} mijoz · \${p.messages} xabar</p>
+        </div>
+        \${p.knowledge_base ? '<span class="pill pill-ok">tayyor</span>' : '<span class="pill pill-plain">bo\\'sh</span>'}
+      </div>\`).join('<div class="separator"></div>');
+  } catch (e) { $("accounts").innerHTML = emptyState('${ICONS.accounts}', "Yuklanmadi"); }
 }
 async function loadAccounts() {
   try {
     const { projects } = await api("/api/projects");
     applyAccounts(projects);
-  } catch (e) { $("accounts").innerHTML = emptyState("📱", "Yuklanmadi"); }
+  } catch (e) { $("accounts").innerHTML = emptyState('${ICONS.accounts}', "Yuklanmadi"); }
 }
 // C1: Donut — suhbatlar holati (sof SVG, kutubxonasiz)
 async function loadDonut() {
@@ -343,7 +338,7 @@ async function loadDonut() {
     renderDonut(a.donut);
   } catch (e) {
     $("donut").classList.remove("skeleton");
-    $("donut").innerHTML = emptyState("🍩", "Ma'lumot yig'ilmoqda...");
+    $("donut").innerHTML = emptyState('${ICONS.chartPie}', "Ma'lumot yig'ilmoqda...");
   }
 }
 function renderDonut(d) {
@@ -356,7 +351,7 @@ function renderDonut(d) {
     { label: "Javobsiz", n: d.silent || 0, c: "var(--text-3)" },
   ];
   const total = items.reduce((s, x) => s + x.n, 0);
-  if (!total) { el.innerHTML = emptyState("🍩", "Ma'lumot yig'ilmoqda — bu davrda suhbat yo'q"); return; }
+  if (!total) { el.innerHTML = emptyState('${ICONS.chartPie}', "Ma'lumot yig'ilmoqda — bu davrda suhbat yo'q"); return; }
   const R = 62, CX = 80, CY = 80, C2 = 2 * Math.PI * R;
   let off = 0;
   const segs = items.filter((x) => x.n).map((x) => {

@@ -1,5 +1,27 @@
 // BUGUN BOT — umumiy klient JS: theme, toast, modal, sparkline, drawer (ROADMAP-6 A2)
 // DIQQAT: sahifalar app.min.js ni yuklaydi — bu faylni o'zgartirsangiz `npm run minify` yuriting!
+// ROADMAP-17 FAZA 2.1 — app.js server ICONS'ni import qila olmaydi (module emas), shu uchun
+// bu yerda ishlatiladigan bir nechta ikonka client tomonda takrorlanadi.
+const JI = (paths) => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const JICONS = {
+  sun: JI('<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>'),
+  moon: JI('<path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/>'),
+  close: JI('<path d="M18 6L6 18M6 6l12 12"/>'),
+  person: JI('<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/>'),
+  chat: JI('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-4-1L3 20l1.1-5.5a8.4 8.4 0 0 1-1-4A8.5 8.5 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/>'),
+  phone: JI('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.9.6 2.9.7a2 2 0 0 1 1.7 2.1z"/>'),
+  mail: JI('<rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2 7l10 6 10-6"/>'),
+  target: JI('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>'),
+  dollar: JI('<path d="M12 2v20"/><path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.2-5 3 2.2 2.6 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>'),
+  zap: JI('<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>'),
+  cpu: JI('<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>'),
+  bellOff: JI('<path d="M18 8a6 6 0 0 0-12 0c0 6-2.5 8-2.5 8h17S18 14 18 8z"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/>'),
+  play: JI('<path d="M6 4l14 8-14 8V4z"/>'),
+  pencil: JI('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>'),
+  trash: JI('<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'),
+  flag: JI('<path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/>'),
+  alert: JI('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'),
+};
 const $ = (id) => document.getElementById(id);
 const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
 const fmt = (d) => d ? new Date(d).toLocaleString("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -65,8 +87,9 @@ function runCountUps(root) {
 function skeletonRows(n, h) {
   return Array.from({ length: n || 3 }, () => `<div class="skeleton" style="height:${h || 56}px;margin-bottom:10px;"></div>`).join("");
 }
-function emptyState(emoji, text, actionHtml) {
-  return `<div class="empty"><span class="emoji">${emoji}</span>${esc(text)}${actionHtml ? `<div style="margin-top:14px">${actionHtml}</div>` : ""}</div>`;
+// ROADMAP-17 FAZA 2/3 — icon endi SVG (masalan ICONS.contacts), emoji emas
+function emptyState(icon, text, actionHtml) {
+  return `<div class="empty"><span class="empty-ic">${icon}</span>${esc(text)}${actionHtml ? `<div style="margin-top:14px">${actionHtml}</div>` : ""}</div>`;
 }
 // Sidebar (mobil)
 function toggleSidebar(open) {
@@ -79,8 +102,8 @@ try { PERIOD = localStorage.getItem("period") || "7d"; } catch (e) {}
 const PERIOD_LABELS = { today: "Bugun", "7d": "7 kun", "30d": "30 kun", all: "Hammasi" };
 function renderPeriodSeg(el, onChange) {
   if (!el) return;
-  el.innerHTML = '<div class="seg">' + Object.keys(PERIOD_LABELS).map(function (k) {
-    return '<button class="' + (k === PERIOD ? "on" : "") + '" data-p="' + k + '">' + PERIOD_LABELS[k] + "</button>";
+  el.innerHTML = '<div class="segmented">' + Object.keys(PERIOD_LABELS).map(function (k) {
+    return '<button aria-pressed="' + (k === PERIOD) + '" data-p="' + k + '">' + PERIOD_LABELS[k] + "</button>";
   }).join("") + "</div>";
   el.querySelectorAll("button").forEach(function (b) {
     b.onclick = function () {
@@ -120,7 +143,7 @@ function sparkline(values, colorVar) {
 function updateThemeBtns() {
   const t = document.documentElement.getAttribute("data-theme");
   document.querySelectorAll(".theme-btn").forEach((b) => {
-    b.textContent = t === "dark" ? "\u2600\uFE0F" : "\uD83C\uDF19";
+    b.innerHTML = t === "dark" ? JICONS.sun : JICONS.moon;
     b.title = t === "dark" ? "Yorug' rejim" : "Tungi rejim";
   });
 }
@@ -150,9 +173,9 @@ document.addEventListener("mousemove", (e) => {
 // ===== Kontakt profili (drawer) =====
 let PROFILE = null;
 function sentimentBadge(s) {
-  if (s === "positive") return '<span class="badge b-green">😊 ijobiy</span>';
-  if (s === "negative") return '<span class="badge b-red">😟 salbiy</span>';
-  if (s === "neutral") return '<span class="badge b-gray">😐 neytral</span>';
+  if (s === "positive") return '<span class="pill pill-ok">ijobiy</span>';
+  if (s === "negative") return '<span class="pill pill-danger">salbiy</span>';
+  if (s === "neutral") return '<span class="pill pill-plain">neytral</span>';
   return "";
 }
 async function openProfile(contactId) {
@@ -165,7 +188,7 @@ async function openProfile(contactId) {
     PROFILE = contact;
     renderProfile();
   } catch (e) {
-    $("drawerBody").innerHTML = emptyState("⚠️", "Profil yuklanmadi: " + e.message);
+    $("drawerBody").innerHTML = emptyState(JICONS.alert, "Profil yuklanmadi: " + e.message);
   }
 }
 function renderProfile() {
@@ -176,13 +199,13 @@ function renderProfile() {
       <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px">${esc(c.name || c.ig_user_id)}</strong>
       <span class="small muted">ID: ${esc(c.ig_user_id)}</span>
     </div>
-    <button class="modal-x" onclick="closeProfile()" aria-label="Yopish">✕</button>`;
+    <button class="modal-x" onclick="closeProfile()" aria-label="Yopish">${JICONS.close}</button>`;
   $("drawerBody").innerHTML = `
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${c.bot_paused ? '<span class="badge b-amber">🔕 bot pauzada</span>' : '<span class="badge b-green">🤖 bot faol</span>'}
-      ${c.needs_human ? '<span class="badge b-amber">🙋 odam kerak</span>' : ""}
+      ${c.bot_paused ? '<span class="pill pill-warn">bot pauzada</span>' : '<span class="pill pill-ok">bot faol</span>'}
+      ${c.needs_human ? '<span class="pill pill-warn">odam kerak</span>' : ""}
       ${sentimentBadge(c.sentiment)}
-      ${(c.tags || []).map((t) => '<span class="badge b-indigo">' + esc(t) + "</span>").join("")}
+      ${(c.tags || []).map((t) => '<span class="pill pill-plain">' + esc(t) + "</span>").join("")}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="drawer-stat"><div class="small muted" style="margin-bottom:3px">Xabarlar</div><strong>${c.msg_count ?? 0} ta</strong></div>
@@ -192,34 +215,34 @@ function renderProfile() {
     </div>
     ${profileAiBlock(c.profile)}
     <div>
-      <label class="lbl">📝 Izoh (faqat sizga ko'rinadi)</label>
+      <label class="lbl">Izoh (faqat sizga ko'rinadi)</label>
       <textarea class="input" id="noteText" rows="4" maxlength="2000" placeholder="Masalan: narx so'radi, ertaga qo'ng'iroq qilish kerak...">${esc(c.note || "")}</textarea>
       <button class="btn btn-sm" style="margin-top:8px" onclick="saveNote(this)">Izohni saqlash</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px">
-      <a class="btn btn-primary" href="/dashboard/inbox?contact=${c.id}" style="flex:1;min-width:150px">💬 Suhbatga o'tish</a>
-      <button class="btn" onclick="toggleProfilePause()">${c.bot_paused ? "▶️ Botni yoqish" : "🔕 Botni pauza"}</button>
-      <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" title="Butunlay o'chirish (GDPR)">🗑</button>
+      <a class="btn btn-primary" href="/dashboard/inbox?contact=${c.id}" style="flex:1;min-width:150px">${JICONS.chat} Suhbatga o'tish</a>
+      <button class="btn" onclick="toggleProfilePause()">${c.bot_paused ? JICONS.play + " Botni yoqish" : JICONS.bellOff + " Botni pauza"}</button>
+      <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" title="Butunlay o'chirish (GDPR)">${JICONS.trash}</button>
     </div>`;
 }
 // 10.6: AI yig'gan mijoz profili (drawer'da)
 function profileAiBlock(p) {
   if (!p || typeof p !== "object" || !Object.keys(p).length) return "";
-  const labels = { ism: "👤 Ism", telefon: "📞 Telefon", email: "✉️ Email", ehtiyoj: "🎯 Ehtiyoj", byudjet: "💰 Byudjet", shoshilinchlik: "⚡ Shoshilinchlik" };
+  const labels = { ism: "Ism", telefon: "Telefon", email: "Email", ehtiyoj: "Ehtiyoj", byudjet: "Byudjet", shoshilinchlik: "Shoshilinchlik" };
   const rows = Object.keys(labels)
     .filter((k) => p[k])
     .map((k) => `<div class="small" style="display:flex;gap:6px;padding:3px 0"><span class="muted" style="min-width:110px">${labels[k]}:</span><span style="word-break:break-word">${esc(p[k])}</span></div>`)
     .join("");
   if (!rows) return "";
   return `<div style="background:var(--panel2);border-radius:12px;padding:11px 13px">
-    <div class="small" style="font-weight:700;margin-bottom:5px">🤖 AI profil <span class="muted" style="font-weight:400">(suhbatdan yig'ilgan)</span></div>
+    <div class="small" style="font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:6px">${JICONS.cpu} AI profil <span class="muted" style="font-weight:400">(suhbatdan yig'ilgan)</span></div>
     ${rows}</div>`;
 }
 async function saveNote(btn) {
   btn.disabled = true;
   try {
     await postJson("/api/contacts/" + PROFILE.id + "/note", { note: $("noteText").value });
-    toast("Izoh saqlandi ✓");
+    toast("Izoh saqlandi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }
@@ -230,7 +253,7 @@ async function toggleProfilePause() {
     PROFILE.bot_paused = v; PROFILE.paused_until = null;
     renderProfile();
     if (typeof onPauseChanged === "function") onPauseChanged(PROFILE.id, v);
-    toast(v ? "Bot pauza qilindi — endi siz gaplashasiz 🔕" : "Bot qayta yoqildi ▶️");
+    toast(v ? "Bot pauza qilindi — endi siz gaplashasiz" : "Bot qayta yoqildi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 function closeProfile() {
@@ -242,13 +265,13 @@ function closeProfile() {
 function confirmDeleteContact() {
   const c = PROFILE;
   if (!c) return;
-  openModal("🗑 Kontaktni o'chirish", `
+  openModal("Kontaktni o'chirish", `
     <p style="line-height:1.7;margin-bottom:16px"><strong>${esc(c.name || c.ig_user_id)}</strong> butunlay o'chiriladi:
     barcha xabarlar (${c.msg_count ?? 0} ta), teglar va izohlar ham o'chadi.<br>
     <strong style="color:var(--danger)">Bu amalni ortga qaytarib bo'lmaydi!</strong></p>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn" onclick="closeModal()">Bekor qilish</button>
-      <button class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="doDeleteContact(${c.id})">🗑 Ha, o'chirilsin</button>
+      <button class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="doDeleteContact(${c.id})">Ha, o'chirilsin</button>
     </div>`);
 }
 async function doDeleteContact(id) {
@@ -256,7 +279,7 @@ async function doDeleteContact(id) {
     await api("/api/contacts/" + id, { method: "DELETE" });
     closeModal();
     closeProfile();
-    toast("Kontakt butunlay o'chirildi 🗑");
+    toast("Kontakt butunlay o'chirildi");
     setTimeout(() => location.reload(), 700);
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
@@ -275,13 +298,13 @@ function onGlobalSearch() {
       const rows = [];
       (r.contacts || []).forEach((c) => {
         rows.push('<a class="ts-item" href="/dashboard/inbox?contact=' + c.id + '">' +
-          '<span class="ts-ico">👤</span><span class="ts-body"><strong>' + esc(c.name || c.ig_user_id) + "</strong>" +
+          '<span class="ts-ico">' + JICONS.person + '</span><span class="ts-body"><strong>' + esc(c.name || c.ig_user_id) + "</strong>" +
           '<span class="small muted">' + esc(c.project_name || "") + " · ID: " + esc(c.ig_user_id) + "</span></span></a>");
       });
       (r.messages || []).forEach((m) => {
         const t = String(m.text || "");
         rows.push('<a class="ts-item" href="/dashboard/inbox?contact=' + m.contact_id + '">' +
-          '<span class="ts-ico">💬</span><span class="ts-body"><strong>' + esc(m.name || m.ig_user_id) + "</strong>" +
+          '<span class="ts-ico">' + JICONS.chat + '</span><span class="ts-body"><strong>' + esc(m.name || m.ig_user_id) + "</strong>" +
           '<span class="small muted">' + esc(t.length > 70 ? t.slice(0, 70) + "…" : t) + "</span></span></a>");
       });
       drop.innerHTML = rows.length ? rows.join("") :
@@ -311,7 +334,7 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// ===== D2: Bildirishnomalar (🔔 — "odam kerak" suhbatlar) =====
+// ===== D2: Bildirishnomalar ("odam kerak" suhbatlar) =====
 let NOTIF_LAST_COUNT = null;
 async function refreshNotifs() {
   const btn = $("notifBtn");
@@ -326,7 +349,7 @@ async function refreshNotifs() {
     // Brauzer bildirishnomasi — soni oshganda (ruxsat berilgan bo'lsa)
     if (NOTIF_LAST_COUNT != null && r.count > NOTIF_LAST_COUNT &&
         typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification("Bugun Bot", { body: "🙋 Yangi suhbat operator kutmoqda (" + r.count + " ta)" });
+      new Notification("Bugun Bot", { body: "Yangi suhbat operator kutmoqda (" + r.count + " ta)" });
     }
     NOTIF_LAST_COUNT = r.count;
     window.NOTIF_ITEMS = r.items || [];
@@ -343,9 +366,9 @@ function toggleNotifs() {
   const items = window.NOTIF_ITEMS || [];
   drop.innerHTML = items.length
     ? items.map((c) => '<a class="ts-item" href="/dashboard/inbox?contact=' + c.id + '">' +
-        '<span class="ts-ico">🙋</span><span class="ts-body"><strong>' + esc(c.name || c.ig_user_id) + "</strong>" +
+        '<span class="ts-ico">' + JICONS.flag + '</span><span class="ts-body"><strong>' + esc(c.name || c.ig_user_id) + "</strong>" +
         '<span class="small muted">' + esc(c.project_name || "") + " · " + timeAgo(c.last_seen) + "</span></span></a>").join("")
-    : '<div class="ts-item muted" style="cursor:default">🎉 Hammasi hal qilingan — kutayotgan suhbat yo\'q</div>';
+    : '<div class="ts-item muted" style="cursor:default">Hammasi hal qilingan — kutayotgan suhbat yo\'q</div>';
   drop.classList.add("show");
 }
 document.addEventListener("click", (e) => {

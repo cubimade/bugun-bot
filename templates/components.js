@@ -44,6 +44,35 @@ export const ICONS = {
   calendar: I('<rect x="3" y="4" width="18" height="18" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
   card: I('<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/><path d="M6 15h4"/>'),
   flask: I('<path d="M10 2v6L4.5 18a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8V2"/><path d="M8.5 2h7"/><path d="M7 15h10"/>'),
+
+  // ROADMAP-17 FAZA 2.1 — interfeys chrome va bo'sh holat ikonkalari (emoji o'rniga)
+  close: I('<path d="M18 6L6 18M6 6l12 12"/>'),
+  sun: I('<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>'),
+  moon: I('<path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/>'),
+  bell: I('<path d="M18 8a6 6 0 0 0-12 0c0 6-2.5 8-2.5 8h17S18 14 18 8z"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/>'),
+  bellOff: I('<path d="M18 8a6 6 0 0 0-12 0c0 6-2.5 8-2.5 8h17S18 14 18 8z"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/>'),
+  chevronRight: I('<path d="M9 18l6-6-6-6"/>'),
+  server: I('<rect x="2" y="3" width="20" height="7" rx="1.5"/><rect x="2" y="14" width="20" height="7" rx="1.5"/><circle cx="6" cy="6.5" r=".8" fill="currentColor" stroke="none"/><circle cx="6" cy="17.5" r=".8" fill="currentColor" stroke="none"/>'),
+  zap: I('<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>'),
+  receipt: I('<path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"/><path d="M9 7h6M9 11h6M9 15h4"/>'),
+  chartBar: I('<path d="M3 21h18"/><rect x="6" y="11" width="3.5" height="8"/><rect x="13" y="6" width="3.5" height="13"/>'),
+  funnel: I('<path d="M3 4h18l-7 9v6l-4 2v-8L3 4z"/>'),
+  trendingUp: I('<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'),
+  helpCircle: I('<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 4.9.8c0 1.7-2.4 2-2.4 3.7"/><path d="M12 17h.01"/>'),
+  dollarSign: I('<path d="M12 2v20"/><path d="M17 6.5c0-1.9-2.2-3-5-3s-5 1.2-5 3 2.2 2.6 5 3 5 1.1 5 3-2.2 3-5 3-5-1.1-5-3"/>'),
+  puzzle: I('<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>'),
+  messageCircle: I('<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-4-1L3 20l1.1-5.5a8.4 8.4 0 0 1-1-4A8.5 8.5 0 0 1 12.5 3a8.4 8.4 0 0 1 8.5 8.5z"/>'),
+  chartPie: I('<circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/>'),
+  lightbulb: I('<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"/>'),
+  phone: I('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 2.9a2 2 0 0 1-.5 2.1L8 10a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.4 1.9.6 2.9.7a2 2 0 0 1 1.7 2.1z"/>'),
+  mail: I('<rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2 7l10 6 10-6"/>'),
+  target: I('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>'),
+  cpu: I('<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>'),
+  person: I('<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v1"/>'),
+  play: I('<path d="M6 4l14 8-14 8V4z"/>'),
+  pencil: I('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>'),
+  thumbsUp: I('<path d="M7 10v11H4a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h3z"/><path d="M7 10l4.5-7a1.7 1.7 0 0 1 3 1.4L14 9h5.3a2 2 0 0 1 2 2.4l-1.4 7A2 2 0 0 1 17.9 20H7"/>'),
+  flag: I('<path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/>'),
 };
 
 // ------------------------------------------------------------
@@ -65,6 +94,14 @@ export const NAV_ITEMS = [
   { key: "keywords", label: "Kalit so'zlar", href: "/dashboard/keywords", icon: "key" },
   { key: "accounts", label: "Akkauntlar", href: "/dashboard/accounts", icon: "accounts" },
   { key: "settings", label: "Sozlamalar", href: "/dashboard/settings", icon: "settings" },
+];
+
+// ROADMAP-17 FAZA 3.1 — yon menyu guruhlari (bo'lim yorliqlari bilan)
+export const NAV_GROUPS = [
+  { label: "Ish", keys: ["dashboard", "inbox", "contacts", "pipeline", "bookings"] },
+  { label: "Avtomatlashtirish", keys: ["flows", "keywords", "knowledge", "broadcast"] },
+  { label: "Tahlil", keys: ["insights", "abtests", "sales"] },
+  { label: "Sozlash", keys: ["media", "accounts", "settings"] },
 ];
 
 // ------------------------------------------------------------

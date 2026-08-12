@@ -16,12 +16,12 @@ export function renderKnowledgePage() {
   </div>
 
   <div id="editView" style="display:none">
-    <button class="btn btn-sm" onclick="backToList()" style="margin-bottom:14px">← Orqaga</button>
+    <button class="btn btn-plain" onclick="backToList()" style="margin-bottom:14px">← Orqaga</button>
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-        <h3 id="editTitle" style="flex:1"></h3>
-        <button class="btn btn-sm" onclick="reviewKb(this)">🔍 Sifatni tekshirish</button>
-        <button class="btn btn-sm" onclick="insertTemplate()">📋 Shablon qo'yish</button>
+        <h3 style="flex:1;display:flex;align-items:center;gap:8px">${ICONS.knowledge}<span id="editTitle"></span></h3>
+        <button class="btn btn-secondary btn-sm" onclick="reviewKb(this)">${ICONS.search} Sifatni tekshirish</button>
+        <button class="btn btn-plain btn-sm" onclick="insertTemplate()">${ICONS.book} Shablon qo'yish</button>
       </div>
       <div id="kbReview" style="display:none;margin-bottom:14px"></div>
       <p class="small muted" style="margin-bottom:10px">
@@ -73,7 +73,7 @@ async function loadCards() {
   try {
     const { projects } = await api("/api/projects");
     PROJECTS = projects;
-    if (!projects.length) { $("cards").innerHTML = emptyState("📱", "Hali akkaunt yo'q — avval akkaunt qo'shing"); return; }
+    if (!projects.length) { $("cards").innerHTML = emptyState('${ICONS.accounts}', "Hali akkaunt yo'q — avval akkaunt qo'shing"); return; }
     $("cards").innerHTML = projects.map((p) => {
       const len = (p.knowledge_base || "").length;
       return \`
@@ -83,17 +83,17 @@ async function loadCards() {
           <strong style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
         </div>
         \${len
-          ? \`<span class="badge b-green">To'ldirilgan ✅</span> <span class="small muted" style="margin-left:6px">\${len} belgi</span>\`
-          : '<span class="badge b-amber">Bo\\'sh ⚠️</span> <span class="small muted" style="margin-left:6px">bot umumiy javob beradi</span>'}
+          ? \`<span class="pill pill-ok">To'ldirilgan</span> <span class="small muted" style="margin-left:6px">\${len} belgi</span>\`
+          : '<span class="pill pill-warn">Bo\\'sh</span> <span class="small muted" style="margin-left:6px">bot umumiy javob beradi</span>'}
         <div class="small muted" style="margin-top:10px;height:38px;overflow:hidden;\${len ? "" : "font-style:italic"}">\${len ? esc((p.knowledge_base || "").slice(0, 110)) + "…" : "Bosib to'ldiring — bot aqlliroq bo'ladi"}</div>
       </div>\`;
     }).join("");
-  } catch (e) { $("cards").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message); }
+  } catch (e) { $("cards").innerHTML = emptyState('${ICONS.alert}', "Yuklashda xatolik: " + e.message); }
 }
 async function openEditor(id) {
   CURRENT_ID = id;
   const p = PROJECTS.find((x) => x.id === id);
-  $("editTitle").textContent = "🧠 " + (p ? p.name : "Akkaunt");
+  $("editTitle").textContent = p ? p.name : "Akkaunt";
   $("listView").style.display = "none";
   $("editView").style.display = "";
   $("kbReview").style.display = "none"; $("kbReview").innerHTML = "";
@@ -123,18 +123,18 @@ async function saveKb() {
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saqlanmoqda...';
   try {
     await postJson("/api/knowledge/" + CURRENT_ID, { knowledge: $("kbText").value });
-    toast("Bilim bazasi saqlandi ✓");
+    toast("Bilim bazasi saqlandi");
     const p = PROJECTS.find((x) => x.id === CURRENT_ID);
     if (p) p.knowledge_base = $("kbText").value;
   } catch (e) { toast("Xatolik: " + e.message, false); }
-  btn.disabled = false; btn.innerHTML = "Saqlash";
+  btn.disabled = false; btn.innerHTML = '${ICONS.check} Saqlash';
 }
 // 7.7: Bilim bazasi sifatini AI bilan baholash
 const SECTION_LABELS = {
   xizmatlar: "Xizmatlar", narxlar: "Narxlar", aloqa: "Aloqa",
   ish_vaqti: "Ish vaqti", faq: "FAQ",
 };
-const SECTION_ICONS = { ok: "✅", partial: "⚠️", missing: "❌" };
+const SECTION_PILL = { ok: "pill-ok", partial: "pill-warn", missing: "pill-danger" };
 async function reviewKb(btn) {
   if (!CURRENT_ID) return;
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Baholanmoqda...';
@@ -151,7 +151,7 @@ async function reviewKb(btn) {
           </div>
           <div style="flex:1;min-width:180px;display:flex;gap:8px;flex-wrap:wrap">
             \${Object.keys(SECTION_LABELS).map((k) =>
-              \`<span class="badge" title="\${SECTION_LABELS[k]}">\${SECTION_ICONS[(r.sections || {})[k]] || "❔"} \${SECTION_LABELS[k]}</span>\`).join("")}
+              \`<span class="pill \${SECTION_PILL[(r.sections || {})[k]] || "pill-plain"}">\${SECTION_LABELS[k]}</span>\`).join("")}
           </div>
         </div>
         \${(r.tips || []).length ? \`
@@ -159,7 +159,7 @@ async function reviewKb(btn) {
           <ul class="small" style="margin:6px 0 0 18px;line-height:1.8">
             \${r.tips.map((t) => "<li>" + esc(t) + "</li>").join("")}
           </ul>\` : ""}
-        \${r.unanswered_note ? \`<div class="small" style="margin-top:10px;color:var(--warning)">🤷 \${esc(r.unanswered_note)}</div>\` : ""}
+        \${r.unanswered_note ? \`<div class="small" style="margin-top:10px;color:var(--warning);display:flex;align-items:center;gap:6px">${ICONS.helpCircle} \${esc(r.unanswered_note)}</div>\` : ""}
         \${(r.unanswered_samples || []).length ? \`
           <details style="margin-top:10px"><summary class="small muted" style="cursor:pointer">Bot javob berolmagan savollar (\${r.unanswered_samples.length})</summary>
           <ul class="small muted" style="margin:6px 0 0 18px;line-height:1.7">
@@ -168,16 +168,16 @@ async function reviewKb(btn) {
         <div class="small muted" style="margin-top:10px">Baholangan: \${fmt(cachedAt)} · matn o'zgarsa qayta baholanadi</div>
       </div>\`;
   } catch (e) {
-    $("kbReview").innerHTML = '<div class="card">' + emptyState("⚠️", "Baholab bo'lmadi: " + e.message) + "</div>";
+    $("kbReview").innerHTML = '<div class="card">' + emptyState('${ICONS.alert}', "Baholab bo'lmadi: " + e.message) + "</div>";
   }
-  btn.disabled = false; btn.innerHTML = "🔍 Sifatni tekshirish";
+  btn.disabled = false; btn.innerHTML = '${ICONS.search} Sifatni tekshirish';
 }
 loadCards();`;
 
   return renderLayout({
     title: "Bilim bazasi",
     active: "knowledge",
-    headerAction: `<a class="btn" href="/dashboard/accounts">${ICONS.accounts} Akkauntlar</a>`,
+    headerAction: `<a class="btn btn-secondary" href="/dashboard/accounts">${ICONS.accounts} Akkauntlar</a>`,
     content,
     script,
   });

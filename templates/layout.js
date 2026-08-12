@@ -1,11 +1,15 @@
 // templates/layout.js — umumiy karkas: sidebar, head, theme (ROADMAP-6 A1)
 // Dizayn CSS/JS endi statik: public/app.css va public/app.js
-import { esc, I, ICONS, NAV_ITEMS, APP_VERSION } from "./components.js";
+import { esc, I, ICONS, NAV_ITEMS, NAV_GROUPS, APP_VERSION } from "./components.js";
 import { state } from "../state.js";
 
-export function renderLayout({ title, active, headerAction = "", content, script = "" }) {
-  const nav = NAV_ITEMS.map(
-    (n) => `<a href="${n.href}" class="${n.key === active ? "active" : ""}" data-nav="${n.key}">${ICONS[n.icon]}<span>${n.label}</span><span class="nav-count" data-navcount="${n.key}"></span></a>`
+export function renderLayout({ title, subtitle = "", active, headerAction = "", content, script = "" }) {
+  const byKey = Object.fromEntries(NAV_ITEMS.map((n) => [n.key, n]));
+  const nav = NAV_GROUPS.map((g) => `
+    <div class="nav-label">${esc(g.label)}</div>
+    ${g.keys.map((k) => byKey[k]).filter(Boolean).map(
+      (n) => `<a href="${n.href}" class="${n.key === active ? "active" : ""}" data-nav="${n.key}">${ICONS[n.icon]}<span>${n.label}</span><span class="nav-count" data-navcount="${n.key}"></span></a>`
+    ).join("")}`
   ).join("");
 
   return `<!DOCTYPE html>
@@ -26,7 +30,7 @@ export function renderLayout({ title, active, headerAction = "", content, script
 </head>
 <body>
   <aside class="sidebar" id="sidebar">
-    <div class="logo">🤖 <span class="grad-text">${esc((state.SETTINGS.brand_name || "").trim() || "BUGUN BOT")}</span></div>
+    <div class="logo"><span class="grad-text">${esc((state.SETTINGS.brand_name || "").trim() || "BUGUN BOT")}</span></div>
     <nav class="nav">${nav}</nav>
     <div class="sidebar-foot">
       <span>v${APP_VERSION}</span>
@@ -43,19 +47,23 @@ export function renderLayout({ title, active, headerAction = "", content, script
       <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Menyu">${I('<path d="M3 6h18M3 12h18M3 18h18"/>')}</button>
       <strong style="flex:1">${esc(title)}</strong>
       <div class="topsearch" id="topSearch">
-        <input class="input" id="globalSearch" placeholder="🔍 Qidirish... ( / )" autocomplete="off"
+        ${ICONS.search}
+        <input class="input" id="globalSearch" placeholder="Qidirish... ( / )" autocomplete="off"
           oninput="onGlobalSearch()" onfocus="onGlobalSearch()">
         <div class="topsearch-drop" id="searchDrop"></div>
       </div>
       <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()" aria-label="Bildirishnomalar" title="Odam kerak suhbatlar">
-        🔔<span class="notif-count" id="notifCount" style="display:none"></span>
+        ${ICONS.bell}<span class="notif-count" id="notifCount" style="display:none"></span>
       </button>
       <div class="notif-drop" id="notifDrop"></div>
       <button class="theme-btn" onclick="toggleTheme()" aria-label="Rejimni almashtirish"></button>
     </div>
     <div class="content">
       <div class="page-head">
-        <h1>${esc(title)}</h1>
+        <div>
+          ${subtitle ? `<p class="page-context">${esc(subtitle)}</p>` : ""}
+          <h1>${esc(title)}</h1>
+        </div>
         <div>${headerAction}</div>
       </div>
       ${content}
@@ -64,7 +72,7 @@ export function renderLayout({ title, active, headerAction = "", content, script
 
   <div class="modal-back" id="modalBack">
     <div class="modal">
-      <div class="modal-head"><h3 id="modalTitle"></h3><button class="modal-x" onclick="closeModal()">✕</button></div>
+      <div class="modal-head"><h3 id="modalTitle"></h3><button class="modal-x" onclick="closeModal()" aria-label="Yopish">${ICONS.close}</button></div>
       <div class="modal-body" id="modalBody"></div>
     </div>
   </div>

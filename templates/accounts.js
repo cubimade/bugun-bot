@@ -1,15 +1,18 @@
 // templates/accounts.js — sahifa shabloni (ROADMAP-6 A1 da templates.js dan ajratilgan)
+// ROADMAP-17 FAZA 2 — group-list, pill, btn-primary/secondary/plain, SVG ikonlar
 import { renderLayout } from "./layout.js";
 import { esc, I, ICONS, DRAWER_HTML, APP_VERSION, NAV_ITEMS } from "./components.js";
 
 // ============================================================
 //  6. AKKAUNTLAR — /dashboard/accounts
-//  Kartalar + yangi akkaunt qo'shish modali (yo'riqnoma bilan)
+//  Guruhlangan ro'yxat + yangi akkaunt qo'shish modali (yo'riqnoma bilan)
 // ============================================================
 export function renderAccountsPage() {
   const content = `
-  <div id="cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
-    ${'<div class="card skeleton" style="height:150px"></div>'.repeat(2)}
+  <div class="group-list" id="cards">
+    <div class="card skeleton" style="height:74px;border-radius:0"></div>
+    <div class="separator"></div>
+    <div class="card skeleton" style="height:74px;border-radius:0"></div>
   </div>`;
 
   const script = `
@@ -19,33 +22,24 @@ async function loadAccounts() {
     const { projects } = await api("/api/projects");
     PROJECTS = projects;
     if (!projects.length) {
-      $("cards").innerHTML = \`<div class="card" style="grid-column:1/-1">\${emptyState("📱", "Hali akkaunt yo'q — birinchisini qo'shing")}</div>\`;
+      $("cards").innerHTML = emptyState('${ICONS.accounts}', "Hali akkaunt yo'q — birinchisini qo'shing");
       return;
     }
-    $("cards").innerHTML = projects.map((p) => \`
-      <div class="card hoverable glass-glow">
-        <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px">
-          <div class="stat-ic" style="background:\${p.platform === "telegram" ? "linear-gradient(135deg,#0ea5e9,#6366f1)" : "linear-gradient(135deg,#f43f5e,#8b5cf6)"};font-size:19px">\${p.platform === "telegram" ? "✈️" : "📸"}</div>
-          <div style="min-width:0;flex:1">
-            <strong style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(p.name)}</strong>
-            <span class="small muted">\${p.platform === "telegram" ? "Telegram" + (p.tg_username ? " · @" + esc(p.tg_username) : "") : "ID: " + esc(p.ig_account_id || "asosiy loyiha")}</span>
-          </div>
-          <span title="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}" style="display:flex;align-items:center;gap:5px" class="small \${p.active ? "" : "muted"}">
-            <span class="dot \${p.active ? "dot-green" : "dot-red"}"></span>\${p.active ? "faol" : "nofaol"}
-          </span>
+    $("cards").innerHTML = projects.map((p, i) => \`
+      <div class="group-row">
+        <div class="avatar" style="background:\${p.platform === "telegram" ? "linear-gradient(135deg,#0ea5e9,#6366f1)" : "linear-gradient(135deg,#f43f5e,#8b5cf6)"};color:#fff">\${p.platform === "telegram" ? '${ICONS.send}' : '${ICONS.media}'}</div>
+        <div class="row-body">
+          <p class="row-title">\${esc(p.name)} <span class="pill \${p.active ? "pill-ok" : "pill-danger"}" title="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}">\${p.active ? "faol" : "nofaol"}</span></p>
+          <p class="row-sub">\${p.platform === "telegram" ? "Telegram" + (p.tg_username ? " · @" + esc(p.tg_username) : "") : "ID: " + esc(p.ig_account_id || "asosiy loyiha")}</p>
+          <p class="row-sub" style="margin-top:2px">\${p.contacts} mijoz · \${p.messages} xabar · bilim bazasi \${p.knowledge_base ? "bor" : "bo'sh"}</p>
         </div>
-        <div style="display:flex;gap:14px;margin-bottom:14px" class="small muted">
-          <span>👥 \${p.contacts} mijoz</span>
-          <span>💬 \${p.messages} xabar</span>
-          <span>\${p.knowledge_base ? '🧠 <span style="color:#4ade80">bor</span>' : '🧠 bo\\'sh'}</span>
+        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+          \${p.platform === "telegram" ? "" : \`<button class="btn btn-plain btn-sm" onclick="runDiagnostics(\${p.id})">${ICONS.search} Tekshirish</button>\`}
+          <a class="btn btn-plain btn-sm" href="/dashboard/knowledge">${ICONS.knowledge} Bilim bazasi</a>
+          <button class="btn btn-sm btn-danger" onclick="confirmDelete(\${p.id})">${ICONS.trash} O'chirish</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          \${p.platform === "telegram" ? "" : \`<button class="btn btn-sm" onclick="runDiagnostics(\${p.id})">🔍 Tekshirish</button>\`}
-          <a class="btn btn-sm" href="/dashboard/knowledge">🧠 Bilim bazasi</a>
-          <button class="btn btn-sm btn-danger" onclick="confirmDelete(\${p.id})">🗑 O'chirish</button>
-        </div>
-      </div>\`).join("");
-  } catch (e) { $("cards").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message); }
+      </div>\${i < projects.length - 1 ? '<div class="separator"></div>' : ""}\`).join("");
+  } catch (e) { $("cards").innerHTML = emptyState('${ICONS.alert}', "Yuklashda xatolik: " + e.message); }
 }
 
 // ============================================================
@@ -70,7 +64,7 @@ function wizProgress() {
 
 function wizNav(nextLabel, nextFn) {
   return \`<div style="display:flex;gap:10px;justify-content:space-between;margin-top:18px">
-    <button class="btn" onclick="\${WIZ.step === 1 ? "closeModal()" : "wizBack()"}">\${WIZ.step === 1 ? "Bekor qilish" : "← Orqaga"}</button>
+    <button class="btn btn-plain" onclick="\${WIZ.step === 1 ? "closeModal()" : "wizBack()"}">\${WIZ.step === 1 ? "Bekor qilish" : "← Orqaga"}</button>
     <button class="btn btn-primary" id="wizNext" onclick="\${nextFn || "wizNext()"}">\${nextLabel || "Keyingisi →"}</button>
   </div>\`;
 }
@@ -117,7 +111,7 @@ function wizRender() {
           <li><strong>Website permissions → Apps and websites</strong> (yoki "Sayt ruxsatlari")</li>
           <li><strong>Tester invites</strong> bo'limida taklifni <strong>Accept</strong> qiling</li>
         </ol>
-        <p class="small muted" style="margin-top:8px">💡 Topolmasangiz: brauzerda \${WIZ_LINK("https://www.instagram.com/accounts/manage_access/", "instagram.com/accounts/manage_access")} → Tester invites</p>\`)}
+        <p class="small muted" style="margin-top:8px">${ICONS.lightbulb} Topolmasangiz: brauzerda \${WIZ_LINK("https://www.instagram.com/accounts/manage_access/", "instagram.com/accounts/manage_access")} → Tester invites</p>\`)}
       \${wizNav("Bajardim ✓")}\`;
   } else if (s === 4) {
     body = \`
@@ -173,9 +167,9 @@ async function wizFinish() {
     const r = await postJson("/api/accounts", { name: WIZ.name, ig_account_id: WIZ.igId, token: WIZ.token });
     $("wzResult").innerHTML =
       '<div class="card" style="padding:12px;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.08);margin-bottom:6px">' +
-      "🎉 <strong>Akkaunt ulandi!</strong>" + (r.username ? " — @" + esc(r.username) : "") +
+      '${ICONS.check} <strong>Akkaunt ulandi!</strong>' + (r.username ? " — @" + esc(r.username) : "") +
       '<div class="small muted" style="margin-top:4px">Endi bu akkauntga kelgan DM va kommentlarga bot javob beradi. Bilim bazasini to\\'ldirishni unutmang!</div></div>' +
-      (r.warning ? '<div class="card" style="padding:10px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)" class="small">⚠️ ' + esc(r.warning) + "</div>" : "");
+      (r.warning ? '<div class="card" style="padding:10px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)" class="small">${ICONS.alert} ' + esc(r.warning) + "</div>" : "");
     toast("Akkaunt qo'shildi ✓" + (r.username ? " — @" + r.username : ""));
     btn.textContent = "Yopish";
     btn.disabled = false;
@@ -183,7 +177,7 @@ async function wizFinish() {
     loadAccounts();
   } catch (e) {
     $("wzResult").innerHTML =
-      '<div class="card" style="padding:12px;border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)">❌ <strong>Xatolik:</strong> ' + esc(e.message) +
+      '<div class="card" style="padding:12px;border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)">${ICONS.alert} <strong>Xatolik:</strong> ' + esc(e.message) +
       '<div class="small muted" style="margin-top:4px">Token noto\\'g\\'ri bo\\'lsa — 4-qadamga qaytib yangi token oling.</div></div>';
     btn.disabled = false; btn.textContent = "↻ Qayta urinish";
   }
@@ -191,34 +185,34 @@ async function wizFinish() {
 // ============================================================
 //  7.2: AKKAUNT DIAGNOSTIKASI — token, webhook, faollik, bilim bazasi
 // ============================================================
-const DIAG_ICON = { ok: "✅", warn: "⚠️", err: "❌", unknown: "❔" };
+const DIAG_ICON = { ok: '${ICONS.check}', warn: '${ICONS.alert}', err: '${ICONS.close}', unknown: '${ICONS.helpCircle}' };
 const DIAG_LABEL = {
-  token: "🔑 Token holati",
-  webhook: "📡 Webhook obunasi",
-  activity: "📈 Faollik",
-  knowledge: "🧠 Bilim bazasi",
+  token: '${ICONS.key} Token holati',
+  webhook: '${ICONS.zap} Webhook obunasi',
+  activity: '${ICONS.trendingUp} Faollik',
+  knowledge: '${ICONS.knowledge} Bilim bazasi',
 };
 async function runDiagnostics(projectId) {
   const p = PROJECTS.find((x) => x.id === projectId);
-  openModal("🔍 Diagnostika — " + (p ? p.name : "#" + projectId), skeletonRows(4, 52));
+  openModal("Diagnostika — " + (p ? p.name : "#" + projectId), skeletonRows(4, 52));
   try {
     const r = await api("/api/accounts/" + projectId + "/diagnostics");
     $("modalBody").innerHTML = Object.keys(DIAG_LABEL).map((k) => {
       const c = r.checks[k];
       return \`<div class="card" style="padding:11px 13px;margin-bottom:9px">
         <div style="display:flex;align-items:flex-start;gap:9px">
-          <span style="font-size:16px">\${DIAG_ICON[c.status] || "❔"}</span>
+          <span style="display:flex;color:var(--text-2)">\${DIAG_ICON[c.status] || '${ICONS.helpCircle}'}</span>
           <div style="min-width:0;flex:1">
-            <strong class="small">\${DIAG_LABEL[k]}</strong>
+            <strong class="small" style="display:flex;align-items:center;gap:6px">\${DIAG_LABEL[k]}</strong>
             <div class="small muted" style="margin-top:2px">\${esc(c.text)}</div>
             \${c.fix ? \`<div class="small" style="margin-top:5px;color:var(--accent-soft)">→ \${esc(c.fix)} <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener" style="color:var(--accent-soft);font-weight:600">Meta panel ↗</a></div>\` : ""}
           </div>
         </div>
       </div>\`;
     }).join("") +
-    '<div style="display:flex;justify-content:flex-end;margin-top:4px"><button class="btn" onclick="closeModal()">Yopish</button></div>';
+    '<div style="display:flex;justify-content:flex-end;margin-top:4px"><button class="btn btn-plain" onclick="closeModal()">Yopish</button></div>';
   } catch (e) {
-    $("modalBody").innerHTML = emptyState("⚠️", "Diagnostika xatosi: " + e.message);
+    $("modalBody").innerHTML = emptyState('${ICONS.alert}', "Diagnostika xatosi: " + e.message);
   }
 }
 
@@ -226,7 +220,7 @@ async function runDiagnostics(projectId) {
 //  9.1: TELEGRAM BOT QO'SHISH — BotFather yo'riqnomasi + token
 // ============================================================
 function addTelegramModal() {
-  openModal("✈️ Telegram bot qo'shish", \`
+  openModal("Telegram bot qo'shish", \`
     \${wizBox(\`<strong class="small">Bot yaratish (1 daqiqa):</strong>
       <ol class="small muted" style="margin:6px 0 0 18px;line-height:1.8">
         <li>Telegram'da \${WIZ_LINK("https://t.me/BotFather", "@BotFather")} ni oching</li>
@@ -241,7 +235,7 @@ function addTelegramModal() {
     <input class="input" id="tgToken" maxlength="200" placeholder="123456789:AAE..." style="margin-bottom:10px">
     <div id="tgResult"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-      <button class="btn" onclick="closeModal()">Bekor qilish</button>
+      <button class="btn btn-plain" onclick="closeModal()">Bekor qilish</button>
       <button class="btn btn-primary" id="tgSaveBtn" onclick="saveTelegramBot()">✓ Tekshirish va ulash</button>
     </div>\`);
 }
@@ -254,9 +248,9 @@ async function saveTelegramBot() {
     const r = await postJson("/api/accounts/telegram", { name: $("tgName").value.trim(), token });
     $("tgResult").innerHTML =
       '<div class="card" style="padding:12px;border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.08);margin-bottom:6px">' +
-      "🎉 <strong>Bot ulandi!</strong> — @" + esc(r.username) +
+      '${ICONS.check} <strong>Bot ulandi!</strong> — @' + esc(r.username) +
       '<div class="small muted" style="margin-top:4px">' +
-      (r.webhook ? "Webhook avtomatik o'rnatildi — botga yozib sinab ko'ring!" : "⚠️ " + esc(r.warning || "")) +
+      (r.webhook ? "Webhook avtomatik o'rnatildi — botga yozib sinab ko'ring!" : '${ICONS.alert} ' + esc(r.warning || "")) +
       "</div></div>";
     toast("Telegram bot ulandi ✓ — @" + r.username);
     btn.textContent = "Yopish";
@@ -265,7 +259,7 @@ async function saveTelegramBot() {
     loadAccounts();
   } catch (e) {
     $("tgResult").innerHTML =
-      '<div class="card" style="padding:12px;border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)">❌ <strong>Xatolik:</strong> ' + esc(e.message) + "</div>";
+      '<div class="card" style="padding:12px;border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.08)">${ICONS.alert} <strong>Xatolik:</strong> ' + esc(e.message) + "</div>";
     btn.disabled = false; btn.textContent = "↻ Qayta urinish";
   }
 }
@@ -274,9 +268,9 @@ function confirmDelete(id) {
   const p = PROJECTS.find((x) => x.id === id);
   openModal("Akkauntni o'chirish", \`
     <p style="margin-bottom:8px"><strong>\${esc(p?.name || "")}</strong> o'chirilsinmi?</p>
-    <p class="small" style="color:#f87171;margin-bottom:16px">⚠️ Diqqat: bu akkauntning barcha mijozlari (\${p?.contacts ?? 0}) va xabarlari (\${p?.messages ?? 0}) ham butunlay o'chadi. Bu amalni qaytarib bo'lmaydi!</p>
+    <p class="small" style="color:#f87171;margin-bottom:16px">${ICONS.alert} Diqqat: bu akkauntning barcha mijozlari (\${p?.contacts ?? 0}) va xabarlari (\${p?.messages ?? 0}) ham butunlay o'chadi. Bu amalni qaytarib bo'lmaydi!</p>
     <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn" onclick="closeModal()">Bekor qilish</button>
+      <button class="btn btn-plain" onclick="closeModal()">Bekor qilish</button>
       <button class="btn btn-danger" onclick="doDelete(\${id})">Ha, o'chirish</button>
     </div>\`);
 }
@@ -292,7 +286,7 @@ loadAccounts();`;
   return renderLayout({
     title: "Akkauntlar",
     active: "accounts",
-    headerAction: `<button class="btn" onclick="addTelegramModal()">✈️ Telegram bot</button> <button class="btn btn-primary" onclick="addAccountModal()">${ICONS.plus} Instagram akkaunt</button>`,
+    headerAction: `<button class="btn btn-secondary" onclick="addTelegramModal()">${ICONS.send} Telegram bot</button> <button class="btn btn-primary" onclick="addAccountModal()">${ICONS.plus} Instagram akkaunt</button>`,
     content,
     script,
   });

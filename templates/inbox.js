@@ -19,7 +19,8 @@ export function renderInboxPage() {
     .conv-list { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
     .conv-tools { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 9px; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; }
-    .chip { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--panel2); color: var(--muted); border: 1px solid var(--border); cursor: pointer; transition: all .18s; }
+    .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--panel2); color: var(--muted); border: 1px solid var(--border); cursor: pointer; transition: all .18s; }
+    .chip .ic { width: 13px; height: 13px; }
     .chip:hover { color: var(--text); }
     .chip.on { background: var(--grad); color: #fff; border-color: transparent; }
     .conv-items { flex: 1; overflow-y: auto; }
@@ -41,6 +42,7 @@ export function renderInboxPage() {
     .from-bot .bubble { background: var(--gradient-brand); color: #fff; border-bottom-right-radius: 5px; box-shadow: 0 4px 14px rgba(99,102,241,.25); }
     .from-bot .bubble.from-op { background: rgba(34,211,238,.08); border: 1px solid rgba(34,211,238,.45); color: var(--text-1); box-shadow: none; }
     .op-tag { font-size: 10px; color: var(--accent-3); font-weight: 700; letter-spacing: .3px; margin-bottom: 3px; text-transform: uppercase; }
+    .op-tag svg { width: 11px; height: 11px; vertical-align: -1px; margin-right: 3px; }
     .bubble-row.fresh .bubble { animation: freshGlow 1.8s ease; }
     @keyframes freshGlow { 0% { box-shadow: 0 0 0 3px rgba(34,211,238,.45); } 100% { box-shadow: 0 0 0 3px rgba(34,211,238,0); } }
     .composer { padding: 12px; border-top: 1px solid var(--border); background: var(--row-hover); display: flex; gap: 9px; align-items: flex-end; }
@@ -58,22 +60,22 @@ export function renderInboxPage() {
   <div class="inbox-wrap" id="inboxWrap">
     <div class="conv-list">
       <div class="conv-tools">
-        <input class="input" id="search" placeholder="🔍 Qidirish (ism, xabar)..." oninput="renderList()">
+        <input class="input" id="search" placeholder="Qidirish (ism, xabar)..." oninput="renderList()">
         <div class="filters" id="filters"></div>
       </div>
       <div class="conv-items" id="convItems">${'<div class="skeleton" style="height:58px;margin:8px 10px"></div>'.repeat(5)}</div>
       <div style="text-align:center;padding:8px">
-        <button class="btn btn-sm" id="loadMore" style="display:none" onclick="loadMore()">⬇ Ko'proq yuklash</button>
+        <button class="btn btn-plain btn-sm" id="loadMore" style="display:none" onclick="loadMore()">Ko'proq yuklash</button>
       </div>
     </div>
     <div class="chat-pane" id="chatPane">
-      <div id="chatEmpty" class="empty" style="margin:auto"><span class="emoji">💬</span>Suhbatni tanlang<br><span class="small muted">Chapdagi ro'yxatdan mijozni bosing</span></div>
+      <div id="chatEmpty" class="empty" style="margin:auto"><span class="empty-ic">${ICONS.messageCircle}</span>Suhbatni tanlang<br><span class="small muted">Chapdagi ro'yxatdan mijozni bosing</span></div>
       <div class="chat-head" id="chatHead" style="display:none"></div>
       <div class="chat-msgs" id="chatMsgs" style="display:none"></div>
       <div class="composer" id="composer" style="display:none">
-        <button class="btn" onclick="openQuickReplies()" title="Tezkor javoblar" style="padding:9px 12px">⚡</button>
-        <button class="btn" onclick="openMediaPicker()" title="Media yuborish" style="padding:9px 12px">📎</button>
-        <button class="btn" onclick="openPaymentModal()" title="To'lov havolasi yuborish" style="padding:9px 12px">💳</button>
+        <button class="btn btn-plain" onclick="openQuickReplies()" title="Tezkor javoblar" style="padding:9px 12px">${ICONS.zap}</button>
+        <button class="btn btn-plain" onclick="openMediaPicker()" title="Media yuborish" style="padding:9px 12px">${ICONS.media}</button>
+        <button class="btn btn-plain" onclick="openPaymentModal()" title="To'lov havolasi yuborish" style="padding:9px 12px">${ICONS.card}</button>
         <textarea class="input" id="replyText" rows="1" placeholder="Qo'lda javob yozish... (bot o'rniga siz)"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply();}"></textarea>
         <button class="btn btn-primary" id="sendBtn" onclick="sendReply()">${ICONS.send} Yuborish</button>
@@ -85,7 +87,7 @@ export function renderInboxPage() {
   return renderLayout({
     title: "Suhbatlar",
     active: "inbox",
-    headerAction: `<a class="btn" href="/dashboard/contacts">${ICONS.contacts} Kontaktlar</a>`,
+    headerAction: `<a class="btn btn-secondary" href="/dashboard/contacts">${ICONS.contacts} Kontaktlar</a>`,
     content,
     script: inboxScript(),
   });

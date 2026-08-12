@@ -1,12 +1,13 @@
 // templates/bookings.js — 10.1: Bron / navbat sahifasi
 // Sozlamalar (akkaunt bo'yicha) + bronlar ro'yxati + qo'lda qo'shish
+// ROADMAP-17 FAZA 2 — group-list, pill, segmented (aria-pressed), btn-primary/secondary/plain, SVG ikonlar
 import { renderLayout } from "./layout.js";
 import { ICONS } from "./components.js";
 
 export function renderBookingsPage() {
   const content = `
   <div class="card" style="margin-bottom:14px">
-    <h3 style="margin-bottom:4px">⚙️ Bron sozlamalari</h3>
+    <h3 style="margin-bottom:4px;display:flex;align-items:center;gap:8px">${ICONS.settings} Bron sozlamalari</h3>
     <p class="small muted" style="margin-bottom:14px">Yoqilsa — mijoz "bron", "navbat", "qachon kelay" desa bot bo'sh vaqtlarni tugma qilib yuboradi, mijoz tanlaydi va tasdiqlaydi. 1 kun oldin avtomatik eslatma boradi.</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:12px" class="bk-cols">
       <div><label class="lbl">Akkaunt</label>
@@ -29,19 +30,19 @@ export function renderBookingsPage() {
     </div>
     <label class="lbl">Ish kunlari</label>
     <div id="bkDays" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px"></div>
-    <button class="btn btn-primary" onclick="saveBkSettings(this)">${ICONS.check} Saqlash</button>
+    <button class="btn btn-secondary" onclick="saveBkSettings(this)">${ICONS.check} Saqlash</button>
   </div>
 
   <div class="card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <h3 style="flex:1">📅 Bronlar</h3>
-      <div class="seg" id="bkFilter">
-        <button class="on" data-f="upcoming">Kelgusi</button>
-        <button data-f="all">Hammasi</button>
+      <h3 style="flex:1;display:flex;align-items:center;gap:8px">${ICONS.calendar} Bronlar</h3>
+      <div class="segmented" id="bkFilter">
+        <button aria-pressed="true" data-f="upcoming">Kelgusi</button>
+        <button aria-pressed="false" data-f="all">Hammasi</button>
       </div>
-      <button class="btn btn-sm btn-primary" onclick="addBookingModal()">➕ Qo'lda bron</button>
+      <button class="btn btn-sm btn-primary" onclick="addBookingModal()">${ICONS.plus} Qo'lda bron</button>
     </div>
-    <div id="bkList"><div class="skeleton" style="height:60px;margin-bottom:8px"></div><div class="skeleton" style="height:60px"></div></div>
+    <div class="group-list" id="bkList"><div class="skeleton" style="height:60px"></div><div class="separator no-avatar"></div><div class="skeleton" style="height:60px"></div></div>
   </div>
   <style>@media (max-width:640px){ .bk-cols { grid-template-columns:1fr 1fr !important; } }</style>`;
 
@@ -49,10 +50,10 @@ export function renderBookingsPage() {
 const DAY_LABELS = { 1: "Du", 2: "Se", 3: "Chor", 4: "Pay", 5: "Ju", 6: "Shan", 7: "Yak" };
 let PROJECTS = [], BOOKINGS = [], BK_DAYS = [1,2,3,4,5,6], BK_FILTER = "upcoming", CONTACTS_CACHE = null;
 const STATUS_META = {
-  pending:   { label: "⏳ Kutilmoqda", cls: "b-amber" },
-  confirmed: { label: "✅ Tasdiqlangan", cls: "b-green" },
-  cancelled: { label: "❌ Bekor", cls: "b-red" },
-  done:      { label: "🏁 Bo'ldi", cls: "b-gray" },
+  pending:   { label: '${ICONS.clock} Kutilmoqda', cls: "pill-warn" },
+  confirmed: { label: '${ICONS.check} Tasdiqlangan', cls: "pill-ok" },
+  cancelled: { label: '${ICONS.close} Bekor', cls: "pill-danger" },
+  done:      { label: '${ICONS.flag} Bo\\'ldi', cls: "pill-plain" },
 };
 function fmtL(d) {
   return new Date(d).toLocaleString("uz-UZ", { timeZone: "Asia/Tashkent", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -106,10 +107,10 @@ async function saveBkSettings(btn) {
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }
-document.querySelectorAll("#bkFilter button").forEach(function (b) {
+document.querySelectorAll(".segmented button").forEach(function (b) {
   b.onclick = function () {
-    document.querySelectorAll("#bkFilter button").forEach(function (x) { x.classList.remove("on"); });
-    b.classList.add("on");
+    document.querySelectorAll(".segmented button").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+    b.setAttribute("aria-pressed", "true");
     BK_FILTER = b.dataset.f;
     renderBookings();
   };
@@ -119,7 +120,7 @@ async function loadBookings() {
     const r = await api("/api/bookings");
     BOOKINGS = r.bookings || [];
     renderBookings();
-  } catch (e) { $("bkList").innerHTML = emptyState("⚠️", "Yuklashda xatolik: " + e.message); }
+  } catch (e) { $("bkList").innerHTML = emptyState('${ICONS.alert}', "Yuklashda xatolik: " + e.message); }
 }
 function renderBookings() {
   let items = BOOKINGS;
@@ -129,26 +130,27 @@ function renderBookings() {
     }).sort(function (a, b) { return new Date(a.starts_at) - new Date(b.starts_at); });
   }
   if (!items.length) {
-    $("bkList").innerHTML = emptyState("📅", BK_FILTER === "upcoming" ? "Kelgusi bron yo'q" : "Hali bron yo'q");
+    $("bkList").innerHTML = emptyState('${ICONS.calendar}', BK_FILTER === "upcoming" ? "Kelgusi bron yo'q" : "Hali bron yo'q");
     return;
   }
-  $("bkList").innerHTML = items.map(function (b) {
+  $("bkList").innerHTML = items.map(function (b, i) {
     const st = STATUS_META[b.status] || STATUS_META.pending;
-    return '<div class="card" style="padding:11px 13px;margin-bottom:8px">' +
-      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-        '<strong style="min-width:110px">🕐 ' + fmtL(b.starts_at) + "</strong>" +
-        '<span class="badge ' + st.cls + '">' + st.label + "</span>" +
-        '<span class="small" style="flex:1;min-width:0">' +
-          (b.contact_id ? '<a href="/dashboard/inbox?contact=' + b.contact_id + '" style="color:var(--accent-soft)">' + esc(b.contact_name || b.ig_user_id || "mijoz") + "</a>" : '<span class="muted">' + esc(b.note || "qo\\'lda") + "</span>") +
-          (b.service_name ? ' · <span class="muted">' + esc(b.service_name) + "</span>" : "") +
-          ' · <span class="muted">' + b.duration_min + " daq · " + esc(b.project_name || "") + "</span>" +
-        "</span>" +
-        '<span style="display:flex;gap:5px">' +
-          (b.status !== "confirmed" && b.status !== "done" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'confirmed\\')" title="Tasdiqlash">✅</button>' : "") +
-          (b.status !== "done" && b.status !== "cancelled" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'done\\')" title="Bo\\'ldi">🏁</button>' : "") +
-          (b.status !== "cancelled" ? '<button class="btn btn-sm" onclick="setBk(' + b.id + ',\\'cancelled\\')" title="Bekor qilish">❌</button>' : "") +
-        "</span>" +
-      "</div></div>";
+    const who = b.contact_id
+      ? '<a href="/dashboard/inbox?contact=' + b.contact_id + '" style="color:var(--accent-soft)">' + esc(b.contact_name || b.ig_user_id || "mijoz") + "</a>"
+      : '<span class="muted">' + esc(b.note || "qo\\'lda") + "</span>";
+    const actions =
+      (b.status !== "confirmed" && b.status !== "done" ? '<button class="btn-plain btn-sm" onclick="setBk(' + b.id + ',\\'confirmed\\')" title="Tasdiqlash">${ICONS.check}</button>' : "") +
+      (b.status !== "done" && b.status !== "cancelled" ? '<button class="btn-plain btn-sm" onclick="setBk(' + b.id + ',\\'done\\')" title="Bo\\'ldi">${ICONS.flag}</button>' : "") +
+      (b.status !== "cancelled" ? '<button class="btn-plain btn-sm" style="color:var(--danger)" onclick="setBk(' + b.id + ',\\'cancelled\\')" title="Bekor qilish">${ICONS.close}</button>' : "");
+    return '<div class="group-row">' +
+        '<div class="row-body">' +
+          '<p class="row-title"><span style="display:inline-flex;vertical-align:middle;margin-right:4px;color:var(--text-3)">${ICONS.clock}</span>' + fmtL(b.starts_at) + ' <span class="pill ' + st.cls + '">' + st.label + '</span></p>' +
+          '<p class="row-sub">' + who +
+            (b.service_name ? ' · <span class="muted">' + esc(b.service_name) + '</span>' : '') +
+            ' · <span class="muted">' + b.duration_min + ' daq · ' + esc(b.project_name || '') + '</span></p>' +
+        '</div>' +
+        '<div style="display:flex;gap:5px;flex-shrink:0">' + actions + '</div>' +
+      '</div>' + (i < items.length - 1 ? '<div class="separator no-avatar"></div>' : '');
   }).join("");
 }
 async function setBk(id, status) {
@@ -164,7 +166,7 @@ async function addBookingModal() {
   if (!CONTACTS_CACHE) {
     try { CONTACTS_CACHE = (await api("/api/contacts?limit=100")).contacts || []; } catch (e) { CONTACTS_CACHE = []; }
   }
-  openModal("➕ Qo'lda bron", '' +
+  openModal("Qo'lda bron", '' +
     '<label class="lbl">Akkaunt</label>' +
     '<select class="input" id="nbProject" style="margin-bottom:10px">' + PROJECTS.map(function (p) { return '<option value="' + p.id + '">' + esc(p.name) + "</option>"; }).join("") + "</select>" +
     '<label class="lbl">Mijoz (ixtiyoriy)</label>' +
@@ -175,7 +177,7 @@ async function addBookingModal() {
     '<label class="lbl">Xizmat / izoh (ixtiyoriy)</label>' +
     '<input class="input" id="nbService" maxlength="120" style="margin-bottom:14px" placeholder="Masalan: konsultatsiya">' +
     '<div style="display:flex;gap:10px;justify-content:flex-end">' +
-      '<button class="btn" onclick="closeModal()">Bekor</button>' +
+      '<button class="btn btn-plain" onclick="closeModal()">Bekor</button>' +
       '<button class="btn btn-primary" onclick="createBooking()">Qo\\'shish</button></div>');
 }
 async function createBooking() {

@@ -25,6 +25,23 @@
   --success: #34d399; --warning: #fbbf24; --danger: #f87171;
   --overlay-bg: rgba(4,5,10,.6);
   --fallback-bg: rgba(18,20,28,.96);
+
+  /* ===== ROADMAP-17 FAZA 1 — Apple uslubi tokenlar (tungi) ===== */
+  --bg-page:    #000000;
+  --bg-card:    #1C1C1E;
+  --bg-inset:   #2C2C2E;
+  --bg-control: #2C2C2E;
+  --text-1:     #F5F5F7;
+  --text-2:     #AEAEB2;
+  --text-3:     #8E8E93;
+  --text-4:     #48484A;
+  --separator:  #2C2C2E;
+  --hairline:   rgba(255,255,255,0.08);
+  --accent:     #7D7AFF;
+  --accent-bg:  #232238;
+  --ok:         #4ADE80; --ok-bg:     #1E3A2A;
+  --warn-ap:    #F5A55C; --warn-bg:   #3A2A1A;
+  --danger:     #FF6B60; --danger-bg: #3A1F1D;
 }
 [data-theme="light"] {
   --bg-base: #f4f5fa;
@@ -49,6 +66,23 @@
   --success: #059669; --warning: #b45309; --danger: #dc2626;
   --overlay-bg: rgba(30,35,60,.35);
   --fallback-bg: rgba(255,255,255,.94);
+
+  /* ===== ROADMAP-17 FAZA 1 — Apple uslubi tokenlar (yorug') ===== */
+  --bg-page:    #F2F2F7;
+  --bg-card:    #FFFFFF;
+  --bg-inset:   #EFEFF4;
+  --bg-control: #E3E3E8;
+  --text-1:     #1C1C1E;
+  --text-2:     #6E6E73;
+  --text-3:     #8E8E93;
+  --text-4:     #C7C7CC;
+  --separator:  #EFEFF4;
+  --hairline:   rgba(0,0,0,0.06);
+  --accent:     #5E5CE6;
+  --accent-bg:  #EEEEFC;
+  --ok:         #248A4B; --ok-bg:     #E8F5EE;
+  --warn-ap:    #B85C1E; --warn-bg:   #FDEEE3;
+  --danger:     #C4342B; --danger-bg: #FDECEA;
 }
 :root {
   --gradient-brand: linear-gradient(135deg, var(--accent), var(--accent-2) 60%, #ec4899);
@@ -58,20 +92,26 @@
   --text-primary: var(--text-1); --text-secondary: var(--text-2); --text-muted: var(--text-3);
   --gradient-aurora: var(--bg-gradient);
   --bg: var(--bg-base); --panel: var(--glass-bg); --panel2: var(--glass-bg-strong);
-  --accent2: var(--accent-2); --warn: var(--warning);
+  --accent2: var(--accent-2); --warn: var(--warn-ap);
   --text: var(--text-1); --muted: var(--text-2); --border: var(--glass-border);
   --grad: var(--gradient-brand);
+
+  /* ===== ROADMAP-17 FAZA 1 — radius, bo'shliq, shrift (theme'dan mustaqil) ===== */
+  --r-card: 18px; --r-panel: 20px; --r-control: 10px; --r-inner: 8px; --r-pill: 999px;
+  --pad-card: 20px; --pad-row: 14px 18px; --pad-page: 28px;
+  --gap-card: 14px; --gap-section: 24px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
-body { background: var(--bg-base); color: var(--text-1); font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1.55; transition: background .3s ease, color .3s ease; }
+body { background: var(--bg-base); color: var(--text-1); font-family: var(--font); font-size: 14px; line-height: 1.55; transition: background .3s ease, color .3s ease; }
 /* Jonli AURORA fon — fixed qatlam, sekin harakat (A2) */
 body::before { content: ""; position: fixed; inset: -8%; z-index: -1; background: var(--bg-gradient); animation: aurora 24s ease-in-out infinite; will-change: transform; pointer-events: none; }
 @keyframes aurora { 0% { transform: translate(0,0) scale(1); } 50% { transform: translate(-2%,2%) scale(1.05); } 100% { transform: translate(0,0) scale(1); } }
 @media (prefers-reduced-motion: reduce) { body::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; }
-h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+h1 { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
 h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
 h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
 small, .small { font-size: 12px; }
@@ -222,7 +262,7 @@ table.tbl { width: 100%; border-collapse: collapse; min-width: 640px; }
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
 .stat-card { display: flex; align-items: center; gap: 14px; }
 .stat-ic { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.stat-num { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.stat-num { font-size: 34px; font-weight: 600; letter-spacing: -0.035em; background: var(--gradient-brand); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .stat-lbl { color: var(--text-secondary); font-size: 12px; }
 .stat-ctx { color: var(--text-3); font-size: 11px; margin-top: 2px; }
 

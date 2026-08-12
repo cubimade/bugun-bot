@@ -50,14 +50,14 @@ function renderGallery() {
       : '<div class="media-ph" style="height:120px;display:flex;align-items:center;justify-content:center;background:var(--panel2);border-radius:9px;color:var(--text-3)">' + (m.type === "video" ? '${ICONS.media}' : '${ICONS.book}') + "</div>";
     return '<div class="card" style="padding:10px">' +
       preview +
-      '<div class="small" style="margin:8px 0 2px;display:flex;align-items:center;gap:4px;overflow:hidden" title="' + esc(m.name) + '">' +
+      '<div class="small" style="margin:8px 0 2px;display:flex;align-items:center;gap:4px;overflow:hidden" data-tip="' + esc(m.name) + '">' +
         (m.is_portfolio ? '<span style="color:var(--warn-ap);flex-shrink:0">${ICONS.sparkle}</span>' : "") +
         '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m.name) + "</span></div>" +
       '<div class="small muted" style="margin-bottom:8px">' + (m.size / 1024).toFixed(0) + " KB</div>" +
       '<div style="display:flex;gap:5px;flex-wrap:wrap">' +
-        '<button class="btn-plain btn-sm" onclick="copyUrl(' + m.id + ')" title="URL nusxalash">URL</button>' +
-        (m.type === "image" ? '<button class="btn-plain btn-sm" onclick="togglePortfolio(' + m.id + "," + !m.is_portfolio + ')" title="Portfolio" style="' + (m.is_portfolio ? "color:var(--warn-ap)" : "") + '">${ICONS.sparkle}</button>' : "") +
-        '<button class="btn-danger btn-sm" onclick="delMedia(' + m.id + ')" title="O\\'chirish">${ICONS.trash}</button>' +
+        '<button class="btn-plain btn-sm" onclick="copyUrl(' + m.id + ')" data-tip="URL nusxalash">URL</button>' +
+        (m.type === "image" ? '<button class="btn-plain btn-sm" onclick="togglePortfolio(' + m.id + "," + !m.is_portfolio + ')" data-tip="Portfolio" style="' + (m.is_portfolio ? "color:var(--warn-ap)" : "") + '">${ICONS.sparkle}</button>' : "") +
+        '<button class="btn-danger btn-sm" onclick="delMedia(' + m.id + ')" data-tip="O\\'chirish">${ICONS.trash}</button>' +
       "</div></div>";
   }).join("");
 }

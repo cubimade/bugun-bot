@@ -21,8 +21,8 @@ function renderTagRules() {
         <p class="row-title">"\${esc(r.keyword)}" → <span class="pill pill-plain">\${esc(r.tag_name)}</span></p>
         \${r.project_name ? '<p class="row-sub">' + esc(r.project_name) + "</p>" : ""}
       </div>
-      <button class="btn btn-sm" onclick="toggleTagRule(\${r.id}, \${!r.is_active})" title="\${r.is_active ? "To'xtatish" : "Yoqish"}">\${r.is_active ? "⏸" : "▶️"}</button>
-      <button class="btn btn-plain btn-sm" onclick="delTagRule(\${r.id})" title="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      <button class="btn btn-sm" onclick="toggleTagRule(\${r.id}, \${!r.is_active})" data-tip="\${r.is_active ? "To'xtatish" : "Yoqish"}">\${r.is_active ? "⏸" : "▶️"}</button>
+      <button class="btn btn-plain btn-sm" onclick="delTagRule(\${r.id})" data-tip="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
     </div>\${i < TAG_RULES.length - 1 ? '<div class="separator no-avatar"></div>' : ""}\`).join("") + "</div>";
 }
 async function addTagRule(btn) {
@@ -33,7 +33,7 @@ async function addTagRule(btn) {
   try {
     await postJson("/api/tag-rules", { keyword, tag_name });
     $("trWord").value = ""; $("trTag").value = "";
-    toast("Qoida qo'shildi ✓");
+    toast("Qoida qo'shildi");
     loadTagRules();
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
@@ -94,7 +94,7 @@ async function loadQuickReplies() {
           <p class="row-title">\${esc(r.title)}</p>
           <p class="row-sub" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">\${esc(r.text)}</p>
         </div>
-        <button class="btn btn-plain btn-sm" onclick="deleteQuickReply(\${r.id})" title="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+        <button class="btn btn-plain btn-sm" onclick="deleteQuickReply(\${r.id})" data-tip="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
       </div>\${i < replies.length - 1 ? '<div class="separator no-avatar"></div>' : ""}\`).join("") + "</div>";
   } catch (e) { $("qrList").innerHTML = emptyState('<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>', "Yuklanmadi: " + e.message); }
 }
@@ -106,7 +106,7 @@ async function addQuickReply(btn) {
   try {
     await postJson("/api/saved-replies", { title, text });
     $("qrTitle").value = ""; $("qrText").value = "";
-    toast("Tezkor javob qo'shildi ✓");
+    toast("Tezkor javob qo'shildi");
     loadQuickReplies();
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
@@ -157,8 +157,8 @@ function renderUsers() {
           ' <span class="pill ' + (u.role === "owner" ? "pill-ok" : u.role === "admin" ? "pill-warn" : "pill-plain") + '">' + ROLE_LBL[u.role] + "</span></p>" +
         '<p class="row-sub">' + sub + "</p>" +
       "</div>" +
-      (u.role !== "owner" ? '<button class="btn btn-plain btn-sm" onclick="editUserProjects(' + u.id + ')" title="Akkauntlarni biriktirish">' + ICO_LINK + "</button>" : "") +
-      '<button class="btn btn-plain btn-sm" onclick="resetUserPassword(' + u.id + ')" title="Parolni yangilash">' + ICO_KEY + "</button>" +
+      (u.role !== "owner" ? '<button class="btn btn-plain btn-sm" onclick="editUserProjects(' + u.id + ')" data-tip="Akkauntlarni biriktirish">' + ICO_LINK + "</button>" : "") +
+      '<button class="btn btn-plain btn-sm" onclick="resetUserPassword(' + u.id + ')" data-tip="Parolni yangilash">' + ICO_KEY + "</button>" +
       (u.role !== "owner" ? '<button class="btn btn-plain btn-sm" onclick="toggleUser(' + u.id + "," + !u.is_active + ')">' + (u.is_active ? "⏸" : "▶️") + "</button>" +
         '<button class="btn btn-plain btn-sm" onclick="delUser(' + u.id + ')">' + ICO_TRASH + "</button>" : "") +
     "</div>" + (i < USERS.length - 1 ? '<div class="separator no-avatar"></div>' : "");
@@ -195,7 +195,7 @@ async function saveUserProjects(id) {
   const ids = Array.from(document.querySelectorAll(".upChk:checked")).map(function (c) { return Number(c.value); });
   try {
     await postJson("/api/users/" + id, { project_ids: ids });
-    closeModal(); toast("Saqlandi ✓");
+    closeModal(); toast("Saqlandi");
     loadUsers();
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
@@ -259,7 +259,7 @@ async function loadWebhooks() {
       return '<div class="group-row"' + (w.is_active ? "" : ' style="opacity:.5"') + '>' +
         '<div class="row-body"><p class="row-title" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(w.url) + "</p>" +
         '<p class="row-sub">' + (w.events || []).map(function (e) { return EV_LBL[e] || e; }).join(", ") + "</p></div>" +
-        '<button class="btn btn-plain btn-sm" onclick="testWebhook(' + w.id + ')" title="Test yuborish">' + ICO_FLASK + "</button>" +
+        '<button class="btn btn-plain btn-sm" onclick="testWebhook(' + w.id + ')" data-tip="Test yuborish">' + ICO_FLASK + "</button>" +
         '<button class="btn btn-plain btn-sm" onclick="toggleWebhook(' + w.id + "," + !w.is_active + ')">' + (w.is_active ? "⏸" : "▶️") + "</button>" +
         '<button class="btn btn-plain btn-sm" onclick="delWebhook(' + w.id + ')">' + ICO_TRASH + "</button></div>" +
         (i < webhooks.length - 1 ? '<div class="separator no-avatar"></div>' : "");

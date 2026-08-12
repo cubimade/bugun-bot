@@ -75,7 +75,8 @@ function filtered() {
   const acc = $("accFilter").value;
   const seg = $("segFilter").value;
   return CONTACTS.filter((c) =>
-    (!q || String(c.name || "").toLowerCase().includes(q) || String(c.ig_user_id).includes(q)) &&
+    (!q || String(c.name || "").toLowerCase().includes(q) || String(c.ig_user_id).includes(q) ||
+     String(c.username || "").toLowerCase().includes(q) || String(c.full_name || "").toLowerCase().includes(q)) &&
     (!tag || (c.tags || []).includes(tag)) &&
     (!acc || c.project_name === acc) &&
     (!seg || c.segment === seg)
@@ -84,6 +85,34 @@ function filtered() {
 // 11.2: segment pill — matn + ikonka, rang pill sinfi orqali
 const SEG_BADGE = { vip: '${ICONS.sparkle} VIP', faol: '${ICONS.zap} Faol', uxlagan: '${ICONS.moon} Uxlagan', sovuq: "Sovuq" };
 const SEG_PILL = { vip: "pill-ok", faol: "pill-warn", uxlagan: "pill-plain", sovuq: "pill-plain" };
+// 16 (2.1): mavjud kontaktlar uchun @username va rasmni bir martalik olib kelish.
+// Ish fonda ketadi — tugma jarayonni ko'rsatib turadi, sahifa qotmaydi.
+async function refreshProfiles(btn) {
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Boshlanmoqda...';
+  try {
+    const r = await postJson("/api/contacts/refresh-profiles", {});
+    if (!r.started) { toast(r.message || "Yangilash shart emas"); btn.disabled = false; btn.innerHTML = orig; return; }
+    toast(r.total + " ta kontakt yangilanmoqda — bu biroz vaqt oladi");
+    const timer = setInterval(async () => {
+      try {
+        const { progress } = await api("/api/contacts/refresh-profiles/status");
+        btn.innerHTML = '<span class="spinner"></span> ' + progress.done + "/" + progress.total;
+        if (!progress.running) {
+          clearInterval(timer);
+          btn.disabled = false; btn.innerHTML = orig;
+          toast(progress.ok + " ta profil olindi");
+          loadData();
+        }
+      } catch (e) { clearInterval(timer); btn.disabled = false; btn.innerHTML = orig; }
+    }, 2000);
+  } catch (e) {
+    toast("Xatolik: " + e.message, false);
+    btn.disabled = false; btn.innerHTML = orig;
+  }
+}
+
 function renderTable() {
   const items = filtered();
   document.querySelector(".page-head h1").textContent = "Kontaktlar · " + TOTAL + " ta";
@@ -99,19 +128,19 @@ function renderTable() {
   $("rows").innerHTML = items.map((c, i) => \`
     <div class="group-row">
       <a href="/dashboard/inbox?contact=\${c.id}" style="display:flex;align-items:center;gap:14px;flex:1;min-width:0;text-decoration:none;color:inherit">
-        \${avatar(c.name || c.ig_user_id, 42)}
+        \${contactAvatar(c, 42)}
         <div class="row-body">
-          <p class="row-title">\${esc(c.name || c.ig_user_id)}
+          <p class="row-title">\${esc(contactTitle(c))}
             \${c.needs_human ? '<span title="Odam kerak" style="display:inline-flex;vertical-align:middle;color:var(--warn-ap)">${ICONS.person}</span>' : ""}
             \${c.bot_paused ? '<span title="Bot pauzada" style="display:inline-flex;vertical-align:middle;color:var(--text-3)">${ICONS.bellOff}</span>' : ""}
             \${c.unread ? '<span class="pill pill-ok" style="padding:1px 7px">' + c.unread + '</span>' : ""}</p>
-          <p class="row-sub">ID: \${esc(c.ig_user_id)} · \${esc(c.project_name || "—")} · \${c.msg_count} xabar · \${timeAgo(c.last_seen)}</p>
+          <p class="row-sub">\${esc(contactSubtitle(c))} · \${esc(c.project_name || "—")} · \${c.msg_count} xabar · \${timeAgo(c.last_seen)}</p>
         </div>
       </a>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;justify-content:flex-end;max-width:46%">
         \${c.segment && SEG_BADGE[c.segment] ? '<span class="pill ' + (SEG_PILL[c.segment] || "pill-plain") + '">' + SEG_BADGE[c.segment] + '</span>' : ""}
         \${(c.tags || []).map((t) => \`<span class="badge b-indigo">\${esc(t)}</span>\`).join("")}
-        <button class="btn-plain btn-sm" onclick="openTagEditor(\${c.id})" title="Teg qo'shish/o'chirish">+ teg</button>
+        <button class="btn-plain btn-sm" onclick="openTagEditor(\${c.id})" data-tip="Teg qo'shish/o'chirish">+ teg</button>
         <button class="btn-plain btn-sm" onclick="openProfile(\${c.id})">Profil</button>
       </div>
     </div>
@@ -179,7 +208,7 @@ loadData();`;
   return renderLayout({
     title: "Kontaktlar",
     active: "contacts",
-    headerAction: `<button class="btn btn-secondary" onclick="showDuplicates()" title="Bir xil telefon/emailli kontaktlar">Duplikatlar</button> <button class="btn btn-secondary" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" title="Joriy davr bo'yicha CSV">CSV yuklab olish</button> <button class="btn btn-plain" onclick="location.href='/api/export/full.json'" title="Barcha kontakt + suhbatlar (JSON)">To'liq eksport</button> <a class="btn btn-plain" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
+    headerAction: `<button class="btn btn-secondary" id="refreshProfBtn" onclick="refreshProfiles(this)" data-tip="Instagram profil rasmi va @username ni olib keladi">${ICONS.person} Profillarni yangilash</button> <button class="btn btn-secondary" onclick="showDuplicates()" data-tip="Bir xil telefon/emailli kontaktlar">Duplikatlar</button> <button class="btn btn-secondary" onclick="location.href='/api/export/contacts.csv?period='+PERIOD" data-tip="Joriy davr bo'yicha CSV">CSV yuklab olish</button> <button class="btn btn-plain" onclick="location.href='/api/export/full.json'" data-tip="Barcha kontakt + suhbatlar (JSON)">To'liq eksport</button> <a class="btn btn-plain" href="/dashboard/inbox">${ICONS.inbox} Inbox</a>`,
     content,
     script,
   });

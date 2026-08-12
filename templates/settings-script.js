@@ -134,7 +134,7 @@ function renderGbRows() {
         oninput="GB_ROWS[\${i}].title=this.value">
       <textarea class="input" rows="2" maxlength="900" placeholder="Bosilganda yuboriladigan javob"
         oninput="GB_ROWS[\${i}].reply=this.value">\${esc(b.reply || "")}</textarea>
-      <button class="btn btn-plain btn-sm" onclick="GB_ROWS.splice(\${i},1);renderGbRows()" title="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      <button class="btn btn-plain btn-sm" onclick="GB_ROWS.splice(\${i},1);renderGbRows()" data-tip="O'chirish"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
     </div>\`).join("");
 }
 function addGbRow() {

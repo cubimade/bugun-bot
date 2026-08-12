@@ -1,5 +1,13 @@
 # 📜 Bugun Bot — versiyalar tarixi
 
+## v12.2.0 — Instagram bilan bir tugmali ulash (OAuth)
+- `/auth/instagram` va `/auth/instagram/callback` — Instagram Business Login
+- Qisqa → uzoq muddatli token almashinuvi (60 kun) va kunlik avtomatik uzaytirish
+- Webhook obunasi avtomatik yoqiladi (xato bo'lsa ogohlantirish ko'rsatiladi)
+- Kanal tanlash (`/dashboard/connect`) va Instagram ulash ekranlari
+- Akkauntlar sahifasida token muddati, ulanish turi va profil ma'lumoti
+- Qo'lda token kiritish sehrgari zaxira variant sifatida to'liq saqlandi
+
 ## v12.0.0 — Jamoa, integratsiya va kengayish
 - Foydalanuvchilar va rollar (owner/admin/operator), sessiya + bcrypt, login sahifasi
   (eski DASHBOARD_PASSWORD Basic Auth va login formasi orqali to'liq saqlangan)

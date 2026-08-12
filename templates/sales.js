@@ -29,9 +29,9 @@ export function renderSalesPage() {
       <div style="display:grid;grid-template-columns:1fr 90px 90px 130px auto;gap:8px;margin-bottom:12px" class="pr-cols">
         <input class="input" id="prCode" maxlength="20" placeholder="KOD (masalan: YOZ25)">
         <input class="input" id="prPct" type="number" min="1" max="99" placeholder="%">
-        <input class="input" id="prUses" type="number" min="1" value="10" title="Necha marta ishlatiladi">
-        <input class="input" id="prUntil" type="date" title="Amal qilish muddati" style="color-scheme:dark">
-        <button class="btn-secondary" onclick="addPromo(this)" title="Promo-kod qo'shish">${ICONS.plus}</button>
+        <input class="input" id="prUses" type="number" min="1" value="10" data-tip="Necha marta ishlatiladi">
+        <input class="input" id="prUntil" type="date" data-tip="Amal qilish muddati" style="color-scheme:dark">
+        <button class="btn-secondary" onclick="addPromo(this)" data-tip="Promo-kod qo'shish">${ICONS.plus}</button>
       </div>
       <div id="promoList"><div class="skeleton" style="height:44px"></div></div>
     </div>
@@ -42,7 +42,7 @@ export function renderSalesPage() {
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
         <label class="switch"><input type="checkbox" id="refBonus"><span class="slider"></span></label>
         <div class="small"><strong>Bonus:</strong> taklif qilganga avto promo-kod</div>
-        <input class="input" id="refPct" type="number" min="1" max="90" value="10" style="width:80px" title="Bonus foizi">%
+        <input class="input" id="refPct" type="number" min="1" max="90" value="10" style="width:80px" data-tip="Bonus foizi">%
         <button class="btn-secondary btn-sm" onclick="saveRefBonus(this)">Saqlash</button>
       </div>
       <div id="refTop"><div class="skeleton" style="height:44px"></div></div>

@@ -103,7 +103,7 @@ async function saveBkSettings(btn) {
       break_between_min: Number($("bkBreak").value),
       max_days_ahead: Number($("bkAhead").value),
     });
-    toast("Bron sozlamalari saqlandi ✓");
+    toast("Bron sozlamalari saqlandi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }
@@ -139,9 +139,9 @@ function renderBookings() {
       ? '<a href="/dashboard/inbox?contact=' + b.contact_id + '" style="color:var(--accent-soft)">' + esc(b.contact_name || b.ig_user_id || "mijoz") + "</a>"
       : '<span class="muted">' + esc(b.note || "qo\\'lda") + "</span>";
     const actions =
-      (b.status !== "confirmed" && b.status !== "done" ? '<button class="btn-plain btn-sm" onclick="setBk(' + b.id + ',\\'confirmed\\')" title="Tasdiqlash">${ICONS.check}</button>' : "") +
-      (b.status !== "done" && b.status !== "cancelled" ? '<button class="btn-plain btn-sm" onclick="setBk(' + b.id + ',\\'done\\')" title="Bo\\'ldi">${ICONS.flag}</button>' : "") +
-      (b.status !== "cancelled" ? '<button class="btn-plain btn-sm" style="color:var(--danger)" onclick="setBk(' + b.id + ',\\'cancelled\\')" title="Bekor qilish">${ICONS.close}</button>' : "");
+      (b.status !== "confirmed" && b.status !== "done" ? '<button class="btn-plain btn-sm" onclick="setBk(' + b.id + ',\\'confirmed\\')" data-tip="Tasdiqlash">${ICONS.check}</button>' : "") +
+      (b.status !== "done" && b.status !== "cancelled" ? '<button class="btn-plain btn-sm" onclick="setBk(' + b.id + ',\\'done\\')" data-tip="Bo\\'ldi">${ICONS.flag}</button>' : "") +
+      (b.status !== "cancelled" ? '<button class="btn-plain btn-sm" style="color:var(--danger)" onclick="setBk(' + b.id + ',\\'cancelled\\')" data-tip="Bekor qilish">${ICONS.close}</button>' : "");
     return '<div class="group-row">' +
         '<div class="row-body">' +
           '<p class="row-title"><span style="display:inline-flex;vertical-align:middle;margin-right:4px;color:var(--text-3)">${ICONS.clock}</span>' + fmtL(b.starts_at) + ' <span class="pill ' + st.cls + '">' + st.label + '</span></p>' +
@@ -159,7 +159,7 @@ async function setBk(id, status) {
     const b = BOOKINGS.find(function (x) { return x.id === id; });
     if (b) b.status = status;
     renderBookings();
-    toast("Holat o'zgardi ✓");
+    toast("Holat o'zgardi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 async function addBookingModal() {
@@ -191,7 +191,7 @@ async function createBooking() {
       service_name: $("nbService").value.trim(),
       note: $("nbContact").value ? "" : "qo'lda kiritilgan",
     });
-    closeModal(); toast("Bron qo'shildi ✓");
+    closeModal(); toast("Bron qo'shildi");
     loadBookings();
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }

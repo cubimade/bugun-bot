@@ -36,7 +36,7 @@ export function renderLayout({ title, subtitle = "", active, headerAction = "", 
       <span>v${APP_VERSION}</span>
       <span style="display:flex;align-items:center;gap:8px">
         <button class="theme-btn" onclick="toggleTheme()" aria-label="Rejimni almashtirish"></button>
-        <a href="/logout" class="muted" title="Chiqish (logout)">${ICONS.logout}</a>
+        <a href="/logout" class="muted" data-tip="Chiqish (logout)">${ICONS.logout}</a>
       </span>
     </div>
   </aside>
@@ -52,7 +52,7 @@ export function renderLayout({ title, subtitle = "", active, headerAction = "", 
           oninput="onGlobalSearch()" onfocus="onGlobalSearch()">
         <div class="topsearch-drop" id="searchDrop"></div>
       </div>
-      <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()" aria-label="Bildirishnomalar" title="Odam kerak suhbatlar">
+      <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()" aria-label="Bildirishnomalar" data-tip="Odam kerak suhbatlar">
         ${ICONS.bell}<span class="notif-count" id="notifCount" style="display:none"></span>
       </button>
       <div class="notif-drop" id="notifDrop"></div>

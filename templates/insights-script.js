@@ -143,7 +143,7 @@ function renderHeatmap(rows) {
       const n = grid[d + ":" + h] || 0;
       const alpha = n ? (0.12 + 0.78 * (n / max)).toFixed(2) : 0;
       html += '<div class="heat-cell" style="background:' +
-        (n ? "rgba(99,102,241," + alpha + ")" : "var(--input-bg)") + '" title="' +
+        (n ? "rgba(99,102,241," + alpha + ")" : "var(--input-bg)") + '" data-tip="' +
         DAY_FULL[d] + " " + h + ':00 — ' + n + ' xabar"></div>';
     }
   });
@@ -201,7 +201,7 @@ function renderAccBars(accounts) {
     const w = max ? Math.max(2, Math.round((a.messages / max) * 100)) : 2;
     const pct = total ? Math.round((a.messages / total) * 100) : 0;
     return '<div class="acc-row">' +
-      '<span class="small" style="width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(a.name) + '">' + esc(a.name) + "</span>" +
+      '<span class="small" style="width:110px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-tip="' + esc(a.name) + '">' + esc(a.name) + "</span>" +
       '<svg viewBox="0 0 100 14" preserveAspectRatio="none" style="flex:1;height:14px;display:block">' +
       '<defs><linearGradient id="ab' + a.id + '" x1="0" y1="0" x2="1" y2="0">' +
       '<stop offset="0%" style="stop-color:var(--accent)"/><stop offset="100%" style="stop-color:var(--accent-2)"/></linearGradient></defs>' +
@@ -305,7 +305,7 @@ async function loadFinance() {
     const maxRev = Math.max(1, Math.max.apply(null, f.monthly.map(function (m) { return m.revenue; })));
     const bars = f.monthly.map(function (m) {
       const h = Math.round((m.revenue / maxRev) * 70);
-      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" title="' + m.month + ": " + fmtS(m.revenue) + " (" + m.won + ' sotuv)">' +
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px" data-tip="' + m.month + ": " + fmtS(m.revenue) + " (" + m.won + ' sotuv)">' +
         '<div style="width:70%;max-width:26px;height:' + Math.max(h, 2) + 'px;background:var(--grad);border-radius:5px 5px 0 0;opacity:' + (m.revenue ? 1 : 0.25) + '"></div>' +
         '<span class="small muted" style="font-size:9.5px">' + m.month.slice(5) + "</span></div>";
     }).join("");

@@ -36,7 +36,15 @@ function timeAgo(d) {
 }
 async function api(path, opts) {
   const r = await fetch(path, opts);
-  if (!r.ok) { let m = "HTTP " + r.status; try { m = (await r.json()).error || m; } catch (e) {} throw new Error(m); }
+  if (!r.ok) {
+    let m = "HTTP " + r.status, body = null;
+    try { body = await r.json(); m = body.error || m; } catch (e) {}
+    const err = new Error(m);
+    // 16: to'liq javob ham qo'shiladi (masalan flow tekshiruv xatolari ro'yxati)
+    err.body = body;
+    if (body && Array.isArray(body.problems)) err.problems = body.problems;
+    throw err;
+  }
   return r.json();
 }
 function postJson(path, body) {
@@ -65,6 +73,51 @@ function avatar(name, size) {
   const st = size ? `width:${size}px;height:${size}px;font-size:${Math.round(size * .42)}px;` : "";
   return `<span class="avatar" style="background:${c};${st}">${esc(n.trim().charAt(0).toUpperCase() || "?")}</span>`;
 }
+// ===== Mijozni ko'rsatish (ROADMAP-16 2.1) =====
+// Kontaktlar, Suhbatlar, Voronka, Broadcast — HAMMASI shu 3 ta funksiyani
+// ishlatadi, shuning uchun mijoz hamma joyda bir xil ko'rinadi.
+// Tartib: @username → to'liq ism → operator qo'ygan nom → qisqartirilgan ID.
+function contactTitle(c) {
+  if (!c) return "Noma'lum";
+  if (c.username) return "@" + c.username;
+  if (c.full_name) return c.full_name;
+  if (c.name && !/^[0-9]+$/.test(String(c.name))) return c.name;
+  const id = String(c.ig_user_id || "");
+  return id ? "…" + id.slice(-6) : "Noma'lum"; // raqamli ID — qisqartirilgan
+}
+// Ikkinchi qator: ism (username bo'lsa) yoki qisqartirilgan ID
+function contactSubtitle(c) {
+  if (!c) return "";
+  if (c.username && c.full_name) return c.full_name;
+  const id = String(c.ig_user_id || "");
+  return id ? "…" + id.slice(-6) : "";
+}
+// Profil rasmi bo'lsa — rasm, bo'lmasa harfli avatar (eski ko'rinish)
+function contactAvatar(c, size) {
+  const s = size || 38;
+  if (c && c.profile_pic) {
+    // Meta profil rasmi URL'i vaqtinchalik — muddati tugasa rasm ochilmaydi.
+    // Shunday holatda harfli avatarga qaytamiz (bo'sh kvadrat qolmasin).
+    const fallback = avatar(contactTitle(c), s).replace(/"/g, "&quot;");
+    return `<img class="avatar" src="${esc(c.profile_pic)}" alt="" referrerpolicy="no-referrer" loading="lazy"
+      style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover"
+      onerror="this.outerHTML='${fallback.replace(/'/g, "&#39;")}'">`;
+  }
+  return avatar(contactTitle(c), s);
+}
+
+// ===== Xabarni kim yozgani (ROADMAP-16 2.2) =====
+function senderLabel(m, contact) {
+  const type = m.sender_type || (m.role === "user" ? "contact" : m.is_operator ? "operator" : "ai");
+  switch (type) {
+    case "contact": return esc(contactTitle(contact));
+    case "operator": return JICONS.person + " Operator" + (m.sender_label ? ": " + esc(m.sender_label) : "");
+    case "automation": return JICONS.zap + " Avtomatlashtirish" + (m.sender_label ? ": " + esc(m.sender_label) : "");
+    case "broadcast": return "Ommaviy xabar";
+    default: return JICONS.cpu + " Bot (AI)";
+  }
+}
+
 // Statistika raqamlari: 0 dan haqiqiy songacha "sanash" animatsiyasi (0.8s)
 function countUp(el, target, dur = 800) {
   const t = Number(target) || 0;
@@ -118,7 +171,7 @@ function renderPeriodSeg(el, onChange) {
 function trendBadge(pct) {
   if (pct == null) return "";
   const up = pct >= 0;
-  return '<span class="trend ' + (up ? "up" : "down") + '" title="o\'tgan davrga nisbatan">' +
+  return '<span class="trend ' + (up ? "up" : "down") + '" data-tip="o\'tgan davrga nisbatan">' +
     (up ? "↑ +" : "↓ ") + pct + "%</span>";
 }
 // Sparkline — 7 kunlik mini-grafik (sof SVG, 40px, gradient)
@@ -144,7 +197,7 @@ function updateThemeBtns() {
   const t = document.documentElement.getAttribute("data-theme");
   document.querySelectorAll(".theme-btn").forEach((b) => {
     b.innerHTML = t === "dark" ? JICONS.sun : JICONS.moon;
-    b.title = t === "dark" ? "Yorug' rejim" : "Tungi rejim";
+    b.setAttribute("data-tip", t === "dark" ? "Yorug' rejim" : "Tungi rejim");
   });
 }
 function toggleTheme() {
@@ -154,21 +207,47 @@ function toggleTheme() {
   updateThemeBtns();
 }
 updateThemeBtns();
-// Kursorni kuzatuvchi glow (A5) — delegation + throttle (50ms):
-// har mousemove'da emas, sekundiga ~20 marta — sekin qurilmalarda qotmaydi.
-// perf-lite rejimida (kuchsiz qurilma) umuman ishlamaydi — CSS ham o'chirilgan.
-let GLOW_LAST = 0;
-document.addEventListener("mousemove", (e) => {
-  if (document.documentElement.classList.contains("perf-lite")) return;
-  const now = Date.now();
-  if (now - GLOW_LAST < 50) return;
-  GLOW_LAST = now;
-  const card = e.target.closest && e.target.closest(".glass-glow");
-  if (!card) return;
-  const r = card.getBoundingClientRect();
-  card.style.setProperty("--mx", (e.clientX - r.left) + "px");
-  card.style.setProperty("--my", (e.clientY - r.top) + "px");
+// ===== Tooltip (ROADMAP-16 1.2) =====
+// Kursorni kuzatuvchi ko'k glow OLIB TASHLANDI (foydalanuvchi "keraksiz" dedi).
+// O'rniga: brauzerning native title tooltip'i o'rniga o'z bubble'imiz.
+// Elementlarda title= emas, data-tip= ishlatiladi.
+let TIP_EL = null;
+function hideTip() {
+  if (TIP_EL) TIP_EL.classList.remove("show");
+}
+function showTip(target) {
+  const text = target.getAttribute("data-tip");
+  if (!text) return;
+  if (!TIP_EL) {
+    TIP_EL = document.createElement("div");
+    TIP_EL.className = "tip-bubble";
+    document.body.appendChild(TIP_EL);
+  }
+  TIP_EL.textContent = text;
+  TIP_EL.classList.add("show");
+  // Joylashuv: element ustida markazda, ekrandan chiqib ketmasin
+  const r = target.getBoundingClientRect();
+  const b = TIP_EL.getBoundingClientRect();
+  let left = r.left + r.width / 2 - b.width / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - b.width - 8));
+  let top = r.top - b.height - 8;
+  if (top < 8) top = r.bottom + 8; // joy bo'lmasa — ostiga
+  TIP_EL.style.left = Math.round(left) + "px";
+  TIP_EL.style.top = Math.round(top) + "px";
+}
+document.addEventListener("mouseover", (e) => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (t) showTip(t);
 });
+document.addEventListener("mouseout", (e) => {
+  if (e.target.closest && e.target.closest("[data-tip]")) hideTip();
+});
+document.addEventListener("focusin", (e) => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (t) showTip(t);
+});
+document.addEventListener("focusout", hideTip);
+window.addEventListener("scroll", hideTip, true);
 
 // ===== Kontakt profili (drawer) =====
 let PROFILE = null;
@@ -222,7 +301,7 @@ function renderProfile() {
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:6px">
       <a class="btn btn-primary" href="/dashboard/inbox?contact=${c.id}" style="flex:1;min-width:150px">${JICONS.chat} Suhbatga o'tish</a>
       <button class="btn" onclick="toggleProfilePause()">${c.bot_paused ? JICONS.play + " Botni yoqish" : JICONS.bellOff + " Botni pauza"}</button>
-      <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" title="Butunlay o'chirish (GDPR)">${JICONS.trash}</button>
+      <button class="btn" style="color:var(--danger)" onclick="confirmDeleteContact()" data-tip="Butunlay o'chirish (GDPR)">${JICONS.trash}</button>
     </div>`;
 }
 // 10.6: AI yig'gan mijoz profili (drawer'da)

@@ -109,6 +109,34 @@ export async function initDb() {
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS followup_sent_count INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS followup_paused BOOLEAN NOT NULL DEFAULT false;
 
+    -- 16 (3.1b): moslik turlari kengaytirildi — starts va regex qo'shildi.
+    -- Eski CHECK faqat exact/contains ga ruxsat berardi, yangi tur saqlanmasdi.
+    ALTER TABLE keyword_rules DROP CONSTRAINT IF EXISTS keyword_rules_match_type_check;
+    ALTER TABLE keyword_rules ADD CONSTRAINT keyword_rules_match_type_check
+      CHECK (match_type IN ('exact','contains','starts','regex'));
+
+    -- 16 (3.1c/d/e): kalit so'z qoidasi kuchaytirildi
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS media_urls JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS buttons JSONB NOT NULL DEFAULT '[]';
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS delay_sec INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS once_per_contact BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS work_hours_only BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS priority INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE keyword_rules ADD COLUMN IF NOT EXISTS reply_count INTEGER NOT NULL DEFAULT 0;
+    -- Eski bitta media_url qiymati yangi massivga ko'chiriladi (bir marta)
+    UPDATE keyword_rules SET media_urls = to_jsonb(ARRAY[media_url])
+     WHERE media_url IS NOT NULL AND media_urls = '[]'::jsonb;
+
+    -- "Faqat bir marta" va "necha kishi javob berdi" uchun ishlash tarixi
+    CREATE TABLE IF NOT EXISTS keyword_rule_hits (
+      rule_id    INTEGER NOT NULL REFERENCES keyword_rules(id) ON DELETE CASCADE,
+      contact_id INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+      fired_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      replied    BOOLEAN NOT NULL DEFAULT false,
+      PRIMARY KEY (rule_id, contact_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_kw_hits_contact ON keyword_rule_hits(contact_id);
+
     -- 7.8: Avtomatik teglash qoidalari (so'z → teg)
     CREATE TABLE IF NOT EXISTS tag_rules (
       id          SERIAL PRIMARY KEY,
@@ -340,6 +368,43 @@ export async function initDb() {
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS platform TEXT NOT NULL DEFAULT 'instagram';
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS tg_username TEXT;
 
+    -- 15: Instagram OAuth ("Instagram bilan ulash") — profil va token holati
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS ig_username TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS ig_name TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS profile_picture_url TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMPTZ;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_source TEXT NOT NULL DEFAULT 'manual';
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_last_refreshed_at TIMESTAMPTZ;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS granted_scopes TEXT;
+    CREATE INDEX IF NOT EXISTS idx_projects_token_expires ON projects(token_expires_at);
+
+    -- OAuth CSRF himoyasi: bir martalik "state" qiymatlari (15 daqiqa yashaydi)
+    CREATE TABLE IF NOT EXISTS oauth_states (
+      state      TEXT PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      used       BOOLEAN NOT NULL DEFAULT false
+    );
+    CREATE INDEX IF NOT EXISTS idx_oauth_states_created ON oauth_states(created_at);
+
+    -- 16 (2.1): Mijoz profili — raqamli IGSID o'rniga @username va rasm.
+    -- profile_pic URL'i VAQTINCHALIK (Meta muddatini tugatadi) — shuning uchun
+    -- rasm emas, URL saqlanadi va profile_fetched_at bo'yicha qayta olinadi.
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS username TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS full_name TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile_pic TEXT;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile_fetched_at TIMESTAMPTZ;
+    CREATE INDEX IF NOT EXISTS idx_contacts_profile_fetched ON contacts(profile_fetched_at);
+
+    -- 16 (2.2): Xabarni KIM yozgani — contact | ai | operator | automation | broadcast
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_type TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_label TEXT;
+    -- Eski xabarlar: role va is_operator bo'yicha bir martalik to'ldirish
+    UPDATE messages SET sender_type =
+      CASE WHEN role = 'user' THEN 'contact'
+           WHEN is_operator THEN 'operator'
+           ELSE 'ai' END
+     WHERE sender_type IS NULL;
+
     -- 8.5: Sotuv voronkasi (kanban) — bosqich, summa
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'new';
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS stage_changed_at TIMESTAMPTZ;
@@ -414,6 +479,45 @@ export async function initDb() {
       ON contacts(followup_sent_count) WHERE NOT archived AND NOT bot_paused;
   `);
 
+  await ensureIgAccountUnique();
+
   console.log("✅ Database jadvallar tayyor (projects, contacts, messages).");
   return true;
+}
+
+// ------------------------------------------------------------
+//  15: ON CONFLICT (ig_account_id) ishlashi uchun UNIQUE shart kerak.
+//  Jadval boshidanoq UNIQUE bilan yaratilgan — bu faqat juda eski bazalar
+//  uchun himoya. ATAYLAB alohida so'rov va alohida try/catch: dublikat
+//  qiymatlar bo'lsa xato chiqadi, lekin butun migratsiya yiqilmasin.
+// ------------------------------------------------------------
+async function ensureIgAccountUnique() {
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+        WHERE t.relname = 'projects'
+          AND c.contype IN ('u', 'p')
+          AND pg_get_constraintdef(c.oid) LIKE '%(ig_account_id)%'
+        UNION ALL
+       SELECT 1
+         FROM pg_indexes
+        WHERE tablename = 'projects' AND indexdef LIKE '%UNIQUE%(ig_account_id)%'`
+    );
+    if (rows.length) return; // allaqachon bor
+
+    await pool.query(
+      `ALTER TABLE projects ADD CONSTRAINT projects_ig_account_id_key UNIQUE (ig_account_id)`
+    );
+    console.log("✅ projects.ig_account_id uchun UNIQUE shart qo'shildi.");
+  } catch (err) {
+    // Dublikat ig_account_id bo'lsa shu yerga tushamiz — eng yangisini
+    // qoldirib qolganini o'chirish kerak (qo'lda), aks holda OAuth upsert
+    // ishlamaydi. Server esa ishlayveradi.
+    console.error(
+      "⚠️ projects.ig_account_id UNIQUE qo'shilmadi (dublikat bo'lishi mumkin):",
+      err.message
+    );
+  }
 }

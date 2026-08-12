@@ -26,7 +26,12 @@ import {
   matchKeywordRule,
   incrementKeywordHit,
   resetFollowupCount,
+  keywordRuleFiredFor,
+  recordKeywordRuleHit,
+  markKeywordRuleReplied,
 } from "../db.js";
+import { profileIsStale } from "../db.js";
+import { refreshContactProfileInBackground } from "./ig-profile.js";
 import { keywordRulesFor, autoTag } from "./rules.js";
 import { detectLanguage, languageInstruction } from "./lang.js";
 import { setContactLanguage } from "../db.js";
@@ -54,6 +59,41 @@ import {
 // shu yerdan qayta eksport qilinadi.
 export { activeAbTest, isRateLimited, parseGreetingButtons } from "./inbound-guards.js";
 export { processIncomingMedia } from "./inbound-media.js";
+
+// ------------------------------------------------------------
+//  16 (3.1e): mos kelgan qoidani SOZLAMALAR bo'yicha tanlash.
+//  Qoidalar ustuvorlik bo'yicha tartiblangan (getActiveKeywordRules).
+//  Mos kelgani shartlardan o'tmasa — keyingi mos qoidaga o'tamiz,
+//  shunda "faqat bir marta" qoidasi qolganlarini bloklab qo'ymaydi.
+// ------------------------------------------------------------
+async function pickKeywordRule(rules, text, contactId) {
+  let pool = rules;
+  for (let guard = 0; guard < 20; guard++) {
+    const rule = matchKeywordRule(pool, text);
+    if (!rule) return null;
+
+    // Vaqt oynasi: faqat ish vaqtida
+    if (rule.work_hours_only && !isWithinWorkHours()) {
+      pool = pool.filter((r) => r.id !== rule.id);
+      continue;
+    }
+    // Faqat bir marta: shu mijozda allaqachon ishlagan bo'lsa — o'tkazamiz
+    if (rule.once_per_contact && contactId) {
+      let fired = false;
+      try {
+        fired = await keywordRuleFiredFor(rule.id, contactId);
+      } catch {
+        fired = false; // baza xatosi qoidani bloklamasin
+      }
+      if (fired) {
+        pool = pool.filter((r) => r.id !== rule.id);
+        continue;
+      }
+    }
+    return rule;
+  }
+  return null;
+}
 
 // ============================================================
 //  MATNLI XABAR — umumiy oqim.
@@ -89,6 +129,19 @@ export async function processIncomingText(msg) {
       await saveMessage(contactId, "user", savedText, false, msgSource);
       resetFollowupCount(contactId).catch(() => {});
       autoTag(contactId, projectId, userText);
+      // 16 (3.1e): mijoz qoida javobidan keyin yozdi → "javob berdi" statistikasi
+      markKeywordRuleReplied(contactId).catch(() => {});
+
+      // 16 (2.1): mijoz profilini (@username, rasm) FON REJIMIDA olamiz —
+      // javob shu sabab kechikmaydi. Faqat Instagram va faqat profil yo'q
+      // yoki 7 kundan eski bo'lsa (Meta limitini tejaymiz).
+      if (platform === "instagram" && token) {
+        profileIsStale(contactId)
+          .then((stale) => {
+            if (stale) refreshContactProfileInBackground(contactId, String(senderId), token);
+          })
+          .catch(() => {});
+      }
 
       // 9.3: Til aniqlash — qo'llab-quvvatlanadigan ro'yxatda bo'lsa saqlaymiz
       const detected = detectLanguage(userText);
@@ -155,6 +208,26 @@ export async function processIncomingText(msg) {
 
   // 8.1/8.2/10.x: Tugma bosildi (quick reply / callback)
   if (msg.quickPayload) {
+    // 16 (3.1d): kalit so'z qoidasi tugmasi — KW_<ruleId>_<amal>
+    if (msg.quickPayload.startsWith("KW_")) {
+      const [, ruleId, action] = msg.quickPayload.split("_");
+      const rule = (await keywordRulesFor(projectId)).find((r) => String(r.id) === String(ruleId));
+      const btn = (rule?.buttons || []).find((b) => b.action === action);
+      if (action === "handoff") {
+        if (contactId) {
+          await setNeedsHuman(contactId, true).catch(() => {});
+          await setBotPaused(contactId, true, null).catch(() => {});
+        }
+        await send.text(senderId, "Ulandik ✅ Operatorimiz tez orada javob beradi.");
+        notifyAdmin(`🙋 Tugma orqali operator so'raldi (mijoz ${contactId})`).catch(() => {});
+        return;
+      }
+      if (action === "tag" && btn?.tag && contactId) {
+        await addContactTags(contactId, [btn.tag]).catch(() => {});
+        await send.text(senderId, "Qabul qilindi ✅");
+        return;
+      }
+    }
     if (msg.quickPayload.startsWith("fbtn:")) {
       if (await handleFlowInput(flowCtx, userText, msg.quickPayload)) return;
     } else if (await handleSalesPayload(salesCtx, msg.quickPayload)) {
@@ -168,17 +241,57 @@ export async function processIncomingText(msg) {
   if (await handleFlowInput(flowCtx, userText)) return;
 
   // 7.4: Kalit so'z qoidasi — tayyor javob (AI'siz)
-  const kwRule = matchKeywordRule(await keywordRulesFor(projectId), userText);
+  // 16 (3.1e): qoida ishlashidan oldin sozlamalar tekshiriladi. Mos kelgan
+  // qoida shartlardan o'tmasa, keyingi mos qoidaga o'tamiz (ustuvorlik bo'yicha).
+  const kwRule = await pickKeywordRule(await keywordRulesFor(projectId), userText, contactId);
   if (kwRule) {
     console.log(`🔑 Kalit so'z ishladi: "${kwRule.keyword}" (qoida #${kwRule.id})`);
-    if (kwRule.media_url) await send.image(senderId, kwRule.media_url);
-    await send.text(senderId, kwRule.reply_text);
+
+    // Kechikish — javob "jonli" ko'rinsin (0–60 soniya)
+    if (kwRule.delay_sec > 0) {
+      await new Promise((r) => setTimeout(r, Math.min(60, kwRule.delay_sec) * 1000));
+    }
+
+    // Media: Instagram bitta xabarda 1 ta media qabul qiladi → ketma-ket
+    const medias = Array.isArray(kwRule.media_urls) && kwRule.media_urls.length
+      ? kwRule.media_urls
+      : kwRule.media_url ? [kwRule.media_url] : [];
+    for (const url of medias.slice(0, 5)) {
+      try {
+        await send.image(senderId, url);
+      } catch (err) {
+        console.warn(`⚠️ Kalit so'z media yuborilmadi: ${err.message}`);
+      }
+    }
+
+    // Tugmalar (3 tagacha — Instagram cheklovi) yoki oddiy matn
+    const btns = Array.isArray(kwRule.buttons) ? kwRule.buttons.slice(0, 3) : [];
+    try {
+      if (btns.length && send.buttons) {
+        const urlBtns = btns.filter((b) => b.action === "link" && b.url)
+          .map((b) => ({ title: b.title, url: b.url }));
+        const payloadBtns = btns.filter((b) => b.action !== "link")
+          .map((b) => ({ title: b.title, payload: `KW_${kwRule.id}_${b.action}` }));
+        await send.buttons(senderId, kwRule.reply_text, payloadBtns, urlBtns);
+      } else {
+        await send.text(senderId, kwRule.reply_text);
+      }
+    } catch (err) {
+      console.error("⚠️ Kalit so'z javobi yuborilmadi:", err.message);
+    }
+
     if (contactId) {
       try {
-        await saveMessage(contactId, "assistant", kwRule.reply_text);
+        // 16 (2.2): suhbatda "⚡ Avtomatlashtirish: <qoida>" bo'lib ko'rinadi
+        const shown = kwRule.reply_text + (btns.length ? " " + btns.map((b) => `[${b.title}]`).join(" ") : "");
+        await saveMessage(contactId, "assistant", shown, false, "dm", {
+          type: "automation",
+          label: kwRule.keyword,
+        });
       } catch (dbErr) {
         console.error("⚠️ Saqlashda xatolik:", dbErr.message);
       }
+      recordKeywordRuleHit(kwRule.id, contactId).catch(() => {});
     }
     incrementKeywordHit(kwRule.id).catch(() => {});
     return;

@@ -15,6 +15,18 @@ export const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 // trim(): nusxalashda tushib qolgan probel/qator belgilarini kesadi.
 export const APP_SECRET = (process.env.APP_SECRET || "").trim();
 
+// --- Instagram OAuth (ROADMAP-15) ---
+// MUHIM: Instagram App ID ≠ Meta App ID. OAuth uchun App Dashboard →
+// Instagram → API setup with Instagram login → Business login settings
+// dagi qiymatlar kerak. APP_SECRET bilan ALMASHTIRMA — bular boshqa narsa.
+export const IG_APP_ID = (process.env.IG_APP_ID || "").trim();
+export const IG_APP_SECRET = (process.env.IG_APP_SECRET || "").trim();
+export const BASE_URL = (process.env.BASE_URL || "").trim().replace(/\/+$/, "");
+// Redirect URI berilmasa BASE_URL dan yasaymiz (Meta panelidagi bilan bir xil bo'lsin)
+export const OAUTH_REDIRECT_URI =
+  (process.env.OAUTH_REDIRECT_URI || "").trim() ||
+  (BASE_URL ? `${BASE_URL}/auth/instagram/callback` : "");
+
 // --- Claude modellari ---
 export const MODEL_HAIKU = "claude-haiku-4-5-20251001"; // arzon, tez — oddiy savollar
 export const MODEL_SONNET = "claude-sonnet-5"; // aqlliroq — murakkab savollar

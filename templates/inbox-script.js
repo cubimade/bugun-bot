@@ -282,16 +282,16 @@ function renderList() {
   // ROADMAP-17 FAZA 2.2 — Suhbatlar ro'yxati: guruhlangan ro'yxat (bitta blok, ajratgich chiziqlar)
   $("convItems").innerHTML = '<div class="group-list">' + items.map((c, i) => \`
     <div class="group-row conv-item \${c.needs_human ? "human" : ""} \${c.id === SELECTED ? "sel" : ""}" onclick="openChat(\${c.id})">
-      \${avatar(c.name || c.ig_user_id, 40)}
+      \${contactAvatar(c, 40)}
       <div class="row-body">
         <p class="row-title" style="display:flex;align-items:center;gap:5px;white-space:normal;overflow:visible">
-          <span title="\${c.platform === "telegram" ? "Telegram" : "Instagram"}" style="font-size:11px;flex-shrink:0">\${c.platform === "telegram" ? "✈️" : "📷"}</span>
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">\${esc(c.name || c.ig_user_id)}</span>
-          \${c.needs_human ? '<span title="Odam kerak" style="flex-shrink:0;color:var(--warning)">' + IIs('<path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/>') + "</span>" : ""}
-          \${c.bot_paused ? '<span title="Bot pauzada — operator gaplashadi" style="flex-shrink:0;color:var(--text-3)">' + IIs('<path d="M18 8a6 6 0 0 0-12 0c0 6-2.5 8-2.5 8h17S18 14 18 8z"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/>') + "</span>" : ""}
-          \${c.sentiment === "negative" ? '<span title="Salbiy kayfiyat — tez aralashing!" style="flex-shrink:0;color:var(--danger)">' + IIs('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>') + "</span>" : ""}
-          \${c.has_story ? '<span title="Story\\'ga javob yozgan" style="flex-shrink:0;color:var(--text-3)">' + IIs('<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/>') + "</span>" : ""}
-          \${c.language && c.language !== "uz" ? '<span title="Mijoz tili" style="flex-shrink:0">' + (c.language === "ru" ? "🇷🇺" : "🇬🇧") + "</span>" : ""}
+          <span data-tip="\${c.platform === "telegram" ? "Telegram" : "Instagram"}" style="font-size:11px;flex-shrink:0">\${c.platform === "telegram" ? "✈️" : "📷"}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">\${esc(contactTitle(c))}</span>
+          \${c.needs_human ? '<span data-tip="Odam kerak" style="flex-shrink:0;color:var(--warning)">' + IIs('<path d="M4 22V4"/><path d="M4 4h14l-3 4 3 4H4"/>') + "</span>" : ""}
+          \${c.bot_paused ? '<span data-tip="Bot pauzada — operator gaplashadi" style="flex-shrink:0;color:var(--text-3)">' + IIs('<path d="M18 8a6 6 0 0 0-12 0c0 6-2.5 8-2.5 8h17S18 14 18 8z"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/><path d="M3 3l18 18"/>') + "</span>" : ""}
+          \${c.sentiment === "negative" ? '<span data-tip="Salbiy kayfiyat — tez aralashing!" style="flex-shrink:0;color:var(--danger)">' + IIs('<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>') + "</span>" : ""}
+          \${c.has_story ? '<span data-tip="Story\\'ga javob yozgan" style="flex-shrink:0;color:var(--text-3)">' + IIs('<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/>') + "</span>" : ""}
+          \${c.language && c.language !== "uz" ? '<span data-tip="Mijoz tili" style="flex-shrink:0">' + (c.language === "ru" ? "🇷🇺" : "🇬🇧") + "</span>" : ""}
         </p>
         <p class="row-sub">\${esc(c.last_text || "—")}</p>
       </div>
@@ -326,27 +326,29 @@ function renderChatHead() {
   const c = CURRENT;
   $("chatHead").innerHTML = \`
     <button class="btn btn-plain btn-sm back-btn" onclick="closeChat()">←</button>
-    \${avatar(c.name || c.ig_user_id, 36)}
+    \${contactAvatar(c, 36)}
     <div style="min-width:0;flex:1">
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-        <strong>\${esc(c.name || c.ig_user_id)}</strong>
+        <strong>\${esc(contactTitle(c))}</strong>
+        \${c.username && c.full_name ? '<span class="small muted">' + esc(c.full_name) + "</span>" : ""}
         \${c.needs_human ? '<span class="pill pill-warn">odam kerak</span>' : ""}
         \${c.bot_paused ? '<span class="pill pill-plain">bot pauzada</span>' : ""}
         \${sentimentBadge(c.sentiment)}
-        \${c.language ? '<span class="pill pill-plain" title="Mijoz tili">' + (c.language === "ru" ? "🇷🇺 RU" : c.language === "en" ? "🇬🇧 EN" : "🇺🇿 UZ") + "</span>" : ""}
+        \${c.language ? '<span class="pill pill-plain" data-tip="Mijoz tili">' + (c.language === "ru" ? "🇷🇺 RU" : c.language === "en" ? "🇬🇧 EN" : "🇺🇿 UZ") + "</span>" : ""}
       </div>
       <div class="small muted" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        \${esc(c.project_name || "")} · ID: \${esc(c.ig_user_id)}
+        <span data-tip="Qaysi akkauntingizga yozgan">\${c.platform === "telegram" ? "✈️" : "📷"} \${esc(c.project_name || "")}\${c.account_username ? " (@" + esc(c.account_username) + ")" : ""}</span>
+        · \${esc(contactSubtitle(c) || ("ID: " + c.ig_user_id))}
         <span id="tagBadges">\${(c.tags || []).map((t) => \`<span class="pill pill-plain">\${esc(t)}</span>\`).join(" ")}</span>
       </div>
     </div>
-    <button class="btn btn-plain btn-sm" onclick="togglePause()" title="\${c.bot_paused ? "Bot bu suhbatda yana javob beradi" : "Bot bu suhbatda javob bermaydi — siz gaplashasiz"}">\${c.bot_paused ? ICON.play : ICON.bellOff}</button>
-    <button class="btn btn-plain btn-sm" onclick="openProfile(SELECTED)" title="Profil">\${ICON.person}</button>
-    <button class="btn btn-plain btn-sm" onclick="openTagEditor()" title="Teg qo'shish">\${ICON.tag}</button>
-    <button class="btn btn-plain btn-sm" onclick="openAssign()" title="Operatorga biriktirish">\${ICON.person}</button>
-    <button class="btn btn-plain btn-sm" onclick="openInternalNotes()" title="Ichki izohlar (mijoz ko'rmaydi)" style="background:rgba(251,191,36,.12)">\${ICON.pencil}</button>
-    <button class="btn btn-plain btn-sm" onclick="toggleArchive()" title="\${c.archived ? "Arxivdan chiqarish" : "Inbox'dan yashirish (o'chirilmaydi)"}">\${ICON.archive}</button>
-    \${c.needs_human ? '<button class="btn btn-plain btn-sm" onclick="resolveHuman()" title="Hal qilindi deb belgilash">' + ICON.check + " Hal qilindi</button>" : ""}\`;
+    <button class="btn btn-plain btn-sm" onclick="togglePause()" data-tip="\${c.bot_paused ? "Bot bu suhbatda yana javob beradi" : "Bot bu suhbatda javob bermaydi — siz gaplashasiz"}">\${c.bot_paused ? ICON.play : ICON.bellOff}</button>
+    <button class="btn btn-plain btn-sm" onclick="openProfile(SELECTED)" data-tip="Profil">\${ICON.person}</button>
+    <button class="btn btn-plain btn-sm" onclick="openTagEditor()" data-tip="Teg qo'shish">\${ICON.tag}</button>
+    <button class="btn btn-plain btn-sm" onclick="openAssign()" data-tip="Operatorga biriktirish">\${ICON.person}</button>
+    <button class="btn btn-plain btn-sm" onclick="openInternalNotes()" data-tip="Ichki izohlar (mijoz ko'rmaydi)" style="background:rgba(251,191,36,.12)">\${ICON.pencil}</button>
+    <button class="btn btn-plain btn-sm" onclick="toggleArchive()" data-tip="\${c.archived ? "Arxivdan chiqarish" : "Inbox'dan yashirish (o'chirilmaydi)"}">\${ICON.archive}</button>
+    \${c.needs_human ? '<button class="btn btn-plain btn-sm" onclick="resolveHuman()" data-tip="Hal qilindi deb belgilash">' + ICON.check + " Hal qilindi</button>" : ""}\`;
 }
 // D4: suhbatni arxivlash — inbox'dan yashiriladi, lekin o'chmaydi
 async function toggleArchive() {
@@ -372,15 +374,22 @@ function renderMessages(messages, highlightNew) {
     // D5: bot javobi ostida 👍/👎 (operator javobida emas) — CSS .rate-btn.down o'zi svg'ni flip qiladi
     const rate = m.role === "assistant" && !op && m.id ? \`
       <div class="rate-row">
-        <button class="rate-btn\${m.rating === 1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === 1 ? 0 : 1})" title="Yaxshi javob">\${ICON.thumb}</button>
-        <button class="rate-btn down\${m.rating === -1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === -1 ? 0 : -1})" title="Yomon javob">\${ICON.thumb}</button>
+        <button class="rate-btn\${m.rating === 1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === 1 ? 0 : 1})" data-tip="Yaxshi javob">\${ICON.thumb}</button>
+        <button class="rate-btn down\${m.rating === -1 ? " on" : ""}" onclick="rateMsg(\${m.id}, \${m.rating === -1 ? 0 : -1})" data-tip="Yomon javob">\${ICON.thumb}</button>
       </div>\` : "";
     const srcTag = m.source === "story_reply" ? '<div class="op-tag" style="color:var(--accent-2)">' + ICON.media + ' Story javobi</div>'
       : m.source === "comment" ? '<div class="op-tag">' + ICON.chat + ' Komment</div>'
       : m.source === "followup" ? '<div class="op-tag" style="color:var(--warning)">' + ICON.clock + ' Follow-up</div>' : "";
+    // 16 (2.2): har xabar ustida KIM yozgani — mijoz ismi / Bot (AI) /
+    // Operator / Avtomatlashtirish. Ketma-ket bir xil yuboruvchida
+    // takrorlanmaydi (suhbat toza ko'rinadi).
+    const prev = messages[i - 1];
+    const who = senderLabel(m, CURRENT);
+    const sameAsPrev = prev && senderLabel(prev, CURRENT) === who;
+    const whoTag = sameAsPrev ? "" : \`<div class="op-tag">\${who}</div>\`;
     return \`
     <div class="bubble-row \${m.role === "assistant" ? "from-bot" : "from-user"}\${fresh ? " fresh" : ""}">
-      <div class="bubble\${op ? " from-op" : ""}">\${op ? '<div class="op-tag">' + ICON.person + ' Operator</div>' : srcTag}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div>\${rate}</div>
+      <div class="bubble\${op ? " from-op" : ""}">\${whoTag}\${srcTag}\${esc(m.text)}<div class="t">\${fmt(m.created_at)}\${m.role === "assistant" ? " · ✓" : ""}</div>\${rate}</div>
     </div>\`;
   }).join("");
   MSG_COUNT = messages.length;

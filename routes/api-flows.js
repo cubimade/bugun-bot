@@ -149,6 +149,74 @@ router.post("/api/flows/:id", protect, async (req, res, next) => {
   }
 });
 
+// ------------------------------------------------------------
+//  16 (3.2): GRAF TEKSHIRUVI — saqlashdan oldin
+//  Topadi: bo'sh matn, tugmasiz "tugmalar" node'i, ulanmagan (start'dan
+//  yetib bo'lmaydigan) node'lar va sikl (aylanma) — bularning barchasi
+//  ishga tushganda flow'ni jimgina to'xtatib qo'yadi.
+// ------------------------------------------------------------
+function validateFlowGraph(nodes, edges) {
+  const problems = [];
+  if (!nodes.length) return problems; // bo'sh graf — saqlashga ruxsat
+
+  const label = (n, i) => `${i + 1}-node (${n.type})`;
+
+  // 1) Mazmun tekshiruvi
+  nodes.forEach((n, i) => {
+    const c = n.config || {};
+    if ((n.type === "message" || n.type === "buttons") && !String(c.text || "").trim()) {
+      problems.push(`${label(n, i)}: matn bo'sh`);
+    }
+    if (n.type === "buttons" && !(c.buttons || []).length) {
+      problems.push(`${label(n, i)}: birorta tugma qo'shilmagan`);
+    }
+    if (n.type === "condition" && !String(c.value || "").trim()) {
+      problems.push(`${label(n, i)}: shart qiymati kiritilmagan`);
+    }
+  });
+
+  // 2) Yetib bo'lmaydigan node'lar (start = birinchi node)
+  const byRef = new Map(nodes.map((n, i) => [n.ref, i]));
+  const out = new Map();
+  for (const e of edges) {
+    if (!byRef.has(e.from) || !byRef.has(e.to)) continue;
+    if (!out.has(e.from)) out.set(e.from, []);
+    out.get(e.from).push(e.to);
+  }
+  const startRef = nodes[0].ref;
+  const seen = new Set([startRef]);
+  const queue = [startRef];
+  while (queue.length) {
+    for (const next of out.get(queue.shift()) || []) {
+      if (!seen.has(next)) { seen.add(next); queue.push(next); }
+    }
+  }
+  nodes.forEach((n, i) => {
+    if (!seen.has(n.ref)) problems.push(`${label(n, i)}: hech qayerdan ulanmagan — hech qachon ishlamaydi`);
+  });
+
+  // 3) Sikl (aylanma) — DFS, rang berish usuli
+  const WHITE = 0, GREY = 1, BLACK = 2;
+  const color = new Map(nodes.map((n) => [n.ref, WHITE]));
+  let cycle = false;
+  const visit = (ref) => {
+    color.set(ref, GREY);
+    for (const next of out.get(ref) || []) {
+      const c = color.get(next);
+      if (c === GREY) { cycle = true; return; }
+      if (c === WHITE) { visit(next); if (cycle) return; }
+    }
+    color.set(ref, BLACK);
+  };
+  for (const n of nodes) {
+    if (color.get(n.ref) === WHITE) visit(n.ref);
+    if (cycle) break;
+  }
+  if (cycle) problems.push("Grafda aylanma (sikl) bor — flow cheksiz takrorlanishi mumkin");
+
+  return problems;
+}
+
 // Grafni saqlash — muharrir "Saqlash" tugmasi
 router.post("/api/flows/:id/graph", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
@@ -178,6 +246,13 @@ router.post("/api/flows/:id/graph", protect, async (req, res, next) => {
         to: String(e.to).slice(0, 64),
         label: e.label != null ? String(e.label).slice(0, 60) : null,
       }));
+
+    // 16 (3.2): saqlashdan OLDIN tekshiruv — bo'sh matn, ulanmagan node, sikl.
+    // Xatolar ro'yxat bo'lib qaytadi, muharrir ularni ro'yxat qilib ko'rsatadi.
+    const problems = validateFlowGraph(nodes, edges);
+    if (problems.length && !req.body?.force) {
+      return res.status(400).json({ error: problems[0], problems });
+    }
 
     await saveFlowGraph(id, nodes, edges);
     console.log(`💾 Flow #${id} grafi saqlandi (${nodes.length} node, ${edges.length} edge)`);

@@ -6,6 +6,8 @@
 //    2) POST api.instagram.com/oauth/access_token  → code → qisqa token (1 soat)
 //    3) GET  graph.instagram.com/access_token      → qisqa → uzoq (60 kun)
 //    4) GET  graph.instagram.com/refresh_access_token → yana 60 kun
+//  (3 va 4 — versiyasiz yo'l, GET; GET rad etilsa POST'ga qaytiladi,
+//   graphTokenRequest() izohiga qarang.)
 //
 //  MUHIM 1: IG_APP_ID ≠ Meta App ID. OAuth'da Meta App ID ishlatilsa
 //           "Invalid platform app" xatosi chiqadi (config.js izohiga qarang).
@@ -72,15 +74,22 @@ export async function consumeState(state) {
   return consumeOAuthState(state);
 }
 
-// Meta javoblari turli formatda keladi — xato matnini bir xil ko'rinishga solamiz
-function errText(json) {
-  return (
+// Meta javoblari turli formatda keladi — xato matnini bir xil ko'rinishga solamiz.
+// Xato kodi/turi va HTTP status ham qo'shiladi: "Unsupported request" kabi
+// umumiy matnlarni kodsiz diagnostika qilib bo'lmaydi.
+function errText(json, res) {
+  const base =
     json?.error?.message ||
     json?.error_message ||
     json?.error_description ||
     (typeof json?.error === "string" ? json.error : null) ||
-    JSON.stringify(json || {}).slice(0, 300)
-  );
+    JSON.stringify(json || {}).slice(0, 300);
+
+  const bits = [];
+  if (json?.error?.type) bits.push(json.error.type);
+  if (json?.error?.code !== undefined) bits.push("code " + json.error.code);
+  if (res && !res.ok) bits.push("HTTP " + res.status);
+  return bits.length ? `${base} (${bits.join(", ")})` : base;
 }
 
 // ------------------------------------------------------------
@@ -120,6 +129,57 @@ export async function exchangeCodeForToken(code) {
 }
 
 // ------------------------------------------------------------
+//  graph.instagram.com token endpointlari uchun umumiy so'rov
+//  (/access_token va /refresh_access_token — ikkalasi bir xil ishlaydi)
+//
+//  Meta hujjati bo'yicha usul — GET, host — graph.instagram.com, versiyasiz:
+//    GET graph.instagram.com/access_token
+//        ?grant_type=ig_exchange_token&client_secret=...&access_token=...
+//  (POST api.instagram.com/oauth/access_token faqat 2-qadam — code almashinuvi.)
+//
+//  BIROQ Meta ba'zi ilovalarda bu GET'ni rad etadi:
+//    {"error":{"message":"Unsupported request - method type: get",
+//              "type":"GraphMethodException","code":100}}
+//  Endpoint POST'ni ham qabul qiladi, shuning uchun aynan shu xatoda
+//  AYNI URL POST bilan bir marta qayta so'raladi (boshqa xatolarda emas —
+//  aks holda haqiqiy sabab yashirinib qoladi).
+// ------------------------------------------------------------
+function isMethodError(json) {
+  return (
+    json?.error?.type === "GraphMethodException" ||
+    /method type/i.test(String(json?.error?.message || ""))
+  );
+}
+
+// Xavfsiz diagnostika: tokenning FAQAT birinchi 4 harfi (to'liq token EMAS).
+// Instagram Business Login tokenlari "IGAA" bilan boshlanadi. Boshqa prefiks
+// ko'rinsa — ilova "Instagram API with Facebook Login" ga sozlangan bo'lishi
+// mumkin, u holda bu endpoint umuman ishlamaydi (boshqa oqim kerak).
+function tokenKind(token) {
+  return String(token || "").slice(0, 4) || "?";
+}
+
+async function graphTokenRequest(path, params, errPrefix, tokenForDiag) {
+  let res = await fetch(`${GRAPH}${path}?${params.toString()}`);
+  let json = await res.json().catch(() => ({}));
+
+  if (isMethodError(json)) {
+    console.warn(`⚠️ ${path}: Meta GET'ni rad etdi, POST bilan qayta urinilmoqda`);
+    res = await fetch(`${GRAPH}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    });
+    json = await res.json().catch(() => ({}));
+  }
+
+  if (!res.ok || json.error || !json.access_token) {
+    throw new Error(`${errPrefix}: ${errText(json, res)} [token: ${tokenKind(tokenForDiag)}…]`);
+  }
+  return { token: json.access_token, expiresIn: Number(json.expires_in) || SIXTY_DAYS_SEC };
+}
+
+// ------------------------------------------------------------
 //  3-qadam: qisqa → uzoq muddatli token (60 kun)
 // ------------------------------------------------------------
 export async function exchangeForLongLived(shortToken) {
@@ -128,13 +188,7 @@ export async function exchangeForLongLived(shortToken) {
     client_secret: IG_APP_SECRET,
     access_token: shortToken,
   });
-
-  const res = await fetch(`${GRAPH}/access_token?${params.toString()}`);
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.error || !json.access_token) {
-    throw new Error("Uzoq muddatli token olinmadi: " + errText(json));
-  }
-  return { token: json.access_token, expiresIn: Number(json.expires_in) || SIXTY_DAYS_SEC };
+  return graphTokenRequest("/access_token", params, "Uzoq muddatli token olinmadi", shortToken);
 }
 
 // ------------------------------------------------------------
@@ -205,12 +259,7 @@ export async function refreshToken(longToken) {
     grant_type: "ig_refresh_token",
     access_token: longToken,
   });
-  const res = await fetch(`${GRAPH}/refresh_access_token?${params.toString()}`);
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.error || !json.access_token) {
-    throw new Error("Token uzaytirilmadi: " + errText(json));
-  }
-  return { token: json.access_token, expiresIn: Number(json.expires_in) || SIXTY_DAYS_SEC };
+  return graphTokenRequest("/refresh_access_token", params, "Token uzaytirilmadi", longToken);
 }
 
 // To'liq oqim: code → uzoq muddatli token + profil (route'ni yengil saqlaydi)

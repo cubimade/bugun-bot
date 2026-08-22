@@ -69,6 +69,8 @@ export async function listProjects() {
             p.ig_username, p.ig_name, p.profile_picture_url,
             p.token_source, p.token_expires_at, p.token_last_refreshed_at,
             (p.access_token IS NOT NULL) AS has_token,
+            (p.ig_app_id IS NOT NULL) AS has_own_app,
+            p.app_setup_status, p.app_setup_error,
             -- Token HECH QACHON to'liq yuborilmaydi — faqat oxirgi 4 belgi
             RIGHT(p.access_token, 4) AS token_hint,
             (SELECT COUNT(*)::int FROM contacts c WHERE c.project_id = p.id) AS contacts,

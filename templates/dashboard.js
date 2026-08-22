@@ -28,6 +28,7 @@ export function renderDashboardHome() {
   </style>
 
   <div id="periodSeg" style="margin-bottom:16px"></div>
+  <div id="tokenBanner"></div>
 
   <div class="bento stagger">
     <div class="card glass-featured glass-glow bento-xl" id="summaryCard">
@@ -320,7 +321,26 @@ async function loadConversations() {
     applyConversations(r.contacts);
   } catch (e) { $("conversations").innerHTML = emptyState('${ICONS.messageCircle}', "Suhbatlar yuklanmadi"); }
 }
+// ROADMAP-19 FAZA 6: token muddati 7 kundan kam qolgan akkauntlar —
+// dashboard tepasida sariq lenta (foydalanuvchi kutilmaganda uzilib qolmasin)
+function tokenExpiryBanner(projects) {
+  const soon = (projects || []).filter(function (p) {
+    if (!p.token_expires_at) return false;
+    const days = (new Date(p.token_expires_at).getTime() - Date.now()) / 86400000;
+    return days > 0 && days < 7;
+  });
+  const el = $("tokenBanner");
+  if (!el) return;
+  if (!soon.length) { el.innerHTML = ""; return; }
+  el.innerHTML = soon.map(function (p) {
+    const days = Math.max(1, Math.floor((new Date(p.token_expires_at).getTime() - Date.now()) / 86400000));
+    return '<div class="stale-banner">⚠ <strong>' + esc(p.name) + "</strong> tokeni " + days +
+      ' kundan keyin tugaydi <a class="btn btn-sm btn-secondary" style="margin-left:8px" href="/dashboard/accounts">Akkauntlar → Tokenni uzaytirish</a></div>';
+  }).join("");
+}
+
 function applyAccounts(projects) {
+  tokenExpiryBanner(projects);
   try {
     projects = projects || [];
     if (!projects.length) { $("accounts").innerHTML = emptyState('${ICONS.accounts}', "Hali akkaunt yo'q"); return; }

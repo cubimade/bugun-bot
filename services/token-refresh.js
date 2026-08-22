@@ -16,6 +16,7 @@ import {
   listExpiringOAuthTokens,
   updateProjectToken,
   cleanupOAuthStates,
+  setAppSetupStatus,
 } from "../db.js";
 import { refreshToken } from "./instagram-oauth.js";
 import { recordError } from "../logger.js";
@@ -39,11 +40,17 @@ export async function refreshProjectToken(project) {
       `🔄 Token uzaytirildi: @${project.ig_username || project.ig_account_id} ` +
         `→ ${expiresAt.toISOString().slice(0, 10)} gacha`
     );
+    // FAZA 6: muvaffaqiyatda oldingi xato holati tozalanadi
+    if (project.app_setup_status === "error") {
+      setAppSetupStatus(project.id, "ready").catch(() => {});
+    }
     return { ok: true, expiresAt };
   } catch (err) {
     console.error(
       `⚠️ Token uzaytirilmadi (@${project.ig_username || project.ig_account_id}): ${err.message}`
     );
+    // FAZA 6: xato holati + sababi bazaga — akkaunt kartochkasida ko'rinadi
+    setAppSetupStatus(project.id, "error", "Token uzaytirilmadi: " + err.message).catch(() => {});
     return { ok: false, error: err.message };
   }
 }

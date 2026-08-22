@@ -139,7 +139,7 @@ router.get("/auth/instagram/callback", async (req, res) => {
 
     // O'z ilovasi bilan ulangan loyiha — holat 'ready'
     if (cfg.source === "project") {
-      await setAppSetupStatus(projectId, "ready", "OAuth muvaffaqiyatli").catch(() => {});
+      await setAppSetupStatus(projectId, "ready").catch(() => {});
     }
 
     // Xotira xaritasi — restart kutmasdan darhol ishlasin.

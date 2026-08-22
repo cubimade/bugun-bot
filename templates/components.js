@@ -1,6 +1,6 @@
 // templates/components.js — qayta ishlatiladigan bo'laklar:
 // esc (XSS himoya), SVG ikonlar, sidebar menyu, kontakt profili (drawer) HTML
-export const APP_VERSION = "12.4.0";
+export const APP_VERSION = "13.0.0";
 
 // HTML uchun xavfsiz matn (XSS oldini olish)
 export function esc(s) {

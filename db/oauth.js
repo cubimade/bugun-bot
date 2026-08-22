@@ -176,15 +176,18 @@ export async function attachOAuthAccountToProject(
   return { projectId: targetId, created: false };
 }
 
-// Sehrgar/OAuth muvaffaqiyatida holatni belgilash
-export async function setAppSetupStatus(projectId, status, note = null) {
+// Sehrgar/OAuth holatini belgilash. errorText — FAZA 6: xato sababi
+// bazaga yoziladi va akkaunt kartochkasida ko'rinadi ('error' holatida).
+export async function setAppSetupStatus(projectId, status, errorText = null) {
   await pool.query(
     `UPDATE projects
-        SET app_setup_status = $2, app_setup_checked_at = now()
+        SET app_setup_status = $2,
+            app_setup_error = $3,
+            app_setup_checked_at = now()
       WHERE id = $1`,
-    [projectId, status]
+    [projectId, status, errorText ? String(errorText).slice(0, 500) : null]
   );
-  if (note) console.log(`ℹ️ Loyiha ${projectId} app holati: ${status} (${note})`);
+  console.log(`ℹ️ Loyiha ${projectId} app holati: ${status}${errorText ? " (" + errorText + ")" : ""}`);
 }
 
 // ------------------------------------------------------------
@@ -222,7 +225,8 @@ export async function verifyTokenExistsInAnyProject(token) {
 // bo'lishi kerak. Shuning uchun token_last_refreshed_at ham filtrlanadi.
 export async function listExpiringOAuthTokens(days = 10) {
   const { rows } = await pool.query(
-    `SELECT id, ig_account_id, ig_username, access_token, token_expires_at
+    `SELECT id, ig_account_id, ig_username, access_token, token_expires_at,
+            app_setup_status
        FROM projects
       WHERE token_source = 'oauth'
         AND access_token IS NOT NULL

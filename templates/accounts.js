@@ -54,8 +54,10 @@ async function loadAccounts() {
       const tsPill = ts ? (ts.cls === "b-red" ? "pill-danger" : ts.cls === "b-amber" ? "pill-warn" : "pill-ok") : "";
       const badges = isTg ? "" : \`
           <span class="pill \${oauth ? "pill-ok" : "pill-plain"}" title="Ulanish turi">\${oauth ? "OAuth" : "Qo'lda"}</span>
+          <span class="pill \${p.has_own_app ? "pill-ok" : "pill-plain"}" title="Ilova manbai — o'z ilovasida tester roli kerak emas">\${p.has_own_app ? "O'z ilovasi" : "Umumiy ilova"}</span>
           \${ts ? \`<span class="pill \${tsPill}" title="Token muddati">\${ts.text}</span>\` : ""}
-          \${p.token_hint ? \`<span class="pill pill-plain" title="Token (faqat oxirgi 4 belgi)">••••\${esc(p.token_hint)}</span>\` : ""}\`;
+          \${p.token_hint ? \`<span class="pill pill-plain" title="Token (faqat oxirgi 4 belgi)">••••\${esc(p.token_hint)}</span>\` : ""}
+          \${p.app_setup_status === "error" ? \`<span class="pill pill-danger" title="\${esc(p.app_setup_error || "")}">⚠ \${esc((p.app_setup_error || "xato").slice(0, 60))}</span>\` : ""}\`;
       return \`
       <div class="group-row" style="align-items:flex-start;flex-wrap:wrap">
         \${av}

@@ -136,6 +136,9 @@ export async function exchangeCodeForToken(code) {
   return {
     shortToken: payload.access_token,
     expiresIn,
+    // user_id shu javobda keladi — profil olinmasa ham akkauntni saqlash
+    // uchun zaxira (completeFlow'da ishlatiladi)
+    userId: payload.user_id ? String(payload.user_id) : null,
     permissions: Array.isArray(perms) ? perms.join(",") : String(perms || ""),
   };
 }
@@ -245,30 +248,55 @@ export async function exchangeForLongLived(shortToken) {
 //  4-qadam: profil ma'lumotlari
 //  DIQQAT: bazaga `user_id` yoziladi, `id` EMAS. `id` — app-scoped,
 //  webhook'dagi entry.id bilan mos kelmaydi va bot DM'ni topa olmaydi.
+//
+//  "Unsupported request - method type: get" (code 100) ba'zi tokenlarda
+//  ayrim FIELDS uchun chiqadi (masalan name/profile_picture_url ruxsati
+//  yo'q bo'lsa). Shu sabab progressiv urinish: to'liq ro'yxat → qisqargan →
+//  minimal → versiyasiz minimal. Har muvaffaqiyatsiz urinish TO'LIQ
+//  loglanadi (URL token qiymatisiz + Meta'ning to'liq JSON javobi).
 // ------------------------------------------------------------
 export async function fetchProfile(token) {
-  const params = new URLSearchParams({
-    fields: "user_id,username,name,profile_picture_url",
-    access_token: token,
-  });
+  const attempts = [
+    { base: GRAPH_V, fields: "user_id,username,name,profile_picture_url", label: "to'liq" },
+    { base: GRAPH_V, fields: "user_id,username", label: "qisqargan" },
+    { base: GRAPH_V, fields: "user_id", label: "minimal" },
+    { base: GRAPH, fields: "user_id,username", label: "versiyasiz" },
+  ];
 
-  const res = await fetch(`${GRAPH_V}/me?${params.toString()}`);
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok || json.error) {
-    throw new Error("Profil olinmadi: " + errText(json));
+  let lastErr = null;
+  for (const a of attempts) {
+    const params = new URLSearchParams({ fields: a.fields, access_token: token });
+    const url = `${a.base}/me?${params.toString()}`;
+    const res = await fetch(url);
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok && !json.error) {
+      const instagramId = String(json.user_id || json.id || "");
+      if (!instagramId) {
+        lastErr = new Error("Profil javobida akkaunt IDsi yo'q");
+        continue;
+      }
+      if (a.label !== "to'liq") {
+        console.log(`👤 Profil "${a.label}" fields bilan olindi (${a.fields}) — qolgani keyin to'ldiriladi`);
+      }
+      return {
+        instagramId,
+        username: json.username || null,
+        name: json.name || null,
+        picture: json.profile_picture_url || null,
+        // Diagnostika uchun: user_id va id farq qilsa, bu normal (id — app-scoped)
+        appScopedId: json.id ? String(json.id) : null,
+      };
+    }
+
+    console.warn(
+      `⚠️ /me [${a.label}: ${a.fields}] muvaffaqiyatsiz — HTTP ${res.status}, ` +
+        `URL: ${a.base}/me?fields=${a.fields}&access_token=[redacted], ` +
+        `javob: ${JSON.stringify(json).slice(0, 600)}`
+    );
+    lastErr = new Error("Profil olinmadi: " + errText(json, res));
   }
-
-  const instagramId = String(json.user_id || json.id || "");
-  if (!instagramId) throw new Error("Profil javobida akkaunt IDsi yo'q");
-
-  return {
-    instagramId,
-    username: json.username || null,
-    name: json.name || null,
-    picture: json.profile_picture_url || null,
-    // Diagnostika uchun: user_id va id farq qilsa, bu normal (id — app-scoped)
-    appScopedId: json.id ? String(json.id) : null,
-  };
+  throw lastErr || new Error("Profil olinmadi");
 }
 
 // ------------------------------------------------------------
@@ -315,13 +343,36 @@ export async function refreshToken(longToken) {
 // Token allaqachon uzoq muddatlimi? (57+ kun — 1-2 soatlik qisqa token emas)
 const LONG_LIVED_MIN_SEC = 5000000;
 
+// Profil olish, lekin OQIMNI TO'XTATMASDAN: fetchProfile yiqilsa va 2-qadam
+// javobida user_id bo'lsa — akkaunt minimal profil bilan baribir saqlanadi
+// (username'ni keyin kunlik profil cron yoki qo'lda yangilash to'ldiradi).
+// user_id ham bo'lmasa — chin xato: akkauntni identifikatsiya qilib bo'lmaydi.
+async function profileOrMinimal(token, fallbackUserId) {
+  try {
+    return await fetchProfile(token);
+  } catch (err) {
+    if (!fallbackUserId) throw err;
+    console.warn(
+      `⚠️ Profil olinmadi (${err.message}) — akkaunt 2-qadamdagi user_id (${fallbackUserId}) bilan saqlanadi, profil keyin to'ldiriladi`
+    );
+    return {
+      instagramId: String(fallbackUserId),
+      username: null,
+      name: null,
+      picture: null,
+      appScopedId: null,
+      partial: true, // profil to'liq emas — keyin to'ldiriladi
+    };
+  }
+}
+
 // To'liq oqim: code → uzoq muddatli token + profil (route'ni yengil saqlaydi)
 export async function completeFlow(code) {
   // Instagram ba'zan code oxiriga "#_" qo'shib yuboradi — kesib tashlaymiz
   const cleanCode = String(code || "").split("#")[0];
   if (!cleanCode) throw new Error("Instagram `code` qaytarmadi");
 
-  const { shortToken, expiresIn: codeExpiresIn, permissions } =
+  const { shortToken, expiresIn: codeExpiresIn, userId, permissions } =
     await exchangeCodeForToken(cleanCode);
 
   // 1-holat: Meta bu qadamda ALLAQACHON uzoq muddatli token berdi —
@@ -330,25 +381,24 @@ export async function completeFlow(code) {
     console.log(
       `🔑 Token allaqachon uzoq muddatli (expires_in=${codeExpiresIn}) — almashtirish qadami o'tkazib yuborildi`
     );
-    const profile = await fetchProfile(shortToken);
+    const profile = await profileOrMinimal(shortToken, userId);
     return { token: shortToken, expiresIn: codeExpiresIn, permissions, profile };
   }
 
   // 2-holat: oddiy yo'l — qisqa tokenni uzoqqa almashtiramiz
   try {
     const { token, expiresIn } = await exchangeForLongLived(shortToken);
-    const profile = await fetchProfile(token);
+    const profile = await profileOrMinimal(token, userId);
     return { token, expiresIn, permissions, profile };
   } catch (err) {
     // 3-holat: "Unsupported request" (code 100) — expires_in kelmagan bo'lsa ham
-    // token uzoq muddatli bo'lishi mumkin. Tokenni /me bilan tekshiramiz:
-    // ishlasa — o'zini ishlatamiz (60 kun deb olamiz, keyin refresh cron uzaytiradi).
+    // token uzoq muddatli bo'lishi mumkin. Token bilan davom etamiz (60 kun deb
+    // olamiz, keyin refresh cron uzaytiradi); profil ham minimal bo'lishi mumkin.
     if (err.igUnsupported) {
       console.warn(
-        "⚠️ Almashtirish 'Unsupported request' berdi — token allaqachon uzoq muddatli bo'lishi mumkin, /me bilan tekshirilmoqda"
+        "⚠️ Almashtirish 'Unsupported request' berdi — token allaqachon uzoq muddatli bo'lishi mumkin, tokenning o'zi ishlatiladi"
       );
-      const profile = await fetchProfile(shortToken); // ishlamasa o'zi throw qiladi
-      console.log("🔑 Token /me da ishladi — almashtirishsiz ishlatiladi (60 kun deb qabul qilindi)");
+      const profile = await profileOrMinimal(shortToken, userId);
       return {
         token: shortToken,
         expiresIn: codeExpiresIn || SIXTY_DAYS_SEC,

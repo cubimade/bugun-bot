@@ -44,6 +44,12 @@ export function renderOAuthSuccessPage(profile, subscribed) {
          <div class="small muted" style="margin-top:3px">Meta panelida qo'lda yoqish kerak: Instagram → API setup → akkaunt qatorida <strong>Webhook Subscription = On</strong>. Busiz xabarlar botga kelmaydi.</div>
        </div>`;
 
+  // ROADMAP-18 davomi: profil to'liq olinmagan bo'lsa — akkaunt baribir ulandi,
+  // faqat username/rasm keyin to'ldirilishini aytamiz (oqim to'xtamaydi)
+  const partialNote = profile.partial
+    ? `<div class="small muted" style="margin-top:10px">Profil ma'lumotlari (username, rasm) hozircha olinmadi — akkaunt ishlayveradi, ma'lumotlar keyinroq avtomatik to'ldiriladi.</div>`
+    : "";
+
   return shell({
     title: "Ulandi",
     refreshTo: "/dashboard/accounts",
@@ -58,6 +64,7 @@ export function renderOAuthSuccessPage(profile, subscribed) {
       Endi bu akkauntga kelgan DM va kommentlarga bot javob beradi.<br>
       Bilim bazasini to'ldirishni unutmang!
     </p>
+    ${partialNote}
     ${warn}
     <div style="display:flex;gap:9px;justify-content:center;margin-top:20px;flex-wrap:wrap">
       <a class="btn btn-primary" href="/dashboard/accounts">Akkauntlarga qaytish</a>

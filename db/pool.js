@@ -402,6 +402,8 @@ export async function initDb() {
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS verify_token TEXT;
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_setup_status TEXT DEFAULT 'none';
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_setup_checked_at TIMESTAMPTZ;
+    -- FAZA 6: xato holatida sabab (akkaunt kartochkasida ko'rsatiladi)
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_setup_error TEXT;
     CREATE INDEX IF NOT EXISTS idx_projects_ig_app_id ON projects(ig_app_id);
     CREATE INDEX IF NOT EXISTS idx_projects_token_expires ON projects(token_expires_at);
 

@@ -111,16 +111,28 @@ export function renderConnectInstagramPage() {
   const ready = isConfigured();
   const missing = missingConfig().join(", ");
 
+  // ROADMAP-19 FAZA 4: mijoz o'z Meta ilovasi bilan ulansa — tester roli
+  // kerak emas. Sehrgar shu yo'lni qadamma-qadam yo'naltiradi.
+  const wizardLink = `
+    <div class="card" style="padding:13px 15px;margin-top:12px">
+      <div class="small" style="line-height:1.7;display:flex;gap:8px;align-items:flex-start">
+        <span style="color:var(--accent-soft);flex-shrink:0">${ICONS.sparkle || ""}</span>
+        <span><strong>O'z ilovangiz bilan ulash (tavsiya)</strong>
+        <div class="muted" style="margin-top:3px">Meta ilovasini o'z hisobingizda yaratasiz — hech qanday qo'shimcha rol (tester) kerak bo'lmaydi, akkaunt darrov ishlaydi.</div>
+        <a class="btn btn-secondary btn-sm" href="/dashboard/connect/instagram/setup" style="margin-top:8px">Sozlash sehrgarini ochish →</a></span>
+      </div>
+    </div>`;
+
   // Env sozlanmagan bo'lsa: tugma o'chirilgan + sabab tooltip'da
   const mainBtn = ready
-    ? `<a class="btn-ig-connect" href="/auth/instagram">${IG_GLYPH} Instagram bilan davom etish</a>`
+    ? `<a class="btn-ig-connect" href="/auth/instagram">${IG_GLYPH} Instagram bilan davom etish</a>${wizardLink}`
     : `<span class="btn-ig-connect" aria-disabled="true" data-tip="${esc(missing)} sozlanmagan">
          ${IG_GLYPH} Instagram bilan davom etish</span>
        <div class="card" style="padding:11px 13px;margin-top:11px;border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)">
          <div class="small" style="display:flex;gap:8px;align-items:flex-start"><span style="color:var(--warn-ap);flex-shrink:0">${ICONS.alert}</span>
          <span><strong>${esc(missing)} sozlanmagan</strong>
          <div class="muted" style="margin-top:3px">Railway → Variables bo'limiga qo'shilishi kerak. Shu paytgacha quyidagi <strong>qo'lda token kiritish</strong> orqali ulashingiz mumkin — u to'liq ishlaydi.</div></span></div>
-       </div>`;
+       </div>${wizardLink}`;
 
   const content = `
   ${CONNECT_CSS}

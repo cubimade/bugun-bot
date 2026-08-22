@@ -24,6 +24,7 @@ import {
   renderAbTestsPage,
   renderConnectPage,
   renderConnectInstagramPage,
+  renderSetupWizardPage,
 } from "../templates.js";
 
 const router = express.Router();
@@ -51,6 +52,10 @@ router.get("/dashboard/accounts", protect, (req, res) => res.send(renderAccounts
 router.get("/dashboard/connect", protect, (req, res) => res.send(renderConnectPage()));
 router.get("/dashboard/connect/instagram", protect, (req, res) =>
   res.send(renderConnectInstagramPage())
+);
+// ROADMAP-19 FAZA 4: sozlash sehrgari — mijoz o'z Meta ilovasini ulaydi
+router.get("/dashboard/connect/instagram/setup", protect, (req, res) =>
+  res.send(renderSetupWizardPage())
 );
 router.get("/dashboard/settings", protect, (req, res) => res.send(renderSettingsPage()));
 

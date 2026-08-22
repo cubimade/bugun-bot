@@ -27,6 +27,8 @@ import { keywordRulesFor } from "../services/rules.js";
 import { tryStartFlow } from "../services/flow-engine.js";
 import { processIncomingText, processIncomingMedia, isRateLimited } from "../services/inbound.js";
 import { state, ACCOUNTS_MAP, resolveAccount } from "../state.js";
+import { findProjectsByIgIds, verifyTokenExistsInAnyProject } from "../db.js";
+import { getAppConfig } from "../services/project-config.js";
 
 const router = express.Router();
 
@@ -45,45 +47,78 @@ if (!APP_SECRET) {
   );
 }
 
-function verifySignature(req) {
-  if (!APP_SECRET) return true;
-  const sig = req.get("x-hub-signature-256") || "";
-  // 13-audit VAQTINCHALIK diagnostika: qaysi bosqich yiqilayotganini ko'rsatadi
-  // (secret loglanmaydi; imzo prefiksi maxfiy emas). Imzo mos kelgach olib tashlanadi.
-  if (!sig.startsWith("sha256=")) {
-    console.warn(`🔎 Imzo diagnostika: X-Hub-Signature-256 header yo'q yoki formati boshqa (bor: "${sig.slice(0, 12)}")`);
-    return false;
-  }
-  if (!req.rawBody) {
-    console.warn("🔎 Imzo diagnostika: rawBody yo'q — express.json verify ishlamagan");
-    return false;
-  }
+// ROADMAP-19 FAZA 3: imzo endi ixtiyoriy secret bilan tekshiriladi —
+// har loyihaning o'z ilova secret'i bo'lishi mumkin. (export — birlik test uchun)
+export function signatureMatches(rawBody, sig, secret) {
+  if (!secret || !rawBody || !sig || !sig.startsWith("sha256=")) return false;
   const expected =
-    "sha256=" +
-    crypto.createHmac("sha256", APP_SECRET).update(req.rawBody).digest("hex");
+    "sha256=" + crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
   try {
-    const ok = crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-    if (!ok) {
-      console.warn(
-        `🔎 Imzo diagnostika: kelgan=${sig.slice(7, 17)}… kutilgan=${expected.slice(7, 17)}… ` +
-        `body=${req.rawBody.length} bayt — APP_SECRET boshqa app'niki bo'lishi mumkin`
-      );
-    }
-    return ok;
+    return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
   } catch {
     return false;
   }
 }
 
+// Ko'p ilovali imzo tekshiruvi: entry[].id bo'yicha nomzod loyihalar topiladi,
+// har birining secret'i bilan sinaladi; hech biri mos kelmasa global APP_SECRET.
+// Natija: { verified: project|"global"|null, candidates: n }
+async function verifyMultiApp(req, entryIds) {
+  const sig = req.get("x-hub-signature-256") || "";
+  const rawBody = req.rawBody;
+  if (!rawBody) {
+    console.warn("🔎 Imzo diagnostika: rawBody yo'q — express.json verify ishlamagan");
+    return { verified: null, candidates: 0 };
+  }
+
+  let candidates = [];
+  if (state.DB_READY && entryIds.length) {
+    try {
+      candidates = await findProjectsByIgIds(entryIds);
+    } catch (e) {
+      console.warn("⚠️ Webhook nomzod loyihalarni o'qib bo'lmadi:", e.message);
+    }
+  }
+
+  // O'z ilovasi borlarning secret'i bilan
+  for (const p of candidates.filter((c) => c.has_own_app)) {
+    try {
+      const cfg = await getAppConfig(p.id);
+      if (signatureMatches(rawBody, sig, cfg.appSecret) || signatureMatches(rawBody, sig, cfg.igAppSecret)) {
+        return { verified: p, candidates: candidates.length };
+      }
+    } catch {
+      /* keyingi nomzod */
+    }
+  }
+
+  // Global zaxira (mavjud oqim)
+  if (signatureMatches(rawBody, sig, APP_SECRET)) {
+    return { verified: "global", candidates: candidates.length };
+  }
+  return { verified: null, candidates: candidates.length };
+}
+
 // ============================================================
 //  WEBHOOK — TEKSHIRUV (Meta ulanishni tasdiqlaydi)
 // ============================================================
-router.get("/webhook", (req, res) => {
+router.get("/webhook", async (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+  // ROADMAP-19 FAZA 3.3: global VERIFY_TOKEN yoki birorta loyihaning
+  // o'z verify_token'i — har mijoz ilovasi o'z tokeni bilan ro'yxatdan o'tadi
+  let ok = mode === "subscribe" && Boolean(token) && token === VERIFY_TOKEN;
+  if (!ok && mode === "subscribe" && state.DB_READY) {
+    try {
+      ok = await verifyTokenExistsInAnyProject(token);
+    } catch (e) {
+      console.warn("⚠️ Loyiha verify_token tekshiruvida xato:", e.message);
+    }
+  }
+
+  if (ok) {
     console.log("✅ Webhook tasdiqlandi!");
     res.status(200).send(challenge);
   } else {
@@ -98,25 +133,40 @@ router.get("/webhook", (req, res) => {
 // Imzo holati faqat o'zgarganda loglanadi (har so'rovda spam bo'lmasin)
 let SIG_LAST_STATE = null; // null | "ok" | "bad"
 
-router.post("/webhook", async (req, res) => {
-  // Imzo LOG-ONLY rejimda: tekshiriladi va loglanadi, lekin noto'g'ri bo'lsa ham
-  // so'rov BLOKLANMAYDI — ishonchlilik birinchi (bot DM'larga javob beraveradi).
-  if (verifySignature(req)) {
+router.post("/webhook", (req, res) => {
+  // Meta'ga DARROV 200 (talab — kechikish webhook o'chirilishiga olib keladi).
+  // Imzo tekshiruvi ham, ishlov ham fon rejimida.
+  res.status(200).send("EVENT_RECEIVED");
+  processWebhookAsync(req).catch((err) => {
+    console.error("⚠️ Webhook fon ishlovida xatolik:", err.message);
+    console.error(err.stack);
+  });
+});
+
+async function processWebhookAsync(req) {
+  const body = req.body || {};
+  const entryIds = (body.entry || []).map((e) => String(e.id)).filter(Boolean);
+
+  // ROADMAP-19 FAZA 3: imzo har nomzod loyihaning o'z secret'i bilan, keyin
+  // global APP_SECRET bilan tekshiriladi. HOZIRCHA LOG-ONLY — noto'g'ri
+  // bo'lsa ham BLOKLANMAYDI (ko'p ilovali oqim barqarorlashgach qattiqlashadi).
+  const { verified, candidates } = await verifyMultiApp(req, entryIds);
+  if (verified) {
     if (SIG_LAST_STATE !== "ok") {
-      console.log("✅ Webhook imzosi to'g'ri — APP_SECRET Meta bilan mos");
+      const src = verified === "global" ? "global APP_SECRET" : `loyiha ${verified.id} ilova secret'i`;
+      console.log(`✅ Webhook imzosi to'g'ri — ${src} bilan mos`);
       SIG_LAST_STATE = "ok";
     }
-  } else {
-    if (SIG_LAST_STATE !== "bad") {
-      console.warn("⚠️ Webhook imzosi MOS KELMADI (log-only rejim) — so'rov baribir qayta ishlanadi. APP_SECRET'ni Meta App Secret bilan solishtiring.");
-      SIG_LAST_STATE = "bad";
-    }
+  } else if (SIG_LAST_STATE !== "bad") {
+    console.warn(
+      `⚠️ [WEBHOOK] imzo tasdiqlanmadi (log-only rejim) — so'rov baribir qayta ishlanadi. ` +
+        `entry: [${entryIds.join(", ")}], nomzod loyihalar: ${candidates}. ` +
+        `APP_SECRET yoki loyiha ilova secret'ini Meta bilan solishtiring.`
+    );
+    SIG_LAST_STATE = "bad";
   }
-  res.status(200).send("EVENT_RECEIVED"); // Meta'ga darhol javob (talab)
 
   try {
-    const body = req.body;
-
     for (const entry of body.entry || []) {
       const { projectId, token } = resolveAccount(entry.id);
       console.log(
@@ -141,7 +191,7 @@ router.post("/webhook", async (req, res) => {
     console.error("⚠️ Webhook xatoligi:", err.message);
     console.error(err.stack);
   }
-});
+}
 
 // ============================================================
 //  DM — Instagram hodisasini umumiy formatga o'girib, umumiy

@@ -188,6 +188,34 @@ export async function setAppSetupStatus(projectId, status, note = null) {
 }
 
 // ------------------------------------------------------------
+//  ROADMAP-19 FAZA 3: webhook yo'naltirish yordamchilari
+// ------------------------------------------------------------
+// entry[].id bo'yicha nomzod loyihalar (ig_account_id YOKI app_scoped_id).
+// O'z ilovasi borlari imzo tekshiruvida ishlatiladi.
+export async function findProjectsByIgIds(ids) {
+  const clean = [...new Set((ids || []).map((x) => String(x)).filter(Boolean))];
+  if (!clean.length) return [];
+  const { rows } = await pool.query(
+    `SELECT id, name, ig_account_id, app_scoped_id, ig_app_id,
+            (ig_app_id IS NOT NULL AND ig_app_secret_enc IS NOT NULL) AS has_own_app
+       FROM projects
+      WHERE ig_account_id = ANY($1) OR app_scoped_id = ANY($1)`,
+    [clean]
+  );
+  return rows;
+}
+
+// GET /webhook verify: hub.verify_token birorta loyihanikiga mosmi?
+export async function verifyTokenExistsInAnyProject(token) {
+  if (!token) return false;
+  const { rows } = await pool.query(
+    `SELECT 1 FROM projects WHERE verify_token = $1 LIMIT 1`,
+    [String(token)]
+  );
+  return rows.length > 0;
+}
+
+// ------------------------------------------------------------
 //  TOKEN UZAYTIRISH (kunlik job va qo'lda tugma uchun)
 // ------------------------------------------------------------
 // Meta qoidasi: token kamida 24 soatlik bo'lishi va muddati tugamagan

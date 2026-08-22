@@ -121,9 +121,21 @@ export async function exchangeCodeForToken(code) {
     throw new Error("Javobda access_token yo'q (Instagram javobi kutilmagan formatda)");
   }
 
+  // ROADMAP-18 davomi: Meta ba'zi Business Login ilovalarida bu qadamda
+  // ALLAQACHON uzoq muddatli token qaytaradi (expires_in ~5184000). Bunday
+  // tokenni ig_exchange_token bilan almashtirish "Unsupported request"
+  // (code 100) beradi. Shu sabab expires_in ham qaytariladi — completeFlow
+  // unga qarab almashtirish qadamini o'tkazib yuboradi.
+  const expiresIn = Number(payload.expires_in) || null;
+  console.log(
+    `🔑 Code almashinuvi OK — maydonlar: [${Object.keys(payload).join(", ")}], ` +
+      `expires_in: ${expiresIn ?? "yo'q"}, token: ${String(payload.access_token).slice(0, 4)}…`
+  );
+
   const perms = payload.permissions;
   return {
     shortToken: payload.access_token,
+    expiresIn,
     permissions: Array.isArray(perms) ? perms.join(",") : String(perms || ""),
   };
 }
@@ -206,15 +218,15 @@ async function graphTokenRequest(path, params, errPrefix, tokenForDiag) {
     lastRes = res;
   }
 
-  // code 100 "Unsupported request" token dekriptidan keyin chiqadi — eng ehtimoliy
-  // sabab: IG_APP_SECRET bu ilovaning Instagram sirri emas (IG_APP_ID bilan juft emas)
-  const hint =
-    lastJson?.error?.code === 100 && /unsupported request/i.test(String(lastJson?.error?.message))
-      ? " | Tekshiring: IG_APP_SECRET — Instagram > API setup sahifasidagi sir bo'lishi va IG_APP_ID bilan bir ilovaga tegishli bo'lishi shart (Meta App Basic siri EMAS)"
-      : "";
-  throw new Error(
-    `${errPrefix}: ${errText(lastJson, lastRes)} [token: ${tokenKind(tokenForDiag)}…]${hint}`
+  const err = new Error(
+    `${errPrefix}: ${errText(lastJson, lastRes)} [token: ${tokenKind(tokenForDiag)}…]`
   );
+  // completeFlow "Unsupported request" (code 100) holatini alohida ushlaydi:
+  // token allaqachon uzoq muddatli bo'lsa, almashtirish shart emas
+  err.igCode = lastJson?.error?.code;
+  err.igUnsupported =
+    lastJson?.error?.code === 100 && /unsupported request/i.test(String(lastJson?.error?.message));
+  throw err;
 }
 
 // ------------------------------------------------------------
@@ -300,16 +312,52 @@ export async function refreshToken(longToken) {
   return graphTokenRequest("/refresh_access_token", params, "Token uzaytirilmadi", longToken);
 }
 
+// Token allaqachon uzoq muddatlimi? (57+ kun — 1-2 soatlik qisqa token emas)
+const LONG_LIVED_MIN_SEC = 5000000;
+
 // To'liq oqim: code → uzoq muddatli token + profil (route'ni yengil saqlaydi)
 export async function completeFlow(code) {
   // Instagram ba'zan code oxiriga "#_" qo'shib yuboradi — kesib tashlaymiz
   const cleanCode = String(code || "").split("#")[0];
   if (!cleanCode) throw new Error("Instagram `code` qaytarmadi");
 
-  const { shortToken, permissions } = await exchangeCodeForToken(cleanCode);
-  const { token, expiresIn } = await exchangeForLongLived(shortToken);
-  const profile = await fetchProfile(token);
-  return { token, expiresIn, permissions, profile };
+  const { shortToken, expiresIn: codeExpiresIn, permissions } =
+    await exchangeCodeForToken(cleanCode);
+
+  // 1-holat: Meta bu qadamda ALLAQACHON uzoq muddatli token berdi —
+  // ig_exchange_token qadami ortiqcha (u "Unsupported request" beradi)
+  if (codeExpiresIn && codeExpiresIn > LONG_LIVED_MIN_SEC) {
+    console.log(
+      `🔑 Token allaqachon uzoq muddatli (expires_in=${codeExpiresIn}) — almashtirish qadami o'tkazib yuborildi`
+    );
+    const profile = await fetchProfile(shortToken);
+    return { token: shortToken, expiresIn: codeExpiresIn, permissions, profile };
+  }
+
+  // 2-holat: oddiy yo'l — qisqa tokenni uzoqqa almashtiramiz
+  try {
+    const { token, expiresIn } = await exchangeForLongLived(shortToken);
+    const profile = await fetchProfile(token);
+    return { token, expiresIn, permissions, profile };
+  } catch (err) {
+    // 3-holat: "Unsupported request" (code 100) — expires_in kelmagan bo'lsa ham
+    // token uzoq muddatli bo'lishi mumkin. Tokenni /me bilan tekshiramiz:
+    // ishlasa — o'zini ishlatamiz (60 kun deb olamiz, keyin refresh cron uzaytiradi).
+    if (err.igUnsupported) {
+      console.warn(
+        "⚠️ Almashtirish 'Unsupported request' berdi — token allaqachon uzoq muddatli bo'lishi mumkin, /me bilan tekshirilmoqda"
+      );
+      const profile = await fetchProfile(shortToken); // ishlamasa o'zi throw qiladi
+      console.log("🔑 Token /me da ishladi — almashtirishsiz ishlatiladi (60 kun deb qabul qilindi)");
+      return {
+        token: shortToken,
+        expiresIn: codeExpiresIn || SIXTY_DAYS_SEC,
+        permissions,
+        profile,
+      };
+    }
+    throw err;
+  }
 }
 
 // Kutilmagan xatolarni umumiy xatolar buferiga ham yozamiz (/api/errors)

@@ -4,6 +4,7 @@
 //  admin'ga Telegram bildirishnoma (notify_down yoqilgan bo'lsa).
 // ============================================================
 import { state, ACCOUNTS_MAP } from "../state.js";
+import { wrapCron } from "./cron-log.js";
 import { pool } from "../db/pool.js";
 import { verifyToken } from "../instagram.js";
 import { notifyAdmin } from "./notify.js";
@@ -60,6 +61,8 @@ export async function runHealthPass() {
 }
 
 export function startHealthScheduler() {
-  const t = setInterval(runHealthPass, 10 * 60 * 1000);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("health", runHealthPass, { quiet: true });
+  const t = setInterval(pass_, 10 * 60 * 1000);
   if (t.unref) t.unref();
 }

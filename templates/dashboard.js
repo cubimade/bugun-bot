@@ -152,7 +152,9 @@ function applySummary(r, attempt) {
   $("aiStatus").innerHTML = warn
     ? '<span class="pill pill-warn"><span class="dot dot-amber"></span>E\\'tibor kerak</span>'
     : '<span class="pill pill-ok"><span class="dot dot-green"></span>Hammasi ishlayapti</span>';
-  $("summaryMeta").textContent = "AI xulosa · yangilangan: " + fmt(r.cachedAt);
+  // ROADMAP-18 FAZA 4: 48 soatdan eski xulosada ogohlantirish + yangilash tugmasi
+  $("summaryMeta").innerHTML = "AI xulosa · yangilangan: " + fmt(r.cachedAt) +
+    staleBanner(r.cachedAt, "refreshSummary()");
 }
 async function loadSummary(attempt) {
   try {
@@ -161,6 +163,14 @@ async function loadSummary(attempt) {
     $("summaryText").textContent = "Xulosa hozircha tayyor emas — birinchi xabarlar kelganda paydo bo'ladi.";
     $("summaryMeta").textContent = "";
   }
+}
+async function refreshSummary() {
+  $("summaryText").textContent = "AI xulosa yangilanmoqda…";
+  $("summaryMeta").textContent = "";
+  try {
+    applySummary(await api("/api/summary?refresh=1"), 0);
+    toast("Xulosa yangilandi");
+  } catch (e) { toast("Yangilab bo'lmadi: " + e.message, false); }
 }
 
 const PERIOD_SUB = { today: "bugun, soatlar bo'yicha", "7d": "oxirgi 7 kun", "30d": "oxirgi 30 kun", all: "oxirgi 30 kun" };

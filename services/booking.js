@@ -3,6 +3,7 @@
 //  Bo'sh slotlarni hisoblash (Asia/Tashkent, UTC+5) va eslatma.
 // ============================================================
 import { TZ_OFFSET } from "../config.js";
+import { wrapCron } from "./cron-log.js";
 import { state, ACCOUNTS_MAP } from "../state.js";
 import { IG_TOKEN } from "../config.js";
 import { senderFor } from "./channels.js";
@@ -120,7 +121,9 @@ export async function runBookingReminderPass() {
 }
 
 export function startBookingScheduler() {
-  setTimeout(runBookingReminderPass, 3 * 60 * 1000);
-  const t = setInterval(runBookingReminderPass, 60 * 60 * 1000);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("booking-reminders", runBookingReminderPass);
+  setTimeout(pass_, 3 * 60 * 1000);
+  const t = setInterval(pass_, 60 * 60 * 1000);
   if (t.unref) t.unref();
 }

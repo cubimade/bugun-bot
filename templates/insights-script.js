@@ -213,17 +213,18 @@ function renderAccBars(accounts) {
 }
 
 // E4: Bu hafta nima o'zgardi (bo'sh bo'lsa AI orqa fonda tayyorlaydi)
-async function loadChanged(attempt) {
+async function loadChanged(attempt, force) {
   attempt = attempt || 0;
+  if (force) $("changedText").textContent = "AI taqqoslash yangilanmoqda…";
   try {
-    const { text, cachedAt, pending } = await api("/api/whats-changed");
+    const { text, cachedAt, pending } = await api("/api/whats-changed" + (force ? "?refresh=1" : ""));
     if (pending) {
       $("changedText").textContent = "AI taqqoslash tayyorlanmoqda…";
       if (attempt < 10) setTimeout(function () { loadChanged(attempt + 1); }, 4000);
       return;
     }
     $("changedText").textContent = text;
-    $("changedMeta").textContent = "AI taqqoslash · " + fmt(cachedAt);
+    $("changedMeta").innerHTML = "AI taqqoslash · " + fmt(cachedAt) + staleBanner(cachedAt, "loadChanged(0, true)");
   } catch (e) {
     $("changedText").textContent = "Taqqoslash hozircha tayyor emas — ma'lumot yig'ilganda paydo bo'ladi.";
   }
@@ -248,7 +249,7 @@ async function loadInsights(force, attempt) {
       $("insMeta").textContent = "";
       return;
     }
-    $("insMeta").textContent = sample + " ta xabar tahlil qilindi · " + fmt(cachedAt);
+    $("insMeta").innerHTML = sample + " ta xabar tahlil qilindi · " + fmt(cachedAt) + staleBanner(cachedAt, "loadInsights(true)");
     const tq = insights.top_questions || [];
     const sr = insights.sales_ready || [];
     const kg = insights.kb_gaps || [];
@@ -346,7 +347,8 @@ async function loadLost(force, attempt) {
     }
     const fn = r.funnel || {};
     const stages = [["new", "Yangi", "plain"], ["interested", "Qiziqqan", "warn"], ["negotiation", "Muzokara", "plain"], ["won", "Sotildi", "ok"], ["lost", "Yo'q", "danger"]];
-    let html = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
+    let html = staleBanner(r.cachedAt, "loadLost(true)") +
+      '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">' +
       stages.map(function (s) { return '<span class="pill pill-' + s[2] + '">' + s[1] + ": <strong>" + (fn[s[0]] || 0) + "</strong></span>"; }).join("") + "</div>";
     if (r.ai && (r.ai.reasons || []).length) {
       html += '<strong class="small">Yo\\'qotish sabablari (AI):</strong><ul class="small" style="margin:6px 0 10px 18px;line-height:1.8">' +
@@ -390,6 +392,7 @@ async function loadContent(force, attempt) {
     }
     if (!r.ai) { $("contentBody").innerHTML = emptyState(ICO.lightbulb, r.note || "Tahlil uchun xabar kam — mijozlar yozganda paydo bo'ladi"); return; }
     $("contentBody").innerHTML =
+      staleBanner(r.cachedAt, "loadContent(true)") +
       (r.bestTime ? '<div class="small" style="margin-bottom:10px">' + ICO.clock + ' Auditoriyangiz <strong>' + r.bestTime + "</strong> oralig'ida faol — post/story shu vaqtda chiqaring.</div>" : "") +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">' +
         (r.ai.topics || []).map(function (t) { return '<span class="pill pill-plain">' + esc(t.topic) + " · " + (t.count || "?") + "</span>"; }).join("") + "</div>" +

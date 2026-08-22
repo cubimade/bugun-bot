@@ -7,6 +7,7 @@
 //  access_token FAYLGA YOZILMAYDI (xavfsizlik).
 // ============================================================
 import fs from "fs";
+import { wrapCron } from "./cron-log.js";
 import path from "path";
 import { pool } from "../db.js";
 import { state } from "../state.js";
@@ -63,7 +64,9 @@ export async function runBackup() {
 
 // Startupda bir marta (bugungisi bo'lmasa) + har 24 soatda
 export function startBackupScheduler() {
-  setTimeout(runBackup, 30 * 1000); // DB tayyor bo'lishini kutamiz
-  const t = setInterval(runBackup, 24 * 60 * 60 * 1000);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("daily-backup", runBackup);
+  setTimeout(pass_, 30 * 1000); // DB tayyor bo'lishini kutamiz
+  const t = setInterval(pass_, 24 * 60 * 60 * 1000);
   if (t.unref) t.unref();
 }

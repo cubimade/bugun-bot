@@ -162,6 +162,16 @@ export async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- ROADMAP-18 FAZA 4: cron ishga tushishlari — "ishladimi?" savoliga aniq javob
+    CREATE TABLE IF NOT EXISTS cron_runs (
+      name          TEXT PRIMARY KEY,
+      last_run_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      last_ok_at    TIMESTAMPTZ,
+      last_error    TEXT,
+      last_duration_ms INTEGER,
+      run_count     INTEGER NOT NULL DEFAULT 0
+    );
+
     -- Sozlamalar (dashboard orqali boshqariladi, kalit-qiymat)
     CREATE TABLE IF NOT EXISTS settings (
       key        TEXT PRIMARY KEY,

@@ -11,6 +11,7 @@
 //  DIQQAT: loglarda token chop etilmaydi.
 // ============================================================
 import { state, ACCOUNTS_MAP } from "../state.js";
+import { wrapCron } from "./cron-log.js";
 import {
   listExpiringOAuthTokens,
   updateProjectToken,
@@ -84,7 +85,9 @@ export async function refreshExpiringTokens() {
 // Startupdan 2 daqiqa keyin bir marta, so'ng har 24 soatda
 // (backup scheduler bilan bir xil uslub — ROADMAP-6 F1)
 export function startTokenRefreshScheduler() {
-  setTimeout(refreshExpiringTokens, 2 * 60 * 1000); // DB tayyor bo'lishini kutamiz
-  const t = setInterval(refreshExpiringTokens, DAY_MS);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("token-refresh", refreshExpiringTokens);
+  setTimeout(pass_, 2 * 60 * 1000); // DB tayyor bo'lishini kutamiz
+  const t = setInterval(pass_, DAY_MS);
   if (t.unref) t.unref();
 }

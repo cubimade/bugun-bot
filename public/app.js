@@ -34,6 +34,19 @@ function timeAgo(d) {
   if (s < 604800) return Math.floor(s / 86400) + " kun oldin";
   return new Date(d).toLocaleDateString("uz-UZ");
 }
+// ROADMAP-18 FAZA 4: AI blok 48 soatdan eski bo'lsa — sariq ogohlantirish
+// lentasi + "Hozir yangilash" tugmasi. refreshJs — bosilganda bajariladigan
+// JS ifoda (masalan "loadInsights(true)"). Yangi bo'lsa bo'sh satr qaytadi.
+function staleBanner(cachedAt, refreshJs) {
+  if (!cachedAt) return "";
+  const ageH = (Date.now() - new Date(cachedAt).getTime()) / 3600000;
+  if (ageH < 48) return "";
+  const days = Math.floor(ageH / 24);
+  return '<div class="stale-banner">⚠ ' + (days >= 1 ? days + " kun" : Math.floor(ageH) + " soat") +
+    ' oldin yangilangan — ma\'lumot eskirgan' +
+    (refreshJs ? ' <button class="btn btn-sm" style="margin-left:8px" onclick="' + refreshJs.replace(/"/g, "&quot;") + '">Hozir yangilash</button>' : "") +
+    "</div>";
+}
 async function api(path, opts) {
   const r = await fetch(path, opts);
   if (!r.ok) {

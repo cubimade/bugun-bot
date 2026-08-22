@@ -4,6 +4,7 @@
 //  (dushanba ~09:00 Toshkent, sozlamada yoqiladi)
 // ============================================================
 import { state, reloadSettings } from "../state.js";
+import { wrapCron } from "./cron-log.js";
 import { TZ_OFFSET } from "../config.js";
 import {
   getStatsForPeriod,
@@ -109,7 +110,9 @@ export async function runWeeklyReportPass() {
 }
 
 export function startWeeklyReportScheduler() {
-  setTimeout(runWeeklyReportPass, 4 * 60 * 1000);
-  const t = setInterval(runWeeklyReportPass, 60 * 60 * 1000);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("weekly-report", runWeeklyReportPass, { quiet: true });
+  setTimeout(pass_, 4 * 60 * 1000);
+  const t = setInterval(pass_, 60 * 60 * 1000);
   if (t.unref) t.unref();
 }

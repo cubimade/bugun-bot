@@ -97,6 +97,7 @@ const CHANGED_TTL_MS = 24 * 60 * 60 * 1000;
 router.get("/api/whats-changed", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
+    const force = req.query.refresh === "1";
     const r = await swrCache("whats-changed", CHANGED_TTL_MS, async () => {
       const [s, m] = await Promise.all([
         getStatsForPeriod("7d"),
@@ -121,8 +122,8 @@ router.get("/api/whats-changed", protect, async (req, res, next) => {
           `, ${s.contactsActive} mijoz faol bo'ldi, ${s.contactsNew} tasi yangi.`;
       }
       return { text };
-    });
-    if (r.pending) return res.json({ text: null, pending: true });
+    }, { force });
+    if (r.pending || r.data == null) return res.json({ text: null, pending: true });
     res.json({ text: r.data.text, cachedAt: r.cachedAt });
   } catch (err) {
     next(err);
@@ -220,20 +221,26 @@ function buildSummaryFallback(d) {
   return text;
 }
 
-async function summaryPayload() {
-  const r = await swrCache("summary", SUMMARY_TTL_MS, async () => {
-    const digest = await getDailyDigest();
-    const text = (await getDailySummary(digest)) || buildSummaryFallback(digest);
-    return { text, digest };
-  });
-  if (r.pending) return { text: null, digest: null, pending: true };
+async function summaryPayload(force = false) {
+  const r = await swrCache(
+    "summary",
+    SUMMARY_TTL_MS,
+    async () => {
+      const digest = await getDailyDigest();
+      const text = (await getDailySummary(digest)) || buildSummaryFallback(digest);
+      return { text, digest };
+    },
+    { force }
+  );
+  if (r.pending || r.data == null) return { text: null, digest: null, pending: true };
   return { text: r.data.text, digest: r.data.digest, cachedAt: r.cachedAt };
 }
 
 router.get("/api/summary", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
-    res.json(await summaryPayload());
+    // ROADMAP-18 FAZA 4: qo'lda yangilash (?refresh=1) — cron yiqilsa ham
+    res.json(await summaryPayload(req.query.refresh === "1"));
   } catch (err) {
     next(err);
   }

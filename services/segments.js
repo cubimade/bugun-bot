@@ -3,6 +3,7 @@
 //  vip / faol / uxlagan / sovuq (db/analytics2.js dagi SQL)
 // ============================================================
 import { state } from "../state.js";
+import { wrapCron } from "./cron-log.js";
 import { recomputeSegments } from "../db.js";
 
 export async function runSegmentsPass() {
@@ -17,7 +18,9 @@ export async function runSegmentsPass() {
 
 export function startSegmentsScheduler() {
   // Startupdan 5 daqiqa keyin, so'ng har 12 soatda
-  setTimeout(runSegmentsPass, 5 * 60 * 1000);
-  const t = setInterval(runSegmentsPass, 12 * 60 * 60 * 1000);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("segments", runSegmentsPass);
+  setTimeout(pass_, 5 * 60 * 1000);
+  const t = setInterval(pass_, 12 * 60 * 60 * 1000);
   if (t.unref) t.unref();
 }

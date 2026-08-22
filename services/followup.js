@@ -5,6 +5,7 @@
 //  (mijozning oxirgi xabari 23 soatdan eski bo'lsa — nomzod emas).
 // ============================================================
 import { state, ACCOUNTS_MAP } from "../state.js";
+import { wrapCron } from "./cron-log.js";
 import { IG_TOKEN } from "../config.js";
 import { senderFor } from "./channels.js";
 import {
@@ -102,7 +103,9 @@ async function followupPassBody() {
 
 export function startFollowupScheduler() {
   // Startupdan 2 daqiqa keyin birinchi urinish, so'ng har soatda
-  setTimeout(runFollowupPass, 2 * 60 * 1000);
-  const t = setInterval(runFollowupPass, 60 * 60 * 1000);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("followup", runFollowupPass);
+  setTimeout(pass_, 2 * 60 * 1000);
+  const t = setInterval(pass_, 60 * 60 * 1000);
   if (t.unref) t.unref();
 }

@@ -6,6 +6,7 @@
 //  Node turlari: message / buttons / condition / action / delay
 // ============================================================
 import { state, ACCOUNTS_MAP } from "../state.js";
+import { wrapCron } from "./cron-log.js";
 import { IG_TOKEN } from "../config.js";
 import { sendPrivateReply } from "../instagram.js";
 import { senderFor } from "./channels.js";
@@ -324,8 +325,10 @@ export async function runFlowSchedulerPass() {
 }
 
 export function startFlowScheduler() {
-  setTimeout(runFlowSchedulerPass, 90 * 1000);
-  const t = setInterval(runFlowSchedulerPass, 60 * 1000);
+  // ROADMAP-18 FAZA 4: [CRON] loglari + cron_runs jadvali
+  const pass_ = wrapCron("flow-scheduler", runFlowSchedulerPass, { quiet: true });
+  setTimeout(pass_, 90 * 1000);
+  const t = setInterval(pass_, 60 * 1000);
   if (t.unref) t.unref();
 }
 

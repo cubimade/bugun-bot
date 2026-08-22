@@ -10,8 +10,19 @@ import { ACCOUNTS_MAP, requireDb } from "../state.js";
 import { IG_TOKEN } from "../config.js";
 import { verifyToken, checkSubscription } from "../instagram.js";
 import { getProjectToken, getProjectKnowledge, getProjectActivity } from "../db.js";
+import { listCronRuns } from "../services/cron-log.js";
 
 const router = express.Router();
+
+// ROADMAP-18 FAZA 4: cron ishga tushishlari — "ishladimi yoki yo'qmi?"
+router.get("/api/cron-runs", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    res.json({ runs: await listCronRuns() });
+  } catch (err) {
+    next(err);
+  }
+});
 
 const SETUP_URL = "https://developers.facebook.com/apps";
 

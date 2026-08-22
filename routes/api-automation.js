@@ -221,11 +221,14 @@ router.post("/api/keywords/test", protect, async (req, res, next) => {
     if (!text) return res.status(400).json({ error: "Sinov matnini yozing" });
 
     const rules = await getActiveKeywordRules(projectId);
-    const rule = matchKeywordRule(rules, text);
+    // ROADMAP-18 FAZA 2.4: trace — har qoida nega mos kelmagani (diagnostika)
+    const trace = [];
+    const rule = matchKeywordRule(rules, text, trace);
     if (!rule) {
       return res.json({
         matched: false,
         message: "Hech bir qoida mos kelmadi — bu xabarga AI javob beradi (bilim bazasi bilan)",
+        trace,
       });
     }
     res.json({

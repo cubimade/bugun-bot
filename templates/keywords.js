@@ -287,7 +287,11 @@ async function runTest(btn) {
   try {
     const r = await postJson("/api/keywords/test", { text, project_id: $("kwProject").value || null });
     if (!r.matched) {
-      $("kwTestOut").innerHTML = \`<div class="kw-error warn">\${esc(r.message)}</div>\`;
+      // ROADMAP-18 FAZA 2.4: nega mos kelmagani — har qoida bo'yicha sabab
+      const traceHtml = (r.trace || []).length
+        ? '<details style="margin-top:8px"><summary class="small muted" style="cursor:pointer">Nega mos kelmadi? (' + r.trace.length + ' qoida tekshirildi)</summary><div class="small muted" style="margin-top:6px;line-height:1.8">' + r.trace.map((t) => esc(t)).join("<br>") + "</div></details>"
+        : "";
+      $("kwTestOut").innerHTML = \`<div class="kw-error warn">\${esc(r.message)}\${traceHtml}</div>\`;
     } else {
       const rl = r.rule;
       $("kwTestOut").innerHTML = \`

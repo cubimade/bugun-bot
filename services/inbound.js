@@ -69,7 +69,13 @@ export { processIncomingMedia } from "./inbound-media.js";
 async function pickKeywordRule(rules, text, contactId) {
   let pool = rules;
   for (let guard = 0; guard < 20; guard++) {
-    const rule = matchKeywordRule(pool, text);
+    // ROADMAP-18 FAZA 2.4: DEBUG=1 da har qoida nega mos kelmagani loglanadi —
+    // "nega ishlamadi" diagnostikasi soniyalarda bo'ladi
+    const trace = process.env.DEBUG ? [] : null;
+    const rule = matchKeywordRule(pool, text, trace);
+    if (trace?.length) {
+      console.log(`🔎 Kalit so'z diagnostika ("${String(text).slice(0, 60)}"):\n   ` + trace.join("\n   "));
+    }
     if (!rule) return null;
 
     // Vaqt oynasi: faqat ish vaqtida

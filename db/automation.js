@@ -195,36 +195,58 @@ export async function incrementKeywordHit(id) {
   await pool.query(`UPDATE keyword_rules SET hit_count = hit_count + 1 WHERE id = $1`, [id]);
 }
 
+// ROADMAP-18 FAZA 2: keyword bazada "narx, narxr" ko'rinishida vergul bilan
+// saqlangan bo'lishi mumkin (eski yozuvlar; yangi API har so'zga alohida qoida
+// yaratadi). Butun satrni BITTA literal sifatida solishtirish hech qachon mos
+// kelmasdi — endi vergul bo'yicha variantlarga bo'linadi, bittasi yetadi.
+// regex'da bo'linmaydi: vergul regex sintaksisining qismi bo'lishi mumkin.
+function keywordVariants(rule) {
+  const k = String(rule.keyword || "").trim();
+  if (!k) return [];
+  if (rule.match_type === "regex") return [k];
+  return k.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 // Matnga mos qoidani topish (exact ustuvor, keyin uzun keyword'lar)
 // ROADMAP-16 (3.1b): 4 ta moslik turi — exact | contains | starts | regex.
 // Xato regex bot ishini TO'XTATMASLIGI kerak — try/catch bilan o'tkazib yuboriladi.
-export function matchKeywordRule(rules, text) {
+// `trace` (ixtiyoriy massiv) berilsa, har qoida nega mos kelmagani yoziladi —
+// diagnostika soniyalarda bo'lishi uchun (ROADMAP-18 FAZA 2.4).
+export function matchKeywordRule(rules, text, trace) {
   const raw = String(text || "").trim();
   const t = raw.toLowerCase();
   if (!t) return null;
   for (const r of rules) {
-    const k = String(r.keyword || "").trim();
-    if (!k) continue;
-    const low = k.toLowerCase();
+    const variants = keywordVariants(r);
+    if (!variants.length) {
+      trace?.push(`#${r.id} "${r.keyword}" — bo'sh kalit so'z, tashlab ketildi`);
+      continue;
+    }
     let hit = false;
-    switch (r.match_type) {
-      case "exact":
-        hit = t === low;
-        break;
-      case "starts":
-        hit = t.startsWith(low);
-        break;
-      case "regex":
-        try {
-          hit = new RegExp(k, "i").test(raw);
-        } catch {
-          hit = false; // buzuq regex — qoida shunchaki ishlamaydi, bot yiqilmaydi
-        }
-        break;
-      default: // "contains"
-        hit = t.includes(low);
+    for (const v of variants) {
+      const low = v.toLowerCase();
+      switch (r.match_type) {
+        case "exact":
+          hit = t === low;
+          break;
+        case "starts":
+          hit = t.startsWith(low);
+          break;
+        case "regex":
+          try {
+            hit = new RegExp(v, "i").test(raw);
+          } catch {
+            hit = false; // buzuq regex — qoida shunchaki ishlamaydi, bot yiqilmaydi
+            trace?.push(`#${r.id} "${r.keyword}" (regex) — regex XATO, o'tkazib yuborildi`);
+          }
+          break;
+        default: // "contains"
+          hit = t.includes(low);
+      }
+      if (hit) break;
     }
     if (hit) return r;
+    trace?.push(`#${r.id} "${r.keyword}" (${r.match_type || "contains"}) — mos emas`);
   }
   return null;
 }

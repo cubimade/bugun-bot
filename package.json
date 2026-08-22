@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "test": "node --test 'tests/**/*.test.js'",
     "minify": "npx --yes esbuild public/app.js --minify --outfile=public/app.min.js && npx --yes esbuild public/app.css --minify --outfile=public/app.min.css"
   },
   "dependencies": {

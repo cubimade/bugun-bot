@@ -4,6 +4,7 @@
 // ============================================================
 
 import { IG_TOKEN } from "./config.js";
+import { sanitizeForInstagram } from "./services/sanitize.js";
 
 const BASE = "https://graph.instagram.com/v21.0";
 
@@ -68,7 +69,9 @@ export async function sendInstagramMessage(recipientId, text, token = IG_TOKEN) 
   try {
     const data = await igPost(
       `${BASE}/me/messages`,
-      { recipient: { id: recipientId }, message: { text } },
+      // ROADMAP-18 FAZA 3: IG markdown'ni render qilmaydi — yuborishdan
+      // oldingi oxirgi nuqtada tozalanadi (barcha yuborish yo'llari shu yerdan o'tadi)
+      { recipient: { id: recipientId }, message: { text: sanitizeForInstagram(text) } },
       token
     );
     if (data.error) {
@@ -101,7 +104,7 @@ export async function sendButtons(recipientId, text, buttons, token = IG_TOKEN) 
       `${BASE}/me/messages`,
       {
         recipient: { id: recipientId },
-        message: { text: String(text || "").slice(0, 1000), quick_replies: quickReplies },
+        message: { text: sanitizeForInstagram(text).slice(0, 1000), quick_replies: quickReplies },
       },
       token
     );
@@ -141,7 +144,7 @@ export async function sendInstagramImage(recipientId, imageUrl, token = IG_TOKEN
 // Kommentga ommaviy javob (komment ostiga).
 export async function replyToComment(commentId, text, token = IG_TOKEN) {
   try {
-    const data = await igPost(`${BASE}/${commentId}/replies`, { message: text }, token);
+    const data = await igPost(`${BASE}/${commentId}/replies`, { message: sanitizeForInstagram(text) }, token);
     if (data.error) {
       console.error("⚠️ Kommentga javob xatoligi:", JSON.stringify(data.error));
     } else {
@@ -157,7 +160,7 @@ export async function sendPrivateReply(commentId, text, token = IG_TOKEN) {
   try {
     const data = await igPost(
       `${BASE}/me/messages`,
-      { recipient: { comment_id: commentId }, message: { text } },
+      { recipient: { comment_id: commentId }, message: { text: sanitizeForInstagram(text) } },
       token
     );
     if (data.error) {

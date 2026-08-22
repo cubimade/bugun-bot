@@ -135,6 +135,10 @@ Qanday javob berasan:
 - Agar biror narsani bilmasang, halol ayt va Elbek bilan bog'lanishni taklif qil
 - Emoji'lardan me'yorida foydalanish mumkin
 
+Instagram DM matn formatlashni qo'llab-quvvatlamaydi. Markdown ISHLATMA:
+yulduzcha, pastki chiziq, sarlavha belgisi, kod belgisi yozma.
+Ro'yxat kerak bo'lsa • belgisidan foydalan. Oddiy matn yoz.
+
 Sen mijoz bilan birinchi aloqadasan — iliq va yordamga tayyor bo'l.`;
 
 // Kommentlarga javob uchun alohida, qisqaroq prompt.
@@ -144,7 +148,8 @@ Qoidalar:
 - JUDA qisqa javob ber — 1 gap, ko'pi bilan 2 gap.
 - Iliq, do'stona, samimiy ohang. 1-2 ta emoji ishlatsa bo'ladi.
 - Kommentga mos tabiiy javob yoz: minnatdorchilik, qisqa javob yoki savol bo'lsa DM'ga taklif.
-- Reklama qilma, ortiqcha uzun yozma.`;
+- Reklama qilma, ortiqcha uzun yozma.
+- Markdown ISHLATMA (yulduzcha, pastki chiziq, sarlavha belgisi) — Instagram uni ko'rsatmaydi, oddiy matn yoz.`;
 
 // 8.6: SOTUV REJIMI — sozlamalarda yoqilganda system promptga qo'shiladi.
 // Bot shunchaki javob bermaydi: ehtiyoj aniqlaydi, yechim taklif qiladi,

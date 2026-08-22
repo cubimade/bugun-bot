@@ -261,6 +261,12 @@ export function settingsContent() {
     </div>
 
     <div class="card">
+      <h3 style="margin-bottom:4px;display:flex;align-items:center;gap:8px">🧹 Tozalash</h3>
+      <p class="small muted" style="margin-bottom:14px">Test axlati va dublikatlar — aniqlanadi va ko'rsatiladi, hech narsa avtomatik o'chirilmaydi. O'chirishni siz tasdiqlaysiz.</p>
+      <div id="cleanupBody"><button class="btn btn-secondary" onclick="runCleanupScan(this)">Skanerlash</button></div>
+    </div>
+
+    <div class="card">
       <h3 style="margin-bottom:4px;display:flex;align-items:center;gap:8px">${ICONS.server} Tizim</h3>
       <p class="small muted" style="margin-bottom:16px">Server va database holati.</p>
       <div id="sysInfo"><div class="skeleton" style="height:100px"></div></div>

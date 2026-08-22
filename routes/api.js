@@ -31,11 +31,13 @@ import {
   createTelegramProject,
   logAudit,
 } from "../db.js";
+import { pool } from "../db/pool.js";
 import { getRecentErrors } from "../logger.js";
 import analyticsRouter from "./api-analytics.js";
 import broadcastRouter from "./api-broadcast.js";
 import settingsRouter from "./api-settings.js";
 import diagnosticsRouter from "./api-diagnostics.js";
+import cleanupRouter from "./api-cleanup.js";
 import automationRouter from "./api-automation.js";
 import flowsRouter from "./api-flows.js";
 import pipelineRouter from "./api-pipeline.js";
@@ -55,6 +57,7 @@ router.use(analyticsRouter);
 router.use(broadcastRouter);
 router.use(settingsRouter);
 router.use(diagnosticsRouter);
+router.use(cleanupRouter);
 router.use(automationRouter);
 router.use(flowsRouter);
 router.use(pipelineRouter);
@@ -97,6 +100,21 @@ router.delete("/api/accounts/:projectId", protect, async (req, res, next) => {
     console.log(`🗑 Akkaunt o'chirildi (loyiha ${projectId})`);
     logAudit(req.user?.email || "owner", "account_delete", `loyiha #${projectId}`).catch(() => {});
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ROADMAP-18 FAZA 6.5: akkauntga haqiqiy nom berish ("Dr. Dildora" kabi)
+router.post("/api/accounts/:projectId/rename", protect, async (req, res, next) => {
+  if (!requireDb(req, res)) return;
+  try {
+    const projectId = Number(req.params.projectId);
+    const name = String(req.body?.name || "").trim().slice(0, 60);
+    if (!name) return res.status(400).json({ error: "Nom bo'sh bo'lmasin" });
+    await pool.query(`UPDATE projects SET name = $2 WHERE id = $1`, [projectId, name]);
+    logAudit(req.user?.email || "owner", "account_rename", `loyiha #${projectId} → "${name}"`).catch(() => {});
+    res.json({ ok: true, name });
   } catch (err) {
     next(err);
   }

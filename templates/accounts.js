@@ -60,7 +60,7 @@ async function loadAccounts() {
       <div class="group-row" style="align-items:flex-start;flex-wrap:wrap">
         \${av}
         <div class="row-body">
-          <p class="row-title">\${esc(p.name)} <span class="pill \${p.active ? "pill-ok" : "pill-danger"}" title="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}">\${p.active ? "faol" : "nofaol"}</span></p>
+          <p class="row-title">\${esc(p.name)} <button class="btn btn-plain btn-sm" style="padding:1px 6px" data-tip="Nomni tahrirlash" onclick="renameAccount(\${p.id}, this)">${ICONS.pencil}</button> <span class="pill \${p.active ? "pill-ok" : "pill-danger"}" title="\${p.active ? "Faol — token bor" : "Nofaol — token yo'q"}">\${p.active ? "faol" : "nofaol"}</span></p>
           <p class="row-sub">\${subtitle}</p>
           <p class="row-sub" style="margin-top:2px">\${p.contacts} mijoz · \${p.messages} xabar · bilim bazasi \${p.knowledge_base ? "bor" : "bo'sh"}</p>
           \${badges ? \`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">\${badges}</div>\` : ""}
@@ -75,6 +75,28 @@ async function loadAccounts() {
       </div>\${i < projects.length - 1 ? '<div class="separator"></div>' : ""}\`;
     }).join("");
   } catch (e) { $("cards").innerHTML = emptyState('${ICONS.alert}', "Yuklashda xatolik: " + e.message); }
+}
+
+// ROADMAP-18 FAZA 6.5: akkauntga haqiqiy nom berish
+async function renameAccount(id, btn) {
+  const p = PROJECTS.find(function (x) { return x.id === id; });
+  openModal("Akkaunt nomi", '' +
+    '<label class="lbl">Yangi nom</label>' +
+    '<input class="input" id="renameInput" maxlength="60" value="' + esc(p ? p.name : "") + '" style="margin-bottom:14px" onkeydown="if(event.key===\\'Enter\\')doRename(' + id + ')">' +
+    '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+    '<button class="btn btn-plain" onclick="closeModal()">Bekor</button>' +
+    '<button class="btn btn-primary" onclick="doRename(' + id + ')">Saqlash</button></div>');
+  setTimeout(function () { $("renameInput").focus(); }, 50);
+}
+async function doRename(id) {
+  const name = $("renameInput").value.trim();
+  if (!name) return toast("Nom bo'sh bo'lmasin", false);
+  try {
+    await postJson("/api/accounts/" + id + "/rename", { name });
+    closeModal();
+    toast("Nom saqlandi");
+    loadAccounts();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
 }
 
 // 15: OAuth tokenini hozir uzaytirish (yana 60 kun)

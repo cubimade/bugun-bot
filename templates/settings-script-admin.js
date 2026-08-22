@@ -327,6 +327,68 @@ async function addApiKey(btn) {
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false;
 }
+// ============================================================
+//  ROADMAP-18 FAZA 6: Tozalash — skanerlash va tasdiqlab o'chirish
+// ============================================================
+async function runCleanupScan(btn) {
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Skanerlanmoqda...'; }
+  try {
+    const r = await api("/api/cleanup/scan");
+    const rows = [];
+
+    rows.push('<div class="group-row"><div class="row-body"><p class="row-title">Bo\\'sh akkauntlar: ' + r.emptyAccounts.length + ' ta</p>' +
+      '<p class="row-sub">0 kontakt, 0 xabar, token yo\\'q</p>' +
+      (r.emptyAccounts.length ? '<div class="small" style="margin-top:8px">' + r.emptyAccounts.map(function (a) {
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="flex:1">#' + a.id + " " + esc(a.name) + " (" + esc(a.platform || "instagram") + ")</span>" +
+          '<button class="btn btn-sm btn-danger" onclick="cleanupDeleteAccount(' + a.id + ', \\'' + esc(a.name).replace(/'/g, "\\\\'") + '\\')">O\\'chirish</button></div>';
+      }).join("") + "</div>" : "") + "</div></div>");
+
+    const dupCount = r.dupFlows.reduce(function (n, g) { return n + g.duplicates.length; }, 0);
+    rows.push('<div class="separator no-avatar"></div><div class="group-row"><div class="row-body"><p class="row-title">Dublikat flow\\'lar: ' + dupCount + ' ta</p>' +
+      '<p class="row-sub">Bir xil nomli nusxalar (asl nusxa saqlanadi)</p>' +
+      (dupCount ? '<div class="small" style="margin-top:8px">' + r.dupFlows.map(function (g) {
+        return g.duplicates.map(function (f) {
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="flex:1">#' + f.id + " " + esc(f.name) +
+            (f.active_contacts ? ' <span class="pill pill-warn">' + f.active_contacts + " faol mijoz</span>" : "") + "</span>" +
+            '<button class="btn btn-sm btn-danger" onclick="cleanupDeleteFlow(' + f.id + ', ' + f.active_contacts + ')">O\\'chirish</button></div>';
+        }).join("");
+      }).join("") + "</div>" : "") + "</div></div>");
+
+    rows.push('<div class="separator no-avatar"></div><div class="group-row"><div class="row-body"><p class="row-title">Ma\\'nosiz kalit so\\'z javoblari: ' + r.junkKeywords.length + ' ta</p>' +
+      '<p class="row-sub">Bo\\'sh yoki klaviatura-axlati javob matnlari</p>' +
+      (r.junkKeywords.length ? '<div class="small" style="margin-top:8px">' + r.junkKeywords.map(function (k) {
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="flex:1">"' + esc(k.keyword) + '" → <code>' + esc(k.reply_text || "(bo\\'sh)") + "</code></span>" +
+          '<a class="btn btn-sm btn-plain" href="/dashboard/keywords">Ko\\'rish</a></div>';
+      }).join("") + "</div>" : "") + "</div></div>");
+
+    rows.push('<div class="separator no-avatar"></div><div class="group-row"><div class="row-body"><p class="row-title">Ismsiz kontaktlar: ' + r.namelessContacts + ' ta</p>' +
+      '<p class="row-sub">Ism ham, @username ham yo\\'q — profil tortilmagan</p></div>' +
+      (r.namelessContacts ? '<a class="btn btn-sm btn-secondary" href="/dashboard/contacts" style="flex-shrink:0">Profillarni tortish</a>' : "") + "</div>");
+
+    $("cleanupBody").innerHTML = '<div class="group-list">' + rows.join("") + "</div>" +
+      '<button class="btn btn-plain btn-sm" style="margin-top:12px" onclick="runCleanupScan(this)">Qayta skanerlash</button>';
+  } catch (e) {
+    $("cleanupBody").innerHTML = '<span class="small muted">Skanerlanmadi: ' + esc(e.message) + "</span>";
+  }
+}
+async function cleanupDeleteAccount(id, name) {
+  if (!confirm('"' + name + '" akkaunti butunlay o\\'chirilsinmi? Bu amalni qaytarib bo\\'lmaydi.')) return;
+  try {
+    await api("/api/accounts/" + id, { method: "DELETE" });
+    toast("Akkaunt o'chirildi");
+    runCleanupScan();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+async function cleanupDeleteFlow(id, activeContacts) {
+  const warn = activeContacts ? " DIQQAT: " + activeContacts + " ta mijoz hozir shu flow ichida!" : "";
+  if (!confirm("#" + id + " flow o'chirilsinmi?" + warn)) return;
+  try {
+    await api("/api/flows/" + id, { method: "DELETE" });
+    toast("Flow o'chirildi");
+    runCleanupScan();
+  } catch (e) { toast("Xatolik: " + e.message, false); }
+}
+
 initInteg();
 initUsers();
 loadSettings(); loadSystem(); loadQuickReplies();`;

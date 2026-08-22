@@ -127,7 +127,9 @@ export async function getProjectActivity(projectId) {
 // Akkaunt tokeni (broadcast/qo'lda javob uchun)
 export async function getProjectToken(projectId) {
   const { rows } = await pool.query(
-    `SELECT id, name, ig_account_id, access_token, platform, tg_username
+    `SELECT id, name, ig_account_id, access_token, platform, tg_username,
+            ig_app_id, app_setup_status, app_setup_error, granted_scopes,
+            token_expires_at, token_source
        FROM projects WHERE id = $1`,
     [projectId]
   );

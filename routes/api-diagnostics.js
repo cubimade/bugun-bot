@@ -26,6 +26,24 @@ router.get("/api/cron-runs", protect, async (req, res, next) => {
 
 const SETUP_URL = "https://developers.facebook.com/apps";
 
+// ROADMAP-19 FAZA 5.1: Meta xato kodlari — tushunarli o'zbekcha.
+// Har xabar: nima bo'ldi + nima qilish kerak.
+export const ERROR_HINTS = {
+  100:
+    "So'rov parametrlari noto'g'ri, yoki bu akkaunt ilovaga ulanmagan. " +
+    "Ilova o'z Meta hisobingizda yaratilganini tekshiring (sozlash sehrgari: Akkauntlar → Ulash).",
+  190: "Token eskirgan yoki bekor qilingan — akkauntni qayta ulang.",
+  200: "Ruxsat yetarli emas — Meta panelida kerakli ruxsatlarni bering.",
+  4: "So'rovlar chegarasi oshib ketdi — bir necha daqiqadan keyin urinib ko'ring.",
+  10: "Bu amal uchun ilovada ruxsat yo'q.",
+};
+
+// Meta xatosiga tarjima qo'shish (kod topilsa)
+export function withErrorHint(text, code) {
+  const hint = ERROR_HINTS[Number(code)];
+  return hint ? `${text} — ${hint}` : text;
+}
+
 router.get("/api/accounts/:projectId/diagnostics", protect, async (req, res, next) => {
   if (!requireDb(req, res)) return;
   try {
@@ -54,7 +72,8 @@ router.get("/api/accounts/:projectId/diagnostics", protect, async (req, res, nex
               fix: "ID yoki token noto'g'ri juftlangan — sehrgarning 4-qadamidan to'g'ri juftlikni oling.",
             };
       } else if (check.ok === false) {
-        tokenRes = { status: "err", text: "Instagram tokenni rad etdi: " + check.error, fix: `Yangi token oling: ${SETUP_URL} → Instagram → API setup → Generate token, so'ng akkauntni qayta qo'shing (eski yozuv ustidan yangilanadi).` };
+        // FAZA 5.1: Meta xato kodi tushunarli tarjima bilan
+        tokenRes = { status: "err", text: withErrorHint("Instagram tokenni rad etdi: " + check.error, check.code), fix: `Yangi token oling: ${SETUP_URL} → Instagram → API setup → Generate token, so'ng akkauntni qayta qo'shing (eski yozuv ustidan yangilanadi).` };
       } else {
         tokenRes = { status: "unknown", text: "Tarmoq xatosi — tekshirib bo'lmadi: " + check.error };
       }
@@ -92,6 +111,41 @@ router.get("/api/accounts/:projectId/diagnostics", protect, async (req, res, nex
       };
     }
 
+    // 3.5) ROADMAP-19 FAZA 5: ilova sozlamasi — o'z ilovasimi, umumiymi
+    let appRes;
+    if (project.app_setup_status === "error") {
+      appRes = {
+        status: "err",
+        text: "Ilova sozlamasida xato: " + (project.app_setup_error || "sabab yozilmagan"),
+        fix: "Sozlash sehrgarini qayta oching (Akkauntlar → Ulash → Sozlash sehrgari).",
+      };
+    } else if (project.ig_app_id) {
+      appRes = { status: "ok", text: `O'z ilovasi ulangan (App ID ${project.ig_app_id}) — tester roli kerak emas` };
+    } else if (project.platform === "telegram") {
+      appRes = { status: "ok", text: "Telegram — Meta ilovasi kerak emas" };
+    } else {
+      appRes = {
+        status: "warn",
+        text: "Umumiy (global) ilova ishlatilmoqda",
+        fix: "Standard Access'da faqat ilovada roli bor akkauntlar ishlaydi. O'z ilovangizni ulash uchun sozlash sehrgarini oching — tester roli kerak bo'lmaydi.",
+      };
+    }
+
+    // 3.6) Ruxsatlar — OAuth'da berilgan scope'lar (bazadagi granted_scopes)
+    let permsRes;
+    const scopes = String(project.granted_scopes || "");
+    if (project.platform === "telegram") {
+      permsRes = { status: "ok", text: "Telegram — Meta ruxsatlari talab qilinmaydi" };
+    } else if (!scopes) {
+      permsRes = { status: "unknown", text: "Ruxsatlar ro'yxati yo'q (qo'lda token bilan ulangan bo'lishi mumkin)" };
+    } else {
+      const need = ["instagram_business_basic", "instagram_business_manage_messages"];
+      const missing = need.filter((s) => !scopes.includes(s));
+      permsRes = missing.length
+        ? { status: "err", text: "Ruxsat berilmagan: " + missing.join(", "), fix: "Akkauntni qayta ulang va so'ralgan barcha ruxsatlarga rozilik bering." }
+        : { status: "ok", text: "Kerakli ruxsatlar berilgan (" + scopes.split(",").length + " ta)" };
+    }
+
     // 4) Bilim bazasi
     const kb = await getProjectKnowledge(projectId);
     const kbLen = (kb || "").length;
@@ -104,7 +158,7 @@ router.get("/api/accounts/:projectId/diagnostics", protect, async (req, res, nex
 
     res.json({
       project: { id: project.id, name: project.name, ig_account_id: project.ig_account_id },
-      checks: { token: tokenRes, webhook: webhookRes, activity: activityRes, knowledge: kbRes },
+      checks: { token: tokenRes, app: appRes, permissions: permsRes, webhook: webhookRes, activity: activityRes, knowledge: kbRes },
     });
   } catch (err) {
     next(err);

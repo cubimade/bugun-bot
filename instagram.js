@@ -30,7 +30,8 @@ export async function verifyToken(token) {
     });
     const data = await r.json();
     if (data.error) {
-      return { ok: false, error: data.error.message || "Token noto'g'ri" };
+      // code — diagnostikada tushunarli tarjima uchun (ROADMAP-19 FAZA 5)
+      return { ok: false, error: data.error.message || "Token noto'g'ri", code: data.error.code };
     }
     return {
       ok: true,

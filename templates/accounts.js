@@ -259,6 +259,8 @@ async function wizFinish() {
 const DIAG_ICON = { ok: '${ICONS.check}', warn: '${ICONS.alert}', err: '${ICONS.close}', unknown: '${ICONS.helpCircle}' };
 const DIAG_LABEL = {
   token: '${ICONS.key} Token holati',
+  app: '${ICONS.puzzle} Ilova sozlamasi',
+  permissions: '${ICONS.lock} Ruxsatlar',
   webhook: '${ICONS.zap} Webhook obunasi',
   activity: '${ICONS.trendingUp} Faollik',
   knowledge: '${ICONS.knowledge} Bilim bazasi',
@@ -270,6 +272,7 @@ async function runDiagnostics(projectId) {
     const r = await api("/api/accounts/" + projectId + "/diagnostics");
     $("modalBody").innerHTML = Object.keys(DIAG_LABEL).map((k) => {
       const c = r.checks[k];
+      if (!c) return "";
       return \`<div class="card" style="padding:11px 13px;margin-bottom:9px">
         <div style="display:flex;align-items:flex-start;gap:9px">
           <span style="display:flex;color:var(--text-2)">\${DIAG_ICON[c.status] || '${ICONS.helpCircle}'}</span>

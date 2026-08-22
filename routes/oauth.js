@@ -11,7 +11,13 @@ import express from "express";
 import { protect } from "../middleware/auth.js";
 import { state, ACCOUNTS_MAP } from "../state.js";
 import * as oauth from "../services/instagram-oauth.js";
-import { upsertOAuthProject, logAudit } from "../db.js";
+import { getAppConfig } from "../services/project-config.js";
+import {
+  upsertOAuthProject,
+  attachOAuthAccountToProject,
+  setAppSetupStatus,
+  logAudit,
+} from "../db.js";
 import { renderOAuthSuccessPage, renderOAuthErrorPage } from "../templates/oauth-pages.js";
 
 const router = express.Router();
@@ -25,17 +31,6 @@ const NOT_CONFIGURED_HINT =
 //  BOSHLASH — state yaratiladi va Instagram'ga yo'naltiriladi
 // ------------------------------------------------------------
 router.get("/auth/instagram", protect, async (req, res) => {
-  if (!oauth.isConfigured()) {
-    return res
-      .status(503)
-      .send(
-        renderOAuthErrorPage(
-          "Sozlanmagan",
-          "Yetishmayotgan sozlama: " + oauth.missingConfig().join(", "),
-          NOT_CONFIGURED_HINT
-        )
-      );
-  }
   // state DB'ga yoziladi — database o'chiq bo'lsa CSRF himoyasi ishlamaydi
   if (!state.DB_READY) {
     return res
@@ -49,8 +44,25 @@ router.get("/auth/instagram", protect, async (req, res) => {
       );
   }
 
+  // ROADMAP-19 FAZA 2: ?project=<id> — o'sha loyihaning ilova sozlamalari
+  // bilan ulash (mijozning o'z Meta ilovasi). Berilmasa — global (eski oqim).
+  const projectId = Number(req.query.project) || null;
+  const cfg = await getAppConfig(projectId);
+
+  if (!oauth.isConfigured(cfg)) {
+    return res
+      .status(503)
+      .send(
+        renderOAuthErrorPage(
+          "Sozlanmagan",
+          "Yetishmayotgan sozlama: " + oauth.missingConfig(cfg).join(", "),
+          NOT_CONFIGURED_HINT
+        )
+      );
+  }
+
   try {
-    res.redirect(await oauth.buildAuthUrl());
+    res.redirect(await oauth.buildAuthUrl(cfg, projectId));
   } catch (err) {
     oauth.reportOAuthError(err);
     res.status(500).send(renderOAuthErrorPage("Xatolik", err.message));
@@ -81,14 +93,15 @@ router.get("/auth/instagram/callback", async (req, res) => {
     return res.status(503).send(renderOAuthErrorPage("Database o'chiq", "Akkauntni saqlab bo'lmadi."));
   }
 
-  // CSRF: state bir martalik va 15 daqiqalik
-  let stateOk = false;
+  // CSRF: state bir martalik va 15 daqiqalik.
+  // FAZA 2: state loyiha kontekstini olib yuradi — { projectId, appId } | null
+  let stateData = null;
   try {
-    stateOk = await oauth.consumeState(stateParam);
+    stateData = await oauth.consumeState(stateParam);
   } catch (err) {
     oauth.reportOAuthError(err);
   }
-  if (!stateOk) {
+  if (!stateData) {
     return res
       .status(400)
       .send(
@@ -101,12 +114,15 @@ router.get("/auth/instagram/callback", async (req, res) => {
   }
 
   try {
+    // FAZA 2: loyiha konteksti bo'lsa — o'sha loyihaning ilova secret'i bilan
+    const cfg = await getAppConfig(stateData.projectId);
     // code → qisqa token → uzoq token (60 kun) → profil
-    const { token, expiresIn, permissions, profile } = await oauth.completeFlow(code);
+    const { token, expiresIn, permissions, profile } = await oauth.completeFlow(code, cfg);
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    // Bor bo'lsa yangilanadi, bo'lmasa qo'shiladi (dublikat yaratilmaydi)
-    const { projectId, created } = await upsertOAuthProject({
+    // Loyiha konteksti bor — akkaunt O'SHA loyihaga biriktiriladi (sehrgar oqimi);
+    // yo'q bo'lsa — eski upsert (ig_account_id bo'yicha, dublikat yaratilmaydi)
+    const saveArgs = {
       igAccountId: profile.instagramId,
       appScopedId: profile.appScopedId,
       name: profile.username ? "@" + profile.username : profile.name || "Yangi akkaunt",
@@ -116,7 +132,15 @@ router.get("/auth/instagram/callback", async (req, res) => {
       token,
       expiresAt,
       scopes: permissions,
-    });
+    };
+    const { projectId, created } = stateData.projectId
+      ? await attachOAuthAccountToProject(stateData.projectId, saveArgs)
+      : await upsertOAuthProject(saveArgs);
+
+    // O'z ilovasi bilan ulangan loyiha — holat 'ready'
+    if (cfg.source === "project") {
+      await setAppSetupStatus(projectId, "ready", "OAuth muvaffaqiyatli").catch(() => {});
+    }
 
     // Xotira xaritasi — restart kutmasdan darhol ishlasin.
     // Ikkala kalit ham ro'yxatga olinadi: webhook entry.id haqiqiy akkaunt IDsi

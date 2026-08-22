@@ -18,7 +18,7 @@
 // ============================================================
 import crypto from "crypto";
 
-import { IG_APP_ID, IG_APP_SECRET, OAUTH_REDIRECT_URI } from "../config.js";
+import { globalAppConfig } from "./project-config.js";
 import { saveOAuthState, consumeOAuthState } from "../db.js";
 import { recordError } from "../logger.js";
 
@@ -37,31 +37,37 @@ export const SCOPES = [
 // Uzoq muddatli token amal qilish muddati (Meta standarti): 60 kun
 const SIXTY_DAYS_SEC = 5184000;
 
-// Env to'liq sozlanganmi? Sozlanmasa server yiqilmaydi — UI'da tugma
-// o'chirilgan holatda ko'rinadi (isConfigured() shu uchun kerak).
-export function isConfigured() {
-  return Boolean(IG_APP_ID && IG_APP_SECRET && OAUTH_REDIRECT_URI);
+// Sozlamalar to'liqmi? cfg berilmasa global env tekshiriladi. Sozlanmasa
+// server yiqilmaydi — UI'da tugma o'chirilgan holatda ko'rinadi.
+// ROADMAP-19 FAZA 2: cfg — loyihaning o'z ilovasi yoki global (project-config.js).
+export function isConfigured(cfg = null) {
+  const c = cfg || globalAppConfig();
+  return Boolean(c.igAppId && c.igAppSecret && c.redirectUri);
 }
 
 // Nima yetishmayotganini aniq aytish (tooltip va xato sahifasi uchun)
-export function missingConfig() {
+export function missingConfig(cfg = null) {
+  const c = cfg || globalAppConfig();
   const miss = [];
-  if (!IG_APP_ID) miss.push("IG_APP_ID");
-  if (!IG_APP_SECRET) miss.push("IG_APP_SECRET");
-  if (!OAUTH_REDIRECT_URI) miss.push("OAUTH_REDIRECT_URI (yoki BASE_URL)");
+  if (!c.igAppId) miss.push("IG_APP_ID");
+  if (!c.igAppSecret) miss.push("IG_APP_SECRET");
+  if (!c.redirectUri) miss.push("OAUTH_REDIRECT_URI (yoki BASE_URL)");
   return miss;
 }
 
 // ------------------------------------------------------------
 //  1-qadam: authorize URL (state — CSRF himoyasi, bir martalik)
+//  cfg — loyihaning ilova sozlamalari; projectId state bilan saqlanadi,
+//  callback'da o'sha loyihaning secret'i ishlatiladi.
 // ------------------------------------------------------------
-export async function buildAuthUrl() {
+export async function buildAuthUrl(cfg = null, projectId = null) {
+  const c = cfg || globalAppConfig();
   const state = crypto.randomBytes(24).toString("hex");
-  await saveOAuthState(state);
+  await saveOAuthState(state, projectId ?? c.projectId, c.igAppId);
 
   const params = new URLSearchParams({
-    client_id: IG_APP_ID,
-    redirect_uri: OAUTH_REDIRECT_URI,
+    client_id: c.igAppId,
+    redirect_uri: c.redirectUri,
     response_type: "code",
     scope: SCOPES,
     state,
@@ -69,7 +75,8 @@ export async function buildAuthUrl() {
   return `https://www.instagram.com/oauth/authorize?${params.toString()}`;
 }
 
-// state tekshirish — ikkinchi marta ishlatilsa false qaytadi
+// state tekshirish — yaroqli bo'lsa { projectId, appId }, aks holda null.
+// Ikkinchi marta ishlatilsa ham null (bir martalik).
 export async function consumeState(state) {
   return consumeOAuthState(state);
 }
@@ -95,12 +102,13 @@ function errText(json, res) {
 // ------------------------------------------------------------
 //  2-qadam: code → qisqa muddatli token (1 soat)
 // ------------------------------------------------------------
-export async function exchangeCodeForToken(code) {
+export async function exchangeCodeForToken(code, cfg = null) {
+  const c = cfg || globalAppConfig();
   const body = new URLSearchParams({
-    client_id: IG_APP_ID,
-    client_secret: IG_APP_SECRET,
+    client_id: c.igAppId,
+    client_secret: c.igAppSecret,
     grant_type: "authorization_code",
-    redirect_uri: OAUTH_REDIRECT_URI,
+    redirect_uri: c.redirectUri,
     code,
   });
 
@@ -235,10 +243,11 @@ async function graphTokenRequest(path, params, errPrefix, tokenForDiag) {
 // ------------------------------------------------------------
 //  3-qadam: qisqa → uzoq muddatli token (60 kun)
 // ------------------------------------------------------------
-export async function exchangeForLongLived(shortToken) {
+export async function exchangeForLongLived(shortToken, cfg = null) {
+  const c = cfg || globalAppConfig();
   const params = new URLSearchParams({
     grant_type: "ig_exchange_token",
-    client_secret: IG_APP_SECRET,
+    client_secret: c.igAppSecret,
     access_token: shortToken,
   });
   return graphTokenRequest("/access_token", params, "Uzoq muddatli token olinmadi", shortToken);
@@ -383,13 +392,15 @@ async function profileOrMinimal(token, fallbackUserId) {
 }
 
 // To'liq oqim: code → uzoq muddatli token + profil (route'ni yengil saqlaydi)
-export async function completeFlow(code) {
+// cfg — loyihaning ilova sozlamalari (berilmasa global env)
+export async function completeFlow(code, cfg = null) {
+  const c = cfg || globalAppConfig();
   // Instagram ba'zan code oxiriga "#_" qo'shib yuboradi — kesib tashlaymiz
   const cleanCode = String(code || "").split("#")[0];
   if (!cleanCode) throw new Error("Instagram `code` qaytarmadi");
 
   const { shortToken, expiresIn: codeExpiresIn, userId, permissions } =
-    await exchangeCodeForToken(cleanCode);
+    await exchangeCodeForToken(cleanCode, c);
 
   // 1-holat: Meta bu qadamda ALLAQACHON uzoq muddatli token berdi —
   // ig_exchange_token qadami ortiqcha (u "Unsupported request" beradi)
@@ -403,7 +414,7 @@ export async function completeFlow(code) {
 
   // 2-holat: oddiy yo'l — qisqa tokenni uzoqqa almashtiramiz
   try {
-    const { token, expiresIn } = await exchangeForLongLived(shortToken);
+    const { token, expiresIn } = await exchangeForLongLived(shortToken, c);
     const profile = await profileOrMinimal(token, userId);
     return { token, expiresIn, permissions, profile };
   } catch (err) {

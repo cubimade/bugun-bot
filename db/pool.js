@@ -413,6 +413,11 @@ export async function initDb() {
     );
     CREATE INDEX IF NOT EXISTS idx_oauth_states_created ON oauth_states(created_at);
 
+    -- ROADMAP-19 FAZA 2: state loyiha kontekstini olib yuradi — callback'da
+    -- qaysi loyihaning ilova sozlamalari bilan token almashtirilishi aniqlanadi
+    ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS project_id INTEGER;
+    ALTER TABLE oauth_states ADD COLUMN IF NOT EXISTS app_id TEXT;
+
     -- 16 (2.1): Mijoz profili — raqamli IGSID o'rniga @username va rasm.
     -- profile_pic URL'i VAQTINCHALIK (Meta muddatini tugatadi) — shuning uchun
     -- rasm emas, URL saqlanadi va profile_fetched_at bo'yicha qayta olinadi.

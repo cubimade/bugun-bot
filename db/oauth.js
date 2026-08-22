@@ -10,22 +10,28 @@ import { pool } from "./pool.js";
 // ------------------------------------------------------------
 //  STATE (CSRF) — yaratish, bir marta ishlatish, tozalash
 // ------------------------------------------------------------
-export async function saveOAuthState(state) {
-  await pool.query(`INSERT INTO oauth_states (state) VALUES ($1)`, [state]);
+// ROADMAP-19 FAZA 2: state loyiha kontekstini olib yuradi (project_id, app_id)
+export async function saveOAuthState(state, projectId = null, appId = null) {
+  await pool.query(
+    `INSERT INTO oauth_states (state, project_id, app_id) VALUES ($1, $2, $3)`,
+    [state, projectId || null, appId || null]
+  );
 }
 
 // Bir martalik: UPDATE ... RETURNING — ikkinchi urinishda qator qaytmaydi.
 // 15 daqiqadan eski state ham qabul qilinmaydi.
+// Natija: null (yaroqsiz) yoki { projectId, appId } (yaroqli).
 export async function consumeOAuthState(state) {
-  if (!state) return false;
+  if (!state) return null;
   const { rows } = await pool.query(
     `UPDATE oauth_states SET used = TRUE
       WHERE state = $1 AND used = FALSE
         AND created_at > now() - INTERVAL '15 minutes'
-      RETURNING state`,
+      RETURNING state, project_id, app_id`,
     [String(state)]
   );
-  return rows.length > 0;
+  if (!rows.length) return null;
+  return { projectId: rows[0].project_id || null, appId: rows[0].app_id || null };
 }
 
 // Eski yozuvlarni tozalash (jadval cheksiz o'smasin)
@@ -115,6 +121,70 @@ export async function updateProjectIdentity(projectId, { igAccountId, username, 
       WHERE id = $1`,
     [projectId, igAccountId || null, username || null, fullName || null, picture || null]
   );
+}
+
+// ------------------------------------------------------------
+//  ROADMAP-19 FAZA 2: akkauntni MAVJUD loyihaga biriktirish
+//  (?project=<id> bilan boshlangan OAuth — sehrgar loyihasi).
+//  Agar shu ig_account_id allaqachon BOSHQA loyihada bo'lsa — o'sha
+//  loyiha yangilanadi (dublikat yaratilmaydi) va uning id'si qaytadi.
+// ------------------------------------------------------------
+export async function attachOAuthAccountToProject(
+  projectId,
+  { igAccountId, appScopedId, username, fullName, picture, token, expiresAt, scopes }
+) {
+  const { rows: existing } = await pool.query(
+    `SELECT id FROM projects WHERE ig_account_id = $1 AND id <> $2 LIMIT 1`,
+    [String(igAccountId), projectId]
+  );
+  const targetId = existing[0]?.id || projectId;
+  if (existing[0]) {
+    console.warn(
+      `⚠️ Akkaunt ${igAccountId} allaqachon loyiha ${existing[0].id} da — o'sha loyiha yangilanadi (so'ralgan: ${projectId})`
+    );
+  }
+  await pool.query(
+    `UPDATE projects
+        SET ig_account_id = $2,
+            app_scoped_id = COALESCE($3, app_scoped_id),
+            ig_username = COALESCE($4, ig_username),
+            ig_name = COALESCE($5, ig_name),
+            profile_picture_url = COALESCE($6, profile_picture_url),
+            access_token = $7,
+            token_expires_at = $8,
+            token_source = 'oauth',
+            token_last_refreshed_at = now(),
+            granted_scopes = $9,
+            platform = 'instagram',
+            name = CASE
+              WHEN $4 IS NOT NULL AND (name = 'Yangi akkaunt' OR name LIKE 'IG %')
+                THEN '@' || $4
+              ELSE name END
+      WHERE id = $1`,
+    [
+      targetId,
+      String(igAccountId),
+      appScopedId ? String(appScopedId) : null,
+      username || null,
+      fullName || null,
+      picture || null,
+      token,
+      expiresAt,
+      scopes || null,
+    ]
+  );
+  return { projectId: targetId, created: false };
+}
+
+// Sehrgar/OAuth muvaffaqiyatida holatni belgilash
+export async function setAppSetupStatus(projectId, status, note = null) {
+  await pool.query(
+    `UPDATE projects
+        SET app_setup_status = $2, app_setup_checked_at = now()
+      WHERE id = $1`,
+    [projectId, status]
+  );
+  if (note) console.log(`ℹ️ Loyiha ${projectId} app holati: ${status} (${note})`);
 }
 
 // ------------------------------------------------------------

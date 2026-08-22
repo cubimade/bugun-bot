@@ -362,12 +362,27 @@ async function toggleArchive() {
     toast(v ? "Suhbat arxivlandi" : "Arxivdan chiqarildi");
   } catch (e) { toast("Xatolik: " + e.message, false); }
 }
+// ROADMAP-18 FAZA 1: avto-scroll — ochilganda darrov pastga, yangi xabarda
+// foydalanuvchi pastda bo'lsa yumshoq scroll, yuqorida bo'lsa "↓ Yangi xabar" tugmasi.
+function scrollToBottom(smooth) {
+  const el = $("chatMsgs");
+  if (!el) return;
+  el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "instant" });
+}
+function isNearBottom() {
+  const el = $("chatMsgs");
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+}
+function hideNewMsgBtn() { $("newMsgBtn").classList.remove("show"); }
+
 let MSG_COUNT = 0;
 let LAST_MSGS = [];
 function renderMessages(messages, highlightNew) {
   LAST_MSGS = messages;
   if (!messages.length) { $("chatMsgs").innerHTML = emptyState(ICON.chat, "Xabarlar yo'q"); MSG_COUNT = 0; return; }
   const prevCount = MSG_COUNT;
+  const wasNearBottom = isNearBottom();
   $("chatMsgs").innerHTML = messages.map((m, i) => {
     const op = m.role === "assistant" && m.is_operator;
     const fresh = highlightNew && i >= prevCount;
@@ -393,7 +408,17 @@ function renderMessages(messages, highlightNew) {
     </div>\`;
   }).join("");
   MSG_COUNT = messages.length;
-  $("chatMsgs").scrollTop = $("chatMsgs").scrollHeight;
+  if (!highlightNew) {
+    // Suhbat endi ochildi — darrov oxirgi xabarga
+    scrollToBottom(false);
+    hideNewMsgBtn();
+  } else if (wasNearBottom) {
+    scrollToBottom(true);
+    hideNewMsgBtn();
+  } else if (messages.length > prevCount) {
+    // Foydalanuvchi yuqorida o'qiyapti — tegmaymiz, tugma ko'rsatamiz
+    $("newMsgBtn").classList.add("show");
+  }
 }
 // D5: bahoni saqlash va lokal yangilash (scroll saqlanadi)
 async function rateMsg(id, value) {
@@ -421,6 +446,7 @@ async function sendReply() {
   try {
     await postJson("/api/reply", { contactId: SELECTED, text });
     $("replyText").value = "";
+    $("replyText").style.height = "auto";
     toast("Javob yuborildi — bot 30 daqiqa pauzada");
     const { contact, messages } = await api("/api/conversation/" + SELECTED);
     CURRENT = contact; renderChatHead(); renderMessages(messages);
@@ -429,6 +455,7 @@ async function sendReply() {
     renderList();
   } catch (e) { toast("Xatolik: " + e.message, false); }
   btn.disabled = false; btn.innerHTML = 'Yuborish';
+  $("replyText").focus();
 }
 
 async function resolveHuman() {
@@ -501,6 +528,11 @@ setInterval(async () => {
 $("replyText").addEventListener("input", function () {
   this.style.height = "auto";
   this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
+
+// Foydalanuvchi o'zi pastga tushsa — "Yangi xabar" tugmasi yashirinadi
+$("chatMsgs").addEventListener("scroll", function () {
+  if (isNearBottom()) hideNewMsgBtn();
 });
 
 loadData();`;

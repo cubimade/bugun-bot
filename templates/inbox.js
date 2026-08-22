@@ -15,8 +15,10 @@ import { inboxScript } from "./inbox-script.js";
 export function renderInboxPage() {
   const content = `
   <style>
-    .inbox-wrap { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 170px); min-height: 460px; border: 1px solid var(--glass-border); border-radius: 18px; overflow: hidden; background: var(--glass-bg); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); }
-    .conv-list { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; }
+    /* ROADMAP-18 FAZA 1: grid bolalari default min-height:auto — kontent ularni
+       cho'zib, composer ekrandan chiqib ketardi. min-height:0 ichki scroll'ni tiklaydi. */
+    .inbox-wrap { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 170px); height: calc(100dvh - 170px); min-height: 460px; border: 1px solid var(--glass-border); border-radius: 18px; overflow: hidden; background: var(--glass-bg); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%); box-shadow: var(--shadow-glass), inset 0 1px 0 var(--rim-light); }
+    .conv-list { border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
     .conv-tools { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 9px; }
     .filters { display: flex; gap: 6px; flex-wrap: wrap; }
     .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; background: var(--panel2); color: var(--muted); border: 1px solid var(--border); cursor: pointer; transition: all .18s; }
@@ -29,9 +31,11 @@ export function renderInboxPage() {
     .conv-item.sel { background: rgba(99,102,241,.12); border-left-color: var(--accent); }
     .conv-item.human { border-left-color: var(--warn); }
     .conv-item.human.sel { border-left-color: var(--accent); }
-    .chat-pane { display: flex; flex-direction: column; min-width: 0; background: var(--glass-bg); }
-    .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--row-hover); display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
-    .chat-msgs { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 4px; }
+    .chat-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--glass-bg); position: relative; }
+    .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--row-hover); display: flex; align-items: center; gap: 11px; flex-wrap: wrap; flex-shrink: 0; }
+    .chat-msgs { flex: 1; overflow-y: auto; min-height: 0; padding: 18px 16px; display: flex; flex-direction: column; gap: 4px; }
+    .new-msg-btn { position: absolute; bottom: 84px; left: 50%; transform: translateX(-50%); z-index: 5; display: none; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--glass-border); background: var(--gradient-brand); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 18px rgba(99,102,241,.35); animation: bubbleIn .22s ease; }
+    .new-msg-btn.show { display: inline-flex; }
     .bubble-row { display: flex; margin-bottom: 6px; animation: bubbleIn .22s ease; }
     @keyframes bubbleIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
     .bubble { max-width: 74%; padding: 9px 13px; border-radius: 16px; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
@@ -45,11 +49,12 @@ export function renderInboxPage() {
     .op-tag svg { width: 11px; height: 11px; vertical-align: -1px; margin-right: 3px; }
     .bubble-row.fresh .bubble { animation: freshGlow 1.8s ease; }
     @keyframes freshGlow { 0% { box-shadow: 0 0 0 3px rgba(34,211,238,.45); } 100% { box-shadow: 0 0 0 3px rgba(34,211,238,0); } }
-    .composer { padding: 12px; border-top: 1px solid var(--border); background: var(--row-hover); display: flex; gap: 9px; align-items: flex-end; }
+    .composer { padding: 12px; border-top: 1px solid var(--border); background: var(--row-hover); display: flex; gap: 9px; align-items: flex-end; flex-shrink: 0; position: sticky; bottom: 0; }
     .composer textarea { resize: none; max-height: 120px; min-height: 42px; }
     .back-btn { display: none; }
     @media (max-width: 900px) {
-      .inbox-wrap { grid-template-columns: 1fr; height: calc(100vh - 150px); }
+      /* 100dvh — mobil klaviatura ochilganda composer ko'rinib turishi uchun */
+      .inbox-wrap { grid-template-columns: 1fr; height: calc(100vh - 150px); height: calc(100dvh - 150px); }
       .chat-pane { display: none; }
       .inbox-wrap.chat-open .conv-list { display: none; }
       .inbox-wrap.chat-open .chat-pane { display: flex; }
@@ -72,6 +77,7 @@ export function renderInboxPage() {
       <div id="chatEmpty" class="empty" style="margin:auto"><span class="empty-ic">${ICONS.messageCircle}</span>Suhbatni tanlang<br><span class="small muted">Chapdagi ro'yxatdan mijozni bosing</span></div>
       <div class="chat-head" id="chatHead" style="display:none"></div>
       <div class="chat-msgs" id="chatMsgs" style="display:none"></div>
+      <button class="new-msg-btn" id="newMsgBtn" onclick="scrollToBottom(true);hideNewMsgBtn()">↓ Yangi xabar</button>
       <div class="composer" id="composer" style="display:none">
         <button class="btn btn-plain" onclick="openQuickReplies()" data-tip="Tezkor javoblar" style="padding:9px 12px">${ICONS.zap}</button>
         <button class="btn btn-plain" onclick="openMediaPicker()" data-tip="Media yuborish" style="padding:9px 12px">${ICONS.media}</button>

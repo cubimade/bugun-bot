@@ -132,24 +132,24 @@ export async function exchangeCodeForToken(code) {
 //  graph.instagram.com token endpointlari uchun umumiy so'rov
 //  (/access_token va /refresh_access_token — ikkalasi bir xil ishlaydi)
 //
-//  Meta hujjati bo'yicha usul — GET, host — graph.instagram.com, versiyasiz:
-//    GET graph.instagram.com/access_token
+//  Meta hujjati (2026-08 da qayta tekshirildi:
+//  developers.facebook.com/docs/instagram-platform/reference/access_token):
+//    GET graph.instagram.com/access_token   (versiyasiz)
 //        ?grant_type=ig_exchange_token&client_secret=...&access_token=...
-//  (POST api.instagram.com/oauth/access_token faqat 2-qadam — code almashinuvi.)
+//  client_secret — INSTAGRAM ilova sirri (Instagram > API setup sahifasidan),
+//  Meta App > Settings > Basic'dagi sir EMAS.
 //
-//  BIROQ Meta ba'zi ilovalarda bu GET'ni rad etadi:
-//    {"error":{"message":"Unsupported request - method type: get",
-//              "type":"GraphMethodException","code":100}}
-//  Endpoint POST'ni ham qabul qiladi, shuning uchun aynan shu xatoda
-//  AYNI URL POST bilan bir marta qayta so'raladi (boshqa xatolarda emas —
-//  aks holda haqiqiy sabab yashirinib qoladi).
+//  Amaliyotda "Unsupported request - method type: get/post" (code 100,
+//  IGApiException) kuzatildi. Empirik tekshiruv: parametr yetishmasa yoki
+//  token buzuq bo'lsa Meta BOSHQA xato beradi ("Failed to decrypt" / 190),
+//  ya'ni bu xato token muvaffaqiyatli dekript qilingandan KEYIN chiqadi —
+//  odatda client_secret ilovaga mos kelmasligi yoki ilova turi noto'g'ri
+//  bo'lganda. Shu sabab 3 variant ketma-ket sinaladi va har muvaffaqiyatsiz
+//  javob TO'LIQ (token qiymatlarisiz) loglanadi:
+//    1) GET  versiyasiz  (hujjatdagi rasmiy usul)
+//    2) POST versiyasiz  (form-urlencoded body)
+//    3) GET  versiyali   (/v23.0/access_token — ba'zi ilovalarda shu ishlaydi)
 // ------------------------------------------------------------
-function isMethodError(json) {
-  return (
-    json?.error?.type === "GraphMethodException" ||
-    /method type/i.test(String(json?.error?.message || ""))
-  );
-}
 
 // Xavfsiz diagnostika: tokenning FAQAT birinchi 4 harfi (to'liq token EMAS).
 // Instagram Business Login tokenlari "IGAA" bilan boshlanadi. Boshqa prefiks
@@ -159,24 +159,62 @@ function tokenKind(token) {
   return String(token || "").slice(0, 4) || "?";
 }
 
+// Log uchun javob matni: token ko'rinishidagi qiymatlar qisqartiriladi
+function redact(s) {
+  return String(s || "").replace(/IGAA[\w-]{8,}/g, (m) => m.slice(0, 8) + "…[redacted]");
+}
+
+// Parametrlar diagnostikasi: QIYMATLAR EMAS, faqat nomi va uzunligi —
+// bo'sh client_secret kabi sabablar logdan darhol ko'rinadi
+function paramsDiag(params) {
+  return [...params.entries()]
+    .map(([k, v]) => `${k}(${String(v).length}${k === "access_token" ? ", " + tokenKind(v) + "…" : ""})`)
+    .join(" ");
+}
+
 async function graphTokenRequest(path, params, errPrefix, tokenForDiag) {
-  let res = await fetch(`${GRAPH}${path}?${params.toString()}`);
-  let json = await res.json().catch(() => ({}));
+  const attempts = [
+    { label: "GET versiyasiz", exec: () => fetch(`${GRAPH}${path}?${params.toString()}`) },
+    {
+      label: "POST versiyasiz",
+      exec: () =>
+        fetch(`${GRAPH}${path}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: params.toString(),
+        }),
+    },
+    { label: "GET versiyali (v23.0)", exec: () => fetch(`${GRAPH_V}${path}?${params.toString()}`) },
+  ];
 
-  if (isMethodError(json)) {
-    console.warn(`⚠️ ${path}: Meta GET'ni rad etdi, POST bilan qayta urinilmoqda`);
-    res = await fetch(`${GRAPH}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString(),
-    });
-    json = await res.json().catch(() => ({}));
+  let lastJson = null;
+  let lastRes = null;
+  for (const a of attempts) {
+    const res = await a.exec();
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && !json.error && json.access_token) {
+      return { token: json.access_token, expiresIn: Number(json.expires_in) || SIXTY_DAYS_SEC };
+    }
+    // ROADMAP-18 qo'shimcha: TO'LIQ javob (redaktlangan) — keyingi diagnostika
+    // soniyalarda bo'lsin. Token qiymatlari hech qachon logga tushmaydi.
+    console.warn(
+      `⚠️ ${path} [${a.label}] muvaffaqiyatsiz — HTTP ${res.status}, javob: ${redact(
+        JSON.stringify(json).slice(0, 600)
+      )} | yuborilgan: ${paramsDiag(params)}`
+    );
+    lastJson = json;
+    lastRes = res;
   }
 
-  if (!res.ok || json.error || !json.access_token) {
-    throw new Error(`${errPrefix}: ${errText(json, res)} [token: ${tokenKind(tokenForDiag)}…]`);
-  }
-  return { token: json.access_token, expiresIn: Number(json.expires_in) || SIXTY_DAYS_SEC };
+  // code 100 "Unsupported request" token dekriptidan keyin chiqadi — eng ehtimoliy
+  // sabab: IG_APP_SECRET bu ilovaning Instagram sirri emas (IG_APP_ID bilan juft emas)
+  const hint =
+    lastJson?.error?.code === 100 && /unsupported request/i.test(String(lastJson?.error?.message))
+      ? " | Tekshiring: IG_APP_SECRET — Instagram > API setup sahifasidagi sir bo'lishi va IG_APP_ID bilan bir ilovaga tegishli bo'lishi shart (Meta App Basic siri EMAS)"
+      : "";
+  throw new Error(
+    `${errPrefix}: ${errText(lastJson, lastRes)} [token: ${tokenKind(tokenForDiag)}…]${hint}`
+  );
 }
 
 // ------------------------------------------------------------

@@ -226,7 +226,7 @@ async function loadChanged(attempt, force) {
       if (attempt < 10) setTimeout(function () { loadChanged(attempt + 1); }, 4000);
       return;
     }
-    $("changedText").textContent = text;
+    $("changedText").innerHTML = renderAiText(text); // markdown → HTML (xavfsiz)
     $("changedMeta").innerHTML = "AI taqqoslash · " + fmt(cachedAt) + staleBanner(cachedAt, "loadChanged(0, true)");
   } catch (e) {
     $("changedText").textContent = "Taqqoslash hozircha tayyor emas — ma'lumot yig'ilganda paydo bo'ladi.";
@@ -264,7 +264,7 @@ async function loadInsights(force, attempt) {
         \${tq.length ? tq.map((q, i) => \`
           <div class="ins-item">
             <span class="ins-rank">\${i + 1}</span>
-            <span style="flex:1">\${esc(q.question)}</span>
+            <span style="flex:1">\${renderAiText(q.question)}</span>
             \${q.count ? \`<span class="pill pill-plain">\${q.count}×</span>\` : ""}
           </div>\`).join("") : emptyState(ICO.help, "Aniq takrorlanuvchi savollar topilmadi")}
       </div>
@@ -277,7 +277,7 @@ async function loadInsights(force, attempt) {
             \${avatar(c.name || "?", 30)}
             <span style="flex:1;min-width:0">
               <strong class="small" style="display:block">\${esc(c.name || "Mijoz #" + c.contact_id)}</strong>
-              <span class="small muted">\${esc(c.reason || "")}</span>
+              <span class="small muted">\${renderAiText(c.reason || "")}</span>
             </span>
             \${c.contact_id ? \`<a class="btn-plain btn-sm" href="/dashboard/inbox?contact=\${Number(c.contact_id)}">\${ICO.message}</a>\` : ""}
           </div>\`).join("") : emptyState(ICO.money, "Hozircha sotuvga tayyor mijoz aniqlanmadi")}
@@ -289,7 +289,7 @@ async function loadInsights(force, attempt) {
         \${kg.length ? kg.map((g) => \`
           <div class="ins-item">
             <span style="flex-shrink:0">\${ICO.lightbulb}</span>
-            <span style="flex:1">\${esc(g)}</span>
+            <span style="flex:1">\${renderAiText(g)}</span>
           </div>\`).join("") : emptyState(ICO.puzzle, "Kamchilik topilmadi — bilim bazasi yetarli ko'rinadi")}
         \${kg.length ? '<a class="btn btn-secondary btn-sm" href="/dashboard/knowledge" style="margin-top:10px">' + ICO.knowledge + " Bilim bazasini to'ldirish</a>" : ""}
       </div>
@@ -355,9 +355,9 @@ async function loadLost(force, attempt) {
       stages.map(function (s) { return '<span class="pill pill-' + s[2] + '">' + s[1] + ": <strong>" + (fn[s[0]] || 0) + "</strong></span>"; }).join("") + "</div>";
     if (r.ai && (r.ai.reasons || []).length) {
       html += '<strong class="small">Yo\\'qotish sabablari (AI):</strong><ul class="small" style="margin:6px 0 10px 18px;line-height:1.8">' +
-        r.ai.reasons.map(function (x) { return "<li>" + esc(x.reason) + (x.count ? ' <span class="muted">(~' + x.count + " mijoz)</span>" : "") + "</li>"; }).join("") + "</ul>" +
+        r.ai.reasons.map(function (x) { return "<li>" + renderAiText(x.reason) + (x.count ? ' <span class="muted">(~' + x.count + " mijoz)</span>" : "") + "</li>"; }).join("") + "</ul>" +
         '<strong class="small">Tavsiyalar:</strong><ul class="small" style="margin:6px 0 0 18px;line-height:1.8">' +
-        (r.ai.tips || []).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+        (r.ai.tips || []).map(function (t) { return "<li>" + renderAiText(t) + "</li>"; }).join("") + "</ul>";
     } else {
       html += '<span class="small muted">Tahlil uchun yetarli yo\\'qotilgan mijoz yo\\'q (yaxshi belgi!)</span>';
     }
@@ -401,7 +401,7 @@ async function loadContent(force, attempt) {
         (r.ai.topics || []).map(function (t) { return '<span class="pill pill-plain">' + esc(t.topic) + " · " + (t.count || "?") + "</span>"; }).join("") + "</div>" +
       '<div style="display:grid;gap:8px">' +
         (r.ai.ideas || []).map(function (i) {
-          return '<div style="background:var(--panel2);border-radius:11px;padding:10px 13px"><strong class="small">' + esc(i.title) + '</strong><div class="small muted" style="margin-top:3px">' + esc(i.desc) + "</div></div>";
+          return '<div style="background:var(--panel2);border-radius:11px;padding:10px 13px"><strong class="small">' + renderAiText(i.title) + '</strong><div class="small muted" style="margin-top:3px">' + renderAiText(i.desc) + "</div></div>";
         }).join("") + "</div>";
   } catch (e) { $("contentBody").innerHTML = emptyState(ICO.warn, "Yuklanmadi: " + e.message); }
 }

@@ -147,7 +147,7 @@ function applySummary(r, attempt) {
     if (attempt < 10) setTimeout(function () { loadSummary(attempt + 1); }, 4000);
     return;
   }
-  $("summaryText").textContent = r.text;
+  $("summaryText").innerHTML = renderAiText(r.text); // markdown → HTML (xavfsiz)
   const warn = r.digest && r.digest.needsHuman > 0;
   $("aiStatus").innerHTML = warn
     ? '<span class="pill pill-warn"><span class="dot dot-amber"></span>E\\'tibor kerak</span>'

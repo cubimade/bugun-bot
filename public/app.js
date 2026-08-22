@@ -41,6 +41,23 @@ function timeAgo(d) {
   if (s < 604800) return Math.floor(s / 86400) + " kun oldin";
   return new Date(d).toLocaleDateString("uz-UZ");
 }
+// AI matnini xavfsiz HTML'ga render qilish: avval to'liq escape, keyin
+// **qalin** → <strong>, *kursiv* → <em>, ro'yxat → •, \n → <br>.
+// AI ba'zan markdown qaytaradi ("**21 ta mijoz**") — foydalanuvchi
+// yulduzchalarni ko'rmasligi kerak.
+function renderAiText(text) {
+  let s = esc(String(text ?? ""));
+  return s
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(?<!\S)\*(?!\s)(.+?)(?<!\s)\*(?!\S)/g, "<em>$1</em>") // 2*3*4 buzilmaydi
+    .replace(/(?<!\S)_(?!\s)(.+?)(?<!\s)_(?!\S)/g, "<em>$1</em>")
+    .replace(/`{1,3}(.+?)`{1,3}/gs, "$1")
+    .replace(/^#{1,6}\s+(.*)$/gm, "<strong>$1</strong>")
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    .replace(/\n/g, "<br>");
+}
+
 // ROADMAP-18 FAZA 4: AI blok 48 soatdan eski bo'lsa — sariq ogohlantirish
 // lentasi + "Hozir yangilash" tugmasi. refreshJs — bosilganda bajariladigan
 // JS ifoda (masalan "loadInsights(true)"). Yangi bo'lsa bo'sh satr qaytadi.

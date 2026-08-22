@@ -15,12 +15,13 @@ import {
   getActiveAbTest,
   setContactAbVariant,
 } from "../db.js";
+import { applyNameVar } from "./vars.js";
 
 const DEFAULT_TEXT = "{ism}, savolingiz qoldimi? 😊 Yordam kerak bo'lsa, bemalol yozing!";
 
+// FAZA 7.4: ism yo'q bo'lsa {ism} toza olib tashlanadi ("Salom!" kabi)
 function applyVars(text, c) {
-  return text
-    .replaceAll("{ism}", (c.name || "").trim() || "do'st")
+  return applyNameVar(text, c.name)
     .replaceAll("{akkaunt}", c.project_name || "");
 }
 

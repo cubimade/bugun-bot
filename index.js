@@ -40,6 +40,7 @@ import { startSegmentsScheduler } from "./services/segments.js";
 import { startWeeklyReportScheduler } from "./services/report.js";
 import { startHealthScheduler } from "./services/health.js";
 import { startTokenRefreshScheduler } from "./services/token-refresh.js";
+import { startProfileRefreshScheduler } from "./services/profile-refresh.js";
 import oauthRouter from "./routes/oauth.js";
 import dashboardRouter from "./routes/dashboard.js";
 import publicRouter from "./routes/public.js";
@@ -139,4 +140,5 @@ APP.listen(PORT, async () => {
   startWeeklyReportScheduler(); // 11.7: haftalik Telegram hisobot
   startHealthScheduler(); // 12.5: o'z-o'zini tekshirish (10 daqiqa)
   startTokenRefreshScheduler(); // 15: OAuth tokenlarini uzaytirish (kunlik)
+  startProfileRefreshScheduler(); // ROADMAP-18 FAZA 7: kontakt profillari (kunlik)
 });

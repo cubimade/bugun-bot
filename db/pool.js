@@ -405,6 +405,11 @@ export async function initDb() {
     ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile_fetched_at TIMESTAMPTZ;
     CREATE INDEX IF NOT EXISTS idx_contacts_profile_fetched ON contacts(profile_fetched_at);
 
+    -- ROADMAP-18 FAZA 7: ma'lumot ulashishni yopgan mijozlar — 3 muvaffaqiyatsiz
+    -- urinishdan keyin belgilanadi va qayta urinishdan chiqariladi
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile_attempts INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE contacts ADD COLUMN IF NOT EXISTS profile_unavailable BOOLEAN NOT NULL DEFAULT false;
+
     -- 16 (2.2): Xabarni KIM yozgani — contact | ai | operator | automation | broadcast
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_type TEXT;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_label TEXT;

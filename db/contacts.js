@@ -33,6 +33,8 @@ export async function saveContactProfile(contactId, { username, fullName, pic })
             full_name = COALESCE($3, full_name),
             profile_pic = COALESCE($4, profile_pic),
             profile_fetched_at = now(),
+            profile_attempts = 0,
+            profile_unavailable = false,
             name = CASE
               WHEN name IS NULL OR name = '' OR name ~ '^[0-9]+$'
                 THEN COALESCE($3, $2, name)
@@ -42,9 +44,18 @@ export async function saveContactProfile(contactId, { username, fullName, pic })
   );
 }
 
-// Urinish bo'ldi, lekin ma'lumot kelmadi — 7 kun qayta urinmaymiz
+// Urinish bo'ldi, lekin ma'lumot kelmadi — 7 kun qayta urinmaymiz.
+// ROADMAP-18 FAZA 7: 3 muvaffaqiyatsiz urinishdan keyin profile_unavailable —
+// mijoz ma'lumot ulashishni yopgan, qayta urinish Meta limitini behuda yeydi.
 export async function markProfileChecked(contactId) {
-  await pool.query(`UPDATE contacts SET profile_fetched_at = now() WHERE id = $1`, [contactId]);
+  await pool.query(
+    `UPDATE contacts
+        SET profile_fetched_at = now(),
+            profile_attempts = profile_attempts + 1,
+            profile_unavailable = (profile_attempts + 1 >= 3)
+      WHERE id = $1`,
+    [contactId]
+  );
 }
 
 // Profili yo'q yoki 7 kundan eski kontaktlar (fon yangilash va to'ldirish uchun).
@@ -56,6 +67,7 @@ export async function listContactsNeedingProfile(limit = 200, staleDays = 7) {
        JOIN projects p ON p.id = c.project_id
       WHERE p.platform = 'instagram'
         AND p.access_token IS NOT NULL
+        AND NOT c.profile_unavailable
         AND (c.profile_fetched_at IS NULL
              OR c.profile_fetched_at < now() - make_interval(days => $2::int))
       ORDER BY c.last_seen DESC

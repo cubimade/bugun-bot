@@ -28,13 +28,13 @@ import {
   updateFlowState,
   claimDueFlowStates,
 } from "../db.js";
+import { applyNameVar } from "./vars.js";
 
 const MAX_STEPS = 25; // cheksiz tsikldan himoya (bitta faollashuvda)
 
-// {ism} / {akkaunt} o'zgaruvchilari
+// {ism} / {akkaunt} o'zgaruvchilari (FAZA 7.4: ism yo'q bo'lsa {ism} toza olib tashlanadi)
 function applyVars(text, ctx) {
-  return String(text || "")
-    .replaceAll("{ism}", (ctx.name || "").trim() || "do'st")
+  return applyNameVar(String(text || ""), ctx.name)
     .replaceAll("{akkaunt}", ctx.projectName || "");
 }
 

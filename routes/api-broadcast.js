@@ -4,6 +4,7 @@
 //  Ishlar xotirada: jobId -> { total, sent, failed, done }
 // ============================================================
 import express from "express";
+import { applyNameVar } from "../services/vars.js";
 
 import { protect } from "../middleware/auth.js";
 import { state, ACCOUNTS_MAP, requireDb } from "../state.js";
@@ -27,9 +28,9 @@ const BROADCAST_JOBS = new Map();
 let BROADCAST_SEQ = 1;
 
 // D3: Shablon o'zgaruvchilari — {ism} va {akkaunt} haqiqiy qiymatga almashadi
+// FAZA 7.4: ism yo'q/raqamli bo'lsa {ism} atrofidagi vergul bilan olib tashlanadi
 function applyVars(message, recipient, accountName) {
-  return message
-    .replaceAll("{ism}", (recipient.name || "").trim() || "do'st")
+  return applyNameVar(message, recipient.name)
     .replaceAll("{akkaunt}", accountName || "");
 }
 

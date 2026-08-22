@@ -83,9 +83,13 @@ export async function setupDatabase() {
   if (state.DB_READY) {
     try {
       for (const p of await listAccountsWithTokens()) {
+        const entry = { projectId: p.id, token: p.access_token, name: p.name };
         const key = String(p.ig_account_id);
-        if (!ACCOUNTS_MAP.has(key)) {
-          ACCOUNTS_MAP.set(key, { projectId: p.id, token: p.access_token, name: p.name });
+        if (!ACCOUNTS_MAP.has(key)) ACCOUNTS_MAP.set(key, entry);
+        // ROADMAP-18 davomi: webhook entry.id app-scoped ID bo'lib kelishi ham
+        // mumkin — ikkinchi kalit bilan ham moslashtiramiz
+        if (p.app_scoped_id && !ACCOUNTS_MAP.has(String(p.app_scoped_id))) {
+          ACCOUNTS_MAP.set(String(p.app_scoped_id), entry);
         }
       }
     } catch (err) {

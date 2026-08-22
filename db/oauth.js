@@ -42,6 +42,7 @@ export async function cleanupOAuthStates() {
 // ------------------------------------------------------------
 export async function upsertOAuthProject({
   igAccountId,
+  appScopedId,
   name,
   username,
   fullName,
@@ -52,12 +53,13 @@ export async function upsertOAuthProject({
 }) {
   const { rows } = await pool.query(
     `INSERT INTO projects
-       (name, ig_account_id, access_token, platform,
+       (name, ig_account_id, app_scoped_id, access_token, platform,
         ig_username, ig_name, profile_picture_url,
         token_expires_at, token_source, token_last_refreshed_at, granted_scopes)
-     VALUES ($1, $2, $3, 'instagram', $4, $5, $6, $7, 'oauth', now(), $8)
+     VALUES ($1, $2, $3, $4, 'instagram', $5, $6, $7, $8, 'oauth', now(), $9)
      ON CONFLICT (ig_account_id) DO UPDATE SET
        access_token            = EXCLUDED.access_token,
+       app_scoped_id           = COALESCE(EXCLUDED.app_scoped_id, projects.app_scoped_id),
        ig_username             = EXCLUDED.ig_username,
        ig_name                 = EXCLUDED.ig_name,
        profile_picture_url     = EXCLUDED.profile_picture_url,
@@ -70,6 +72,7 @@ export async function upsertOAuthProject({
     [
       name,
       String(igAccountId),
+      appScopedId ? String(appScopedId) : null,
       token,
       username || null,
       fullName || null,
@@ -79,6 +82,39 @@ export async function upsertOAuthProject({
     ]
   );
   return { projectId: rows[0].id, created: rows[0].created };
+}
+
+// ------------------------------------------------------------
+//  ROADMAP-18 davomi: profil to'liq olinmagan OAuth akkauntlar —
+//  kunlik cron ularni to'ldiradi va haqiqiy ID aniqlansa tuzatadi
+// ------------------------------------------------------------
+export async function listOAuthProjectsNeedingProfile() {
+  const { rows } = await pool.query(
+    `SELECT id, name, ig_account_id, app_scoped_id, access_token
+       FROM projects
+      WHERE token_source = 'oauth'
+        AND access_token IS NOT NULL
+        AND (ig_username IS NULL OR ig_account_id = app_scoped_id)`
+  );
+  return rows;
+}
+
+// Profil kelgach: username/nom/rasm va (farq qilsa) haqiqiy akkaunt ID yangilanadi.
+// Nom faqat placeholder bo'lsa almashtiriladi — foydalanuvchi qo'ygan nom saqlanadi.
+export async function updateProjectIdentity(projectId, { igAccountId, username, fullName, picture }) {
+  await pool.query(
+    `UPDATE projects
+        SET ig_account_id = COALESCE($2, ig_account_id),
+            ig_username = COALESCE($3, ig_username),
+            ig_name = COALESCE($4, ig_name),
+            profile_picture_url = COALESCE($5, profile_picture_url),
+            name = CASE
+              WHEN $3 IS NOT NULL AND (name = 'Yangi akkaunt' OR name LIKE 'IG %' OR name = ig_account_id)
+                THEN '@' || $3
+              ELSE name END
+      WHERE id = $1`,
+    [projectId, igAccountId || null, username || null, fullName || null, picture || null]
+  );
 }
 
 // ------------------------------------------------------------

@@ -386,6 +386,11 @@ export async function initDb() {
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_source TEXT NOT NULL DEFAULT 'manual';
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS token_last_refreshed_at TIMESTAMPTZ;
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS granted_scopes TEXT;
+
+    -- ROADMAP-18 davomi: OAuth 2-qadam qaytargan app-scoped ID. Webhook entry.id
+    -- haqiqiy akkaunt IDsi (17841...) yoki app-scoped bo'lishi mumkin — ikkala
+    -- kalit bo'yicha ham moslashtiriladi (state.js xaritasi).
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_scoped_id TEXT;
     CREATE INDEX IF NOT EXISTS idx_projects_token_expires ON projects(token_expires_at);
 
     -- OAuth CSRF himoyasi: bir martalik "state" qiymatlari (15 daqiqa yashaydi)

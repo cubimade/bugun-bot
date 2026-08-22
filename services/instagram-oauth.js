@@ -255,18 +255,31 @@ export async function exchangeForLongLived(shortToken) {
 //  minimal → versiyasiz minimal. Har muvaffaqiyatsiz urinish TO'LIQ
 //  loglanadi (URL token qiymatisiz + Meta'ning to'liq JSON javobi).
 // ------------------------------------------------------------
-export async function fetchProfile(token) {
+export async function fetchProfile(token, nodeId = null) {
   const attempts = [
-    { base: GRAPH_V, fields: "user_id,username,name,profile_picture_url", label: "to'liq" },
-    { base: GRAPH_V, fields: "user_id,username", label: "qisqargan" },
-    { base: GRAPH_V, fields: "user_id", label: "minimal" },
-    { base: GRAPH, fields: "user_id,username", label: "versiyasiz" },
+    { base: GRAPH_V, path: "/me", fields: "user_id,username,name,profile_picture_url", label: "to'liq" },
+    { base: GRAPH_V, path: "/me", fields: "user_id,username", label: "qisqargan" },
+    { base: GRAPH_V, path: "/me", fields: "user_id", label: "minimal" },
+    { base: GRAPH, path: "/me", fields: "user_id,username", label: "versiyasiz" },
+    // fields'siz — Meta standart maydonlarni qaytaradi
+    { base: GRAPH_V, path: "/me", fields: null, label: "fields'siz" },
   ];
+  // app-scoped ID ma'lum bo'lsa — node sifatida to'g'ridan-to'g'ri so'rash
+  // (/me ishlamagan tokenlarda ba'zan node lookup ishlaydi)
+  if (nodeId) {
+    attempts.push({
+      base: GRAPH_V,
+      path: `/${encodeURIComponent(String(nodeId))}`,
+      fields: "user_id,username,name,profile_picture_url",
+      label: "node lookup",
+    });
+  }
 
   let lastErr = null;
   for (const a of attempts) {
-    const params = new URLSearchParams({ fields: a.fields, access_token: token });
-    const url = `${a.base}/me?${params.toString()}`;
+    const params = new URLSearchParams({ access_token: token });
+    if (a.fields) params.set("fields", a.fields);
+    const url = `${a.base}${a.path}?${params.toString()}`;
     const res = await fetch(url);
     const json = await res.json().catch(() => ({}));
 
@@ -277,7 +290,7 @@ export async function fetchProfile(token) {
         continue;
       }
       if (a.label !== "to'liq") {
-        console.log(`👤 Profil "${a.label}" fields bilan olindi (${a.fields}) — qolgani keyin to'ldiriladi`);
+        console.log(`👤 Profil "${a.label}" urinishida olindi (${a.fields || "standart maydonlar"}) — qolgani keyin to'ldiriladi`);
       }
       return {
         instagramId,
@@ -290,8 +303,8 @@ export async function fetchProfile(token) {
     }
 
     console.warn(
-      `⚠️ /me [${a.label}: ${a.fields}] muvaffaqiyatsiz — HTTP ${res.status}, ` +
-        `URL: ${a.base}/me?fields=${a.fields}&access_token=[redacted], ` +
+      `⚠️ ${a.path} [${a.label}: ${a.fields || "fields'siz"}] muvaffaqiyatsiz — HTTP ${res.status}, ` +
+        `URL: ${a.base}${a.path}?${a.fields ? "fields=" + a.fields + "&" : ""}access_token=[redacted], ` +
         `javob: ${JSON.stringify(json).slice(0, 600)}`
     );
     lastErr = new Error("Profil olinmadi: " + errText(json, res));
@@ -349,7 +362,10 @@ const LONG_LIVED_MIN_SEC = 5000000;
 // user_id ham bo'lmasa — chin xato: akkauntni identifikatsiya qilib bo'lmaydi.
 async function profileOrMinimal(token, fallbackUserId) {
   try {
-    return await fetchProfile(token);
+    const profile = await fetchProfile(token, fallbackUserId);
+    // 2-qadamdagi user_id — app-scoped ID; webhook moslashtirishda zaxira kalit
+    if (!profile.appScopedId && fallbackUserId) profile.appScopedId = String(fallbackUserId);
+    return profile;
   } catch (err) {
     if (!fallbackUserId) throw err;
     console.warn(
@@ -360,7 +376,7 @@ async function profileOrMinimal(token, fallbackUserId) {
       username: null,
       name: null,
       picture: null,
-      appScopedId: null,
+      appScopedId: String(fallbackUserId),
       partial: true, // profil to'liq emas — keyin to'ldiriladi
     };
   }

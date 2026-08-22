@@ -104,7 +104,7 @@ export async function deleteProject(projectId) {
 // (Dashboard orqali qo'shilgan akkauntlar restart'dan keyin ham ishlaydi.)
 export async function listAccountsWithTokens() {
   const { rows } = await pool.query(
-    `SELECT id, name, ig_account_id, access_token
+    `SELECT id, name, ig_account_id, app_scoped_id, access_token
        FROM projects
       WHERE ig_account_id IS NOT NULL AND access_token IS NOT NULL`
   );

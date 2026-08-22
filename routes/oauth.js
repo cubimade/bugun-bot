@@ -108,6 +108,7 @@ router.get("/auth/instagram/callback", async (req, res) => {
     // Bor bo'lsa yangilanadi, bo'lmasa qo'shiladi (dublikat yaratilmaydi)
     const { projectId, created } = await upsertOAuthProject({
       igAccountId: profile.instagramId,
+      appScopedId: profile.appScopedId,
       name: profile.username ? "@" + profile.username : profile.name || "Yangi akkaunt",
       username: profile.username,
       fullName: profile.name,
@@ -117,12 +118,18 @@ router.get("/auth/instagram/callback", async (req, res) => {
       scopes: permissions,
     });
 
-    // Xotira xaritasi — restart kutmasdan darhol ishlasin
-    ACCOUNTS_MAP.set(String(profile.instagramId), {
+    // Xotira xaritasi — restart kutmasdan darhol ishlasin.
+    // Ikkala kalit ham ro'yxatga olinadi: webhook entry.id haqiqiy akkaunt IDsi
+    // yoki app-scoped ID bo'lishi mumkin — qaysi biri kelsa ham loyiha topiladi.
+    const acctEntry = {
       projectId,
       token,
       name: profile.username ? "@" + profile.username : profile.name || "Instagram",
-    });
+    };
+    ACCOUNTS_MAP.set(String(profile.instagramId), acctEntry);
+    if (profile.appScopedId && profile.appScopedId !== profile.instagramId) {
+      ACCOUNTS_MAP.set(String(profile.appScopedId), acctEntry);
+    }
 
     // Webhook obunasi — xato bo'lsa oqim to'xtamaydi, ogohlantirish ko'rsatiladi
     const subscribed = await oauth.subscribeWebhooks(token);

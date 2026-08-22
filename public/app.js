@@ -24,7 +24,14 @@ const JICONS = {
 };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
-const fmt = (d) => d ? new Date(d).toLocaleString("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+// ROADMAP-18 FAZA 5.2: sanalar brauzer zonasida emas, sozlangan zonada
+// (sukut bo'yicha Asia/Tashkent) ko'rsatiladi — window.TZ layout'dan keladi
+const fmt = (d) => {
+  if (!d) return "—";
+  const o = { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" };
+  try { return new Date(d).toLocaleString("uz-UZ", { ...o, timeZone: window.TZ || "Asia/Tashkent" }); }
+  catch (e) { return new Date(d).toLocaleString("uz-UZ", o); }
+};
 function timeAgo(d) {
   if (!d) return "—";
   const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
@@ -181,11 +188,18 @@ function renderPeriodSeg(el, onChange) {
   });
 }
 // Trend belgisi: ↑ +12% (yashil) / ↓ -5% (qizil)
-function trendBadge(pct) {
-  if (pct == null) return "";
-  const up = pct >= 0;
-  return '<span class="trend ' + (up ? "up" : "down") + '" data-tip="o\'tgan davrga nisbatan">' +
-    (up ? "↑ +" : "↓ ") + pct + "%</span>";
+// ROADMAP-18 FAZA 5.3: kichik bazada foiz aldamchi (+14425%) — server endi
+// {kind:"pct"|"abs"|"new", value} obyektini yuboradi. Eski son formati ham ishlaydi.
+function trendBadge(t) {
+  if (t == null) return "";
+  if (typeof t === "number") t = { kind: "pct", value: t };
+  if (t.kind === "new") return '<span class="trend up" data-tip="o\'tgan davrda 0 edi">yangi</span>';
+  const up = t.value >= 0;
+  const label = t.kind === "abs"
+    ? (up ? "↑ +" : "↓ ") + t.value + " ta"
+    : (up ? "↑ +" : "↓ ") + t.value + "%";
+  return '<span class="trend ' + (up ? "up" : "down") + '" data-tip="o\'tgan davrga nisbatan' +
+    (t.kind === "abs" ? " (baza kichik — foiz o\'rniga son)" : "") + '">' + label + "</span>";
 }
 // Sparkline — 7 kunlik mini-grafik (sof SVG, 40px, gradient)
 let SPARK_SEQ = 0;

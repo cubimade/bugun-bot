@@ -5,8 +5,24 @@
 //  (SQL'ga foydalanuvchi matni hech qachon qo'shilmaydi)
 // ============================================================
 import { pool } from "./pool.js";
+import { state } from "../state.js";
 
-const TZ = `AT TIME ZONE 'Asia/Tashkent'`;
+// ROADMAP-18 FAZA 5.2: zona sozlamadan (sukut Asia/Tashkent). SQL'ga FAQAT
+// shu ro'yxatdagi qiymat qo'shiladi — foydalanuvchi matni hech qachon emas.
+const SAFE_TZ = new Set([
+  "Asia/Tashkent", "Asia/Almaty", "Asia/Bishkek", "Asia/Dushanbe",
+  "Asia/Ashgabat", "Europe/Moscow", "Asia/Dubai",
+]);
+export function tzName() {
+  const t = state.SETTINGS?.timezone;
+  return SAFE_TZ.has(t) ? t : "Asia/Tashkent";
+}
+// Eslatma: pastdagi so'rovlar shablon satrida chaqirilganda tzSql() ishlatiladi;
+// modul yuklanish paytida qotib qolmasligi uchun funksiya ko'rinishida.
+function tzSql() {
+  return `AT TIME ZONE '${tzName()}'`;
+}
+const TZ = { toString: tzSql };
 
 export function normalizePeriod(p) {
   return ["today", "7d", "30d", "all"].includes(p) ? p : "7d";
@@ -48,12 +64,12 @@ export async function getStats() {
       // Bugungi xabarlar (O'zbekiston vaqti bo'yicha)
       pool.query(
         `SELECT COUNT(*)::int AS n FROM messages
-         WHERE (created_at AT TIME ZONE 'Asia/Tashkent')::date =
-               (now() AT TIME ZONE 'Asia/Tashkent')::date`
+         WHERE (created_at ${TZ})::date =
+               (now() ${TZ})::date`
       ),
       // Oxirgi 7 kun faolligi (kun bo'yicha xabarlar soni)
       pool.query(
-        `SELECT to_char((created_at AT TIME ZONE 'Asia/Tashkent')::date, 'YYYY-MM-DD') AS day,
+        `SELECT to_char((created_at ${TZ})::date, 'YYYY-MM-DD') AS day,
                 COUNT(*)::int AS n
            FROM messages
           WHERE created_at >= now() - interval '7 days'
@@ -93,12 +109,12 @@ export async function getStats() {
 //  Kunlik digest — AI xulosa uchun xom raqamlar (O'zbekiston vaqti)
 // ------------------------------------------------------------
 export async function getDailyDigest() {
-  const TODAY = `(created_at AT TIME ZONE 'Asia/Tashkent')::date = (now() AT TIME ZONE 'Asia/Tashkent')::date`;
+  const TODAY = `(created_at ${TZ})::date = (now() ${TZ})::date`;
   const [todayMsgs, newContacts, needsHumanQ, topAccount, priceAsks] = await Promise.all([
     pool.query(`SELECT COUNT(*)::int AS n FROM messages WHERE ${TODAY}`),
     pool.query(
       `SELECT COUNT(*)::int AS n FROM contacts
-        WHERE (first_seen AT TIME ZONE 'Asia/Tashkent')::date = (now() AT TIME ZONE 'Asia/Tashkent')::date`
+        WHERE (first_seen ${TZ})::date = (now() ${TZ})::date`
     ),
     pool.query(`SELECT COUNT(*)::int AS n FROM contacts WHERE needs_human`),
     pool.query(
@@ -106,7 +122,7 @@ export async function getDailyDigest() {
          FROM messages m
          JOIN contacts c ON c.id = m.contact_id
          JOIN projects p ON p.id = c.project_id
-        WHERE (m.created_at AT TIME ZONE 'Asia/Tashkent')::date = (now() AT TIME ZONE 'Asia/Tashkent')::date
+        WHERE (m.created_at ${TZ})::date = (now() ${TZ})::date
         GROUP BY p.name ORDER BY n DESC LIMIT 1`
     ),
     pool.query(
@@ -195,8 +211,13 @@ export async function getStatsForPeriod(period) {
   ]);
 
   const r = core.rows[0];
-  const pct = (cur, prev) =>
-    prev > 0 ? Math.round(((cur - prev) / prev) * 100) : cur > 0 ? 100 : null;
+  // ROADMAP-18 FAZA 5.3: oldingi davr 10 dan kam bo'lsa foiz aldamchi
+  // (+14425% kabi) — foiz o'rniga mutlaq o'zgarish; 0 bo'lsa "yangi".
+  const pct = (cur, prev) => {
+    if (prev >= 10) return { kind: "pct", value: Math.round(((cur - prev) / prev) * 100) };
+    if (prev > 0) return cur === prev ? null : { kind: "abs", value: cur - prev };
+    return cur > 0 ? { kind: "new" } : null;
+  };
 
   return {
     period: p,

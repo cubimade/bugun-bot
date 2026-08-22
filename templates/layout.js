@@ -78,6 +78,7 @@ export function renderLayout({ title, subtitle = "", active, headerAction = "", 
   </div>
   <div id="toasts"></div>
 
+  <script>window.TZ=${JSON.stringify(state.SETTINGS.timezone || "Asia/Tashkent")}</script>
   <script src="/app.min.js?v=${APP_VERSION}"></script>
   <script>${script}</script>
 </body>

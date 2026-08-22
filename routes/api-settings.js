@@ -56,6 +56,7 @@ const SETTING_KEYS = [
   "notify_down",
   "bad_words", // 12.5 (vergul bilan)
   "brand_name", // 12.6
+  "timezone", // ROADMAP-18 FAZA 5.2
 ];
 
 router.get("/api/settings", protect, async (req, res, next) => {
@@ -106,6 +107,7 @@ router.get("/api/settings", protect, async (req, res, next) => {
         notify_down: state.SETTINGS.notify_down ?? "false",
         bad_words: state.SETTINGS.bad_words ?? "",
         brand_name: state.SETTINGS.brand_name ?? "",
+        timezone: state.SETTINGS.timezone ?? "Asia/Tashkent",
         greeting_buttons_enabled: state.SETTINGS.greeting_buttons_enabled ?? "false",
         greeting_buttons_text: state.SETTINGS.greeting_buttons_text ?? "",
         greeting_buttons: state.SETTINGS.greeting_buttons ?? "[]",

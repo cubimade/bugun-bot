@@ -38,6 +38,16 @@ export function settingsContent() {
       <input class="input" id="badWords" maxlength="1000" placeholder="so'z1, so'z2, ..." style="margin-bottom:14px">
       <label class="lbl" style="display:flex;align-items:center;gap:6px">${ICONS.tag} Brend nomi (sidebar'da ko'rinadi — white-label uchun)</label>
       <input class="input" id="brandName" maxlength="40" placeholder="BUGUN BOT" style="margin-bottom:16px">
+      <label class="lbl">Vaqt zonasi <span class="muted small">(barcha sanalar shu zonada ko'rsatiladi)</span></label>
+      <select class="input" id="tzSetting" style="margin-bottom:16px">
+        <option value="Asia/Tashkent">Toshkent (UTC+5)</option>
+        <option value="Asia/Almaty">Almati (UTC+5)</option>
+        <option value="Asia/Bishkek">Bishkek (UTC+6)</option>
+        <option value="Asia/Dushanbe">Dushanbe (UTC+5)</option>
+        <option value="Asia/Ashgabat">Ashxobod (UTC+5)</option>
+        <option value="Europe/Moscow">Moskva (UTC+3)</option>
+        <option value="Asia/Dubai">Dubay (UTC+4)</option>
+      </select>
       <button class="btn btn-primary" onclick="saveBotSettings(this)">${ICONS.check} Saqlash</button>
     </div>
 

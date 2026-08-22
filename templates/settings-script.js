@@ -18,6 +18,7 @@ async function loadSettings() {
     $("mediaAud").value = s.media_audio_reply || "";
     $("badWords").value = s.bad_words || "";
     $("brandName").value = s.brand_name || "";
+    $("tzSetting").value = s.timezone || "Asia/Tashkent";
     $("replyLen").value = s.reply_length || "orta";
     $("salesMode").checked = s.sales_mode === "true";
     const langs = (s.supported_languages || "uz,ru,en").split(",");
@@ -173,6 +174,7 @@ async function saveBotSettings(btn) {
       media_audio_reply: $("mediaAud").value.trim(),
       bad_words: $("badWords").value.trim(),
       brand_name: $("brandName").value.trim(),
+      timezone: $("tzSetting").value,
     });
     toast("Bot sozlamalari saqlandi ✓");
   } catch (e) { toast("Xatolik: " + e.message, false); }

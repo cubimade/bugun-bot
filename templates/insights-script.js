@@ -179,7 +179,10 @@ function renderFunnel(f) {
     const wBot = i < stages.length - 1 ? widths[i + 1] : widths[i] * 0.72;
     const x1 = (W - wTop) / 2, x2 = (W + wTop) / 2;
     const x3 = (W + wBot) / 2, x4 = (W - wBot) / 2;
-    const pct = i === 0 ? 100 : (stages[i - 1].n ? Math.round((s.n / stages[i - 1].n) * 100) : 0);
+    // ROADMAP-18 FAZA 5.1: foiz UMUMIY bazadan (Yozgan) — bosqichlar ketma-ket
+    // qism to'plam emas, oldingi bosqichdan hisoblash 625% kabi ma'nosiz
+    // raqamlar chiqarardi (25/4 o'rniga 25/91).
+    const pct = i === 0 ? 100 : (max ? Math.round((s.n / max) * 100) : 0);
     svg += '<path d="M' + x1.toFixed(1) + " " + y + " L" + x2.toFixed(1) + " " + y +
       " L" + x3.toFixed(1) + " " + (y + SH) + " L" + x4.toFixed(1) + " " + (y + SH) +
       ' Z" style="fill:' + s.c + '" opacity="' + (0.92 - i * 0.07) + '">' +

@@ -116,7 +116,8 @@ router.get("/api/whats-changed", protect, async (req, res, next) => {
         .replace(/^bu hafta nima o'zgardi[:\s]*/i, "")
         .trim();
       if (!text) {
-        const d = s.trends.messages;
+        // 5.3: trend endi {kind, value} obyekt — faqat foiz turini matnga qo'shamiz
+        const d = s.trends.messages && s.trends.messages.kind === "pct" ? s.trends.messages.value : null;
         text = `Bu hafta ${s.messages} ta xabar keldi` +
           (d != null ? ` (o'tgan haftaga nisbatan ${d >= 0 ? "+" : ""}${d}%)` : "") +
           `, ${s.contactsActive} mijoz faol bo'ldi, ${s.contactsNew} tasi yangi.`;

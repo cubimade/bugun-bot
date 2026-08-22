@@ -252,8 +252,10 @@ router.get("/api/insights/content", protect, async (req, res, next) => {
         const ai = await getContentIdeas(text);
         // Eng yaxshi vaqt: xabarlar soati bo'yicha top oynasi
         const { pool } = await import("../db/pool.js");
+        const { tzName } = await import("../db/analytics.js");
+        // ROADMAP-18 FAZA 5.2: qattiq +5 o'rniga sozlangan zona (whitelist'dan)
         const { rows } = await pool.query(
-          `SELECT EXTRACT(HOUR FROM created_at + interval '5 hours')::int AS h, COUNT(*)::int AS n
+          `SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE '${tzName()}')::int AS h, COUNT(*)::int AS n
              FROM messages WHERE role = 'user' AND created_at >= now() - interval '30 days'
             GROUP BY 1 ORDER BY n DESC LIMIT 1`
         );

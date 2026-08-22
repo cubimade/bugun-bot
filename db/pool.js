@@ -391,6 +391,18 @@ export async function initDb() {
     -- haqiqiy akkaunt IDsi (17841...) yoki app-scoped bo'lishi mumkin — ikkala
     -- kalit bo'yicha ham moslashtiriladi (state.js xaritasi).
     ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_scoped_id TEXT;
+
+    -- ROADMAP-19 FAZA 1: ko'p ilovali arxitektura — har loyihaga o'z Meta
+    -- ilovasi. Secret'lar FAQAT shifrlangan saqlanadi (services/crypto.js).
+    -- Bu ustunlar bo'sh loyiha global env sozlamalari bilan ishlayveradi.
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS ig_app_id TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS ig_app_secret_enc TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS meta_app_id TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS meta_app_secret_enc TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS verify_token TEXT;
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_setup_status TEXT DEFAULT 'none';
+    ALTER TABLE projects ADD COLUMN IF NOT EXISTS app_setup_checked_at TIMESTAMPTZ;
+    CREATE INDEX IF NOT EXISTS idx_projects_ig_app_id ON projects(ig_app_id);
     CREATE INDEX IF NOT EXISTS idx_projects_token_expires ON projects(token_expires_at);
 
     -- OAuth CSRF himoyasi: bir martalik "state" qiymatlari (15 daqiqa yashaydi)
